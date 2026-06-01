@@ -5,7 +5,7 @@ import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { ChevronLeft, Home, ClipboardList, Send, ChevronDown } from 'lucide-react';
 import { CATEGORIES } from '@/lib/categories';
 
-const LOGO_URL = "https://media.base44.com/images/public/6a1cd8a8428cf973557907e8/947386a2f_ChatGPT_Image_27_de_mai_de_2026__10_42_43-removebg-preview.png";
+const LOGO_URL = "/logo.png";
 
 const WHEN_OPTIONS = [
   { id: 'today', label: 'Hoje' },

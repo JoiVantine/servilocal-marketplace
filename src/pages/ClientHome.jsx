@@ -5,7 +5,7 @@ import { Home, Search, ChevronRight, MapPin, ArrowLeft, ClipboardList } from 'lu
 import { useNavigate, Link } from 'react-router-dom';
 import ServiceCategoryGrid from '../components/ServiceCategoryGrid';
 
-const LOGO_URL = "https://media.base44.com/images/public/user_6a1b978483783dbaa09aae7d/7e2cd2b0e_ChatGPT_Image_27_de_mai_de_2026__10_42_43-removebg-preview.png";
+const LOGO_URL = "/logo.png";
 
 const STATUS_LABELS = {
   open: 'Aberto',
@@ -120,7 +120,7 @@ export default function ClientHome() {
               {/* Illustration */}
               <div className="flex justify-center mb-8">
                 <img
-                  src="https://media.base44.com/images/public/6a1cd8a8428cf973557907e8/947386a2f_ChatGPT_Image_27_de_mai_de_2026__10_42_43-removebg-preview.png"
+                  src="/logo.png"
                   alt="ServiLocal"
                   className="w-44 h-44 object-contain"
                 />

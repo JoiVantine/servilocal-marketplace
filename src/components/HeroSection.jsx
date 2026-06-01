@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { useState } from 'react';
 
-const LOGO_URL = "https://media.base44.com/images/public/user_6a1b978483783dbaa09aae7d/7e2cd2b0e_ChatGPT_Image_27_de_mai_de_2026__10_42_43-removebg-preview.png";
+const LOGO_URL = "/logo.png";
 
 export default function HeroSection() {
   const navigate = useNavigate();

@@ -4,7 +4,7 @@ import { base44 } from '@/api/base44Client';
 import { Link, useNavigate } from 'react-router-dom';
 import { Home, ClipboardList, MapPin, ChevronRight, CheckCircle2, MessageCircle } from 'lucide-react';
 
-const LOGO_URL = "https://media.base44.com/images/public/6a1cd8a8428cf973557907e8/947386a2f_ChatGPT_Image_27_de_mai_de_2026__10_42_43-removebg-preview.png";
+const LOGO_URL = "/logo.png";
 
 const STATUS_LABELS = {
   open: { label: 'AGUARDANDO', color: 'text-orange-500' },

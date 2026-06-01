@@ -6,7 +6,7 @@ import { ChevronRight, User, Phone, Mail, Lock, Eye, EyeOff, MapPin, CheckCircle
 import { CATEGORIES, CATEGORY_GROUPS } from '@/lib/categories';
 import ProviderServiceModal from '@/components/ProviderServiceModal';
 
-const LOGO_URL = 'https://media.base44.com/images/public/user_6a1b978483783dbaa09aae7d/7e2cd2b0e_ChatGPT_Image_27_de_mai_de_2026__10_42_43-removebg-preview.png';
+const LOGO_URL = '/logo.png';
 
 const STEPS = [
   { id: 1, label: 'Dados' },
