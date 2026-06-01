@@ -1,0 +1,71 @@
+{
+  "name": "ServiceRequest",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Request title"
+    },
+    "description": {
+      "type": "string",
+      "description": "Detailed description"
+    },
+    "category": {
+      "type": "string",
+      "description": "Service category name"
+    },
+    "subcategory": {
+      "type": "string",
+      "description": "Service subcategory (specialty) for matching"
+    },
+    "city": {
+      "type": "string",
+      "description": "City"
+    },
+    "neighborhood": {
+      "type": "string",
+      "description": "Neighborhood/district"
+    },
+    "urgency": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "urgent"
+      ],
+      "description": "Urgency level"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "open",
+        "in_conversation",
+        "agreed",
+        "completed",
+        "cancelled"
+      ],
+      "default": "open",
+      "description": "Request status"
+    },
+    "photos": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Photo URLs"
+    },
+    "interestCount": {
+      "type": "number",
+      "default": 0,
+      "description": "Number of interested providers"
+    }
+  },
+  "required": [
+    "title",
+    "description",
+    "category",
+    "city",
+    "neighborhood"
+  ]
+}

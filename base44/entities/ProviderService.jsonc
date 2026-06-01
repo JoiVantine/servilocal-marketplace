@@ -1,0 +1,71 @@
+{
+  "name": "ProviderService",
+  "type": "object",
+  "properties": {
+    "providerProfileId": {
+      "type": "string",
+      "description": "ID do ProviderProfile"
+    },
+    "providerId": {
+      "type": "string",
+      "description": "User ID do prestador"
+    },
+    "serviceName": {
+      "type": "string",
+      "description": "Nome da categoria do servi\u00e7o"
+    },
+    "specialty": {
+      "type": "string",
+      "description": "Especialidade dentro da categoria"
+    },
+    "price": {
+      "type": "string",
+      "description": "Valor cobrado (texto formatado)"
+    },
+    "duration": {
+      "type": "string",
+      "description": "Dura\u00e7\u00e3o m\u00e9dia do servi\u00e7o"
+    },
+    "homeCare": {
+      "type": "string",
+      "enum": [
+        "sim",
+        "nao"
+      ],
+      "description": "Atende a domic\u00edlio?"
+    },
+    "freight": {
+      "type": "string",
+      "description": "Valor do frete (se atende a domic\u00edlio)"
+    },
+    "materials": {
+      "type": "string",
+      "enum": [
+        "client",
+        "provider"
+      ],
+      "description": "Quem fornece os materiais"
+    },
+    "description": {
+      "type": "string",
+      "description": "Descri\u00e7\u00e3o do servi\u00e7o"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Observa\u00e7\u00f5es adicionais"
+    },
+    "total": {
+      "type": "number",
+      "description": "Valor total calculado (servi\u00e7o + frete)"
+    },
+    "active": {
+      "type": "boolean",
+      "default": true,
+      "description": "Servi\u00e7o ativo no perfil"
+    }
+  },
+  "required": [
+    "providerId",
+    "serviceName"
+  ]
+}

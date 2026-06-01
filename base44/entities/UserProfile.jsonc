@@ -1,0 +1,58 @@
+{
+  "name": "UserProfile",
+  "type": "object",
+  "properties": {
+    "userId": {
+      "type": "string",
+      "description": "ID do usu\u00e1rio (User entity)"
+    },
+    "phone": {
+      "type": "string",
+      "description": "Celular com DDD"
+    },
+    "photo": {
+      "type": "string",
+      "description": "URL da foto de perfil"
+    },
+    "city": {
+      "type": "string",
+      "description": "Cidade"
+    },
+    "neighborhood": {
+      "type": "string",
+      "description": "Bairro"
+    },
+    "address": {
+      "type": "string",
+      "description": "Endere\u00e7o completo"
+    },
+    "role": {
+      "type": "string",
+      "enum": [
+        "client",
+        "provider",
+        "both"
+      ],
+      "default": "client",
+      "description": "Papel do usu\u00e1rio no app"
+    },
+    "acceptedTermsAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Data de aceite dos termos"
+    },
+    "onboardingCompleted": {
+      "type": "boolean",
+      "default": false,
+      "description": "Onboarding conclu\u00eddo"
+    },
+    "active": {
+      "type": "boolean",
+      "default": true,
+      "description": "Conta ativa"
+    }
+  },
+  "required": [
+    "userId"
+  ]
+}

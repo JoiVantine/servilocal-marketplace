@@ -1,0 +1,56 @@
+{
+  "name": "Conversation",
+  "type": "object",
+  "properties": {
+    "serviceRequestId": {
+      "type": "string",
+      "description": "Service request ID"
+    },
+    "clientId": {
+      "type": "string",
+      "description": "Client user ID"
+    },
+    "providerId": {
+      "type": "string",
+      "description": "Provider user ID"
+    },
+    "clientName": {
+      "type": "string",
+      "description": "Client name (cached)"
+    },
+    "providerName": {
+      "type": "string",
+      "description": "Provider name (cached)"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "agreed",
+        "completed",
+        "cancelled"
+      ],
+      "default": "active",
+      "description": "Conversation status"
+    },
+    "lastMessage": {
+      "type": "string",
+      "description": "Last message text"
+    },
+    "lastMessageTime": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp of last message"
+    },
+    "unreadCount": {
+      "type": "number",
+      "default": 0,
+      "description": "Unread message count"
+    }
+  },
+  "required": [
+    "serviceRequestId",
+    "clientId",
+    "providerId"
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "name": "Message",
+  "type": "object",
+  "properties": {
+    "conversationId": {
+      "type": "string",
+      "description": "Conversation ID"
+    },
+    "senderId": {
+      "type": "string",
+      "description": "Sender user ID"
+    },
+    "senderName": {
+      "type": "string",
+      "description": "Sender name"
+    },
+    "senderType": {
+      "type": "string",
+      "enum": [
+        "client",
+        "provider"
+      ],
+      "description": "Sender type"
+    },
+    "text": {
+      "type": "string",
+      "description": "Message text"
+    },
+    "read": {
+      "type": "boolean",
+      "default": false,
+      "description": "Is message read"
+    }
+  },
+  "required": [
+    "conversationId",
+    "senderId",
+    "text"
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "name": "ServiLocal",
+  "short_name": "ServiLocal",
+  "description": "Marketplace de serviços locais",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "icons": []
+}

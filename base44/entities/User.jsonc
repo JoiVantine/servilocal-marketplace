@@ -1,0 +1,47 @@
+{
+  "name": "User",
+  "type": "object",
+  "properties": {
+    "role": {
+      "type": "string",
+      "enum": [
+        "admin",
+        "user"
+      ],
+      "description": "Admin role for system administrators"
+    },
+    "userType": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "client",
+          "provider"
+        ]
+      },
+      "description": "User can be both client and provider",
+      "default": [
+        "client"
+      ]
+    },
+    "currentMode": {
+      "type": "string",
+      "enum": [
+        "client",
+        "provider"
+      ],
+      "description": "Currently active mode"
+    },
+    "city": {
+      "type": "string",
+      "description": "City where the user is located"
+    },
+    "phone": {
+      "type": "string",
+      "description": "User phone number"
+    }
+  },
+  "required": [
+    "role"
+  ]
+}

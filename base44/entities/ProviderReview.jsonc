@@ -1,0 +1,33 @@
+{
+  "name": "ProviderReview",
+  "type": "object",
+  "properties": {
+    "providerId": {
+      "type": "string",
+      "description": "Provider user ID"
+    },
+    "clientId": {
+      "type": "string",
+      "description": "Client user ID"
+    },
+    "requestId": {
+      "type": "string",
+      "description": "Service request ID"
+    },
+    "rating": {
+      "type": "number",
+      "minimum": 1,
+      "maximum": 5,
+      "description": "Rating from 1 to 5"
+    },
+    "comment": {
+      "type": "string",
+      "description": "Review comment"
+    }
+  },
+  "required": [
+    "providerId",
+    "clientId",
+    "rating"
+  ]
+}

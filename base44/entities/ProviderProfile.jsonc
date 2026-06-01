@@ -1,0 +1,56 @@
+{
+  "name": "ProviderProfile",
+  "type": "object",
+  "properties": {
+    "photo": {
+      "type": "string",
+      "description": "Profile photo URL"
+    },
+    "name": {
+      "type": "string",
+      "description": "Provider name"
+    },
+    "description": {
+      "type": "string",
+      "description": "Professional description/bio"
+    },
+    "specialties": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of service specialties"
+    },
+    "city": {
+      "type": "string",
+      "description": "Service city"
+    },
+    "rating": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 5,
+      "default": 0,
+      "description": "Average rating from reviews"
+    },
+    "reviewCount": {
+      "type": "number",
+      "default": 0,
+      "description": "Number of reviews"
+    },
+    "completedServices": {
+      "type": "number",
+      "default": 0,
+      "description": "Count of completed services"
+    },
+    "active": {
+      "type": "boolean",
+      "default": true,
+      "description": "Is profile active"
+    }
+  },
+  "required": [
+    "name",
+    "city",
+    "specialties"
+  ]
+}

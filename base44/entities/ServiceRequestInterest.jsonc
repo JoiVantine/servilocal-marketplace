@@ -1,0 +1,53 @@
+{
+  "name": "ServiceRequestInterest",
+  "type": "object",
+  "properties": {
+    "serviceRequestId": {
+      "type": "string",
+      "description": "Service request ID"
+    },
+    "providerId": {
+      "type": "string",
+      "description": "Provider user ID"
+    },
+    "providerName": {
+      "type": "string",
+      "description": "Provider name (cached)"
+    },
+    "specialties": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Provider specialties"
+    },
+    "city": {
+      "type": "string",
+      "description": "Provider city"
+    },
+    "rating": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 5,
+      "description": "Provider average rating"
+    },
+    "reviewCount": {
+      "type": "number",
+      "default": 0,
+      "description": "Number of reviews"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "interested",
+        "in_conversation",
+        "rejected"
+      ],
+      "default": "interested"
+    }
+  },
+  "required": [
+    "serviceRequestId",
+    "providerId"
+  ]
+}
