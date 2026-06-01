@@ -23,11 +23,29 @@ const EmailTemplate = require('./models/EmailTemplate');
 const app = express();
 const server = http.createServer(app);
 
+const clientOrigins = [
+  'http://localhost:5173',
+  'https://appservilocal.com',
+  'https://www.appservilocal.com',
+  process.env.CLIENT_URL,
+  ...(process.env.CLIENT_URLS || '').split(','),
+]
+  .map((origin) => origin && origin.trim())
+  .filter(Boolean);
+
+const allowedOrigins = [...new Set(clientOrigins)];
+const corsOptions = {
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+    return callback(new Error(`Origin ${origin} not allowed by CORS`));
+  },
+};
+
 const io = new Server(server, {
-  cors: { origin: process.env.CLIENT_URL || 'http://localhost:5173', methods: ['GET', 'POST'] },
+  cors: { origin: allowedOrigins, methods: ['GET', 'POST'] },
 });
 
-app.use(cors({ origin: process.env.CLIENT_URL || 'http://localhost:5173' }));
+app.use(cors(corsOptions));
 app.use(express.json());
 app.set('io', io);
 
