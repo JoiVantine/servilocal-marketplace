@@ -2,5 +2,4 @@
 buildCommand = "npm run build"
 
 [deploy]
-startCommand = "npm run preview"
-healthcheckPath = "/"
+startCommand = "npm run preview -- --host 0.0.0.0"
