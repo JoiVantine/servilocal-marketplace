@@ -8,6 +8,10 @@ const API_URL = isProductionHost && isLocalApiUrl
 
 async function api(method, path, data) {
   const token = localStorage.getItem('token');
+  if (path === '/api/auth/me' && !token) {
+    throw new Error('Not authenticated');
+  }
+
   const res = await fetch(`${API_URL}${path}`, {
     method,
     headers: {
@@ -17,6 +21,9 @@ async function api(method, path, data) {
     body: data !== undefined ? JSON.stringify(data) : undefined,
   });
   if (!res.ok) {
+    if (res.status === 401) {
+      localStorage.removeItem('token');
+    }
     const err = await res.json().catch(() => ({ error: res.statusText }));
     throw new Error(err.error || res.statusText);
   }
