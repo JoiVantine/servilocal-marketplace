@@ -22,7 +22,8 @@ async function sendMail(to, subject, text) {
   const transport = getTransport();
   if (!transport) return;
   try {
-    await transport.sendMail({ from: process.env.EMAIL_FROM, to, subject, text });
+    const from = process.env.EMAIL_FROM || `ServiLocal <${process.env.SMTP_USER}>`;
+    await transport.sendMail({ from, to, subject, text });
   } catch (err) {
     console.warn('[mail] Falha ao enviar email:', err.message);
   }
