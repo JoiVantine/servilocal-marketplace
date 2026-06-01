@@ -1,7 +1,10 @@
-const API_URL = import.meta.env.VITE_API_URL
-  || (window.location.hostname === 'www.appservilocal.com'
-    ? 'https://servilocal-api-production.up.railway.app'
-    : 'http://localhost:3001');
+const PROD_API_URL = 'https://servilocal-api-production.up.railway.app';
+const envApiUrl = import.meta.env.VITE_API_URL;
+const isProductionHost = window.location.hostname === 'www.appservilocal.com';
+const isLocalApiUrl = !envApiUrl || envApiUrl.includes('localhost') || envApiUrl.includes('127.0.0.1');
+const API_URL = isProductionHost && isLocalApiUrl
+  ? PROD_API_URL
+  : (envApiUrl || 'http://localhost:3001');
 
 async function api(method, path, data) {
   const token = localStorage.getItem('token');
