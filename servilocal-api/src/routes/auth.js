@@ -5,6 +5,7 @@ const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 const requireAuth = require('../middleware/auth');
 const User = require('../models/User');
+const EmailTemplate = require('../models/EmailTemplate');
 
 // --- Mailer (console fallback em dev) ---
 function getTransport() {
@@ -17,13 +18,38 @@ function getTransport() {
   });
 }
 
-async function sendMail(to, subject, text) {
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function getValue(data, path) {
+  return path.split('.').reduce((acc, key) => acc?.[key], data);
+}
+
+function renderTemplate(template, data, escapeValues = false) {
+  return template.replace(/{{\s*([\w.]+)\s*}}/g, (_, key) => {
+    const value = getValue(data, key);
+    return escapeValues ? escapeHtml(value) : String(value ?? '');
+  });
+}
+
+async function sendMail(to, templateKey, data, fallback) {
+  const template = await EmailTemplate.findOne({ key: templateKey, active: true });
+  const subject = template ? renderTemplate(template.subject, data) : fallback.subject;
+  const text = template ? renderTemplate(template.text, data) : fallback.text;
+  const html = template ? renderTemplate(template.html, data, true) : undefined;
+
   console.log(`[mail] Para: ${to} | ${subject} | ${text}`);
   const transport = getTransport();
   if (!transport) return;
   try {
     const from = process.env.EMAIL_FROM || `ServiLocal <${process.env.SMTP_USER}>`;
-    await transport.sendMail({ from, to, subject, text });
+    await transport.sendMail({ from, to, subject, text, html });
   } catch (err) {
     console.warn('[mail] Falha ao enviar email:', err.message);
   }
@@ -62,7 +88,10 @@ router.post('/send-otp', async (req, res) => {
     user.otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
     await user.save();
 
-    await sendMail(email, 'Seu código ServiLocal', `Seu código de verificação: ${otp}`);
+    await sendMail(email, 'auth_otp', { otp }, {
+      subject: 'Seu código ServiLocal',
+      text: `Seu código de verificação: ${otp}`,
+    });
     res.json({ message: 'Código enviado' });
   } catch (err) {
     console.error('[auth] send-otp:', err.message);
@@ -124,7 +153,10 @@ router.post('/resend-otp', requireAuth, async (req, res) => {
     user.otp = otp;
     user.otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
     await user.save();
-    await sendMail(user.email, 'Seu novo código ServiLocal', `Seu código de verificação: ${otp}`);
+    await sendMail(user.email, 'auth_resend_otp', { otp }, {
+      subject: 'Seu novo código ServiLocal',
+      text: `Seu código de verificação: ${otp}`,
+    });
     res.json({ message: 'Código reenviado' });
   } catch (err) {
     res.status(500).json({ error: 'Erro interno' });
@@ -197,7 +229,10 @@ router.post('/reset-password-request', async (req, res) => {
     await user.save();
 
     const resetUrl = `${process.env.CLIENT_URL}/reset-password?token=${token}`;
-    await sendMail(email, 'Redefinir senha ServiLocal', `Clique no link para redefinir sua senha:\n${resetUrl}\n\nO link expira em 1 hora.`);
+    await sendMail(email, 'auth_reset_password', { resetUrl }, {
+      subject: 'Redefinir senha ServiLocal',
+      text: `Clique no link para redefinir sua senha:\n${resetUrl}\n\nO link expira em 1 hora.`,
+    });
 
     res.json({ message: 'Se o e-mail existir, você receberá um link em breve' });
   } catch (err) {

@@ -6,6 +6,7 @@ const { Server } = require('socket.io');
 const connectDB = require('./db');
 const requireAuth = require('./middleware/auth');
 const createCrudRouter = require('./routes/crud');
+const seedEmailTemplates = require('./seed/emailTemplates');
 
 // Models
 const ServiceRequest = require('./models/ServiceRequest');
@@ -18,6 +19,7 @@ const ProviderService = require('./models/ProviderService');
 const UserProfile = require('./models/UserProfile');
 const User = require('./models/User');
 const Notification = require('./models/Notification');
+const EmailTemplate = require('./models/EmailTemplate');
 
 const app = express();
 const server = http.createServer(app);
@@ -73,6 +75,8 @@ app.use('/api/users', createCrudRouter(User));
 
 app.use('/api/notifications', createCrudRouter(Notification));
 
+app.use('/api/email-templates', createCrudRouter(EmailTemplate));
+
 // ─── Admin ──────────────────────────────────────────────────────────────────
 app.delete('/api/admin/users/:id', requireAuth, async (req, res) => {
   try {
@@ -101,5 +105,8 @@ io.on('connection', (socket) => {
 const PORT = process.env.PORT || 3001;
 
 connectDB()
-  .then(() => server.listen(PORT, () => console.log(`[server] http://localhost:${PORT}`)))
+  .then(async () => {
+    await seedEmailTemplates();
+    server.listen(PORT, () => console.log(`[server] http://localhost:${PORT}`));
+  })
   .catch((err) => { console.error('[server] Erro ao conectar:', err.message); process.exit(1); });
