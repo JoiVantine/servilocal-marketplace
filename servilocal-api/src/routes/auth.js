@@ -26,7 +26,12 @@ const passwordResetLimiter = rateLimit({
 
 // --- Mailer (console fallback em dev) ---
 function getTransport() {
-  if (!process.env.SMTP_USER) return null;
+  const required = ['SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', 'SMTP_PASS'];
+  const missing = required.filter((key) => !process.env[key]);
+  if (missing.length) {
+    throw new Error(`SMTP nao configurado: ${missing.join(', ')}`);
+  }
+
   return nodemailer.createTransport({
     host: process.env.SMTP_HOST,
     port: Number(process.env.SMTP_PORT),
@@ -63,14 +68,11 @@ async function sendMail(to, templateKey, data, fallback) {
   const html = template ? renderTemplate(template.html, data, true) : undefined;
 
   console.log(`[mail] Para: ${to} | ${subject} | ${text}`);
-  const transport = getTransport();
-  if (!transport) {
-    console.warn('[mail] SMTP_USER ausente; email nao enviado');
-    return;
-  }
   try {
+    const transport = getTransport();
     const from = process.env.EMAIL_FROM || `ServiLocal <${process.env.SMTP_USER}>`;
-    await transport.sendMail({ from, to, subject, text, html });
+    const result = await transport.sendMail({ from, to, subject, text, html });
+    console.log(`[mail] Enviado: ${result.messageId || 'sem messageId'} | accepted=${JSON.stringify(result.accepted || [])} | rejected=${JSON.stringify(result.rejected || [])}`);
   } catch (err) {
     console.error('[mail] Falha ao enviar email:', err.message);
     throw err;
