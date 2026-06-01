@@ -3,9 +3,26 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
+const rateLimit = require('express-rate-limit');
 const requireAuth = require('../middleware/auth');
 const User = require('../models/User');
 const EmailTemplate = require('../models/EmailTemplate');
+
+const otpLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 5,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  message: { error: 'Muitas tentativas. Aguarde alguns minutos e tente novamente.' },
+});
+
+const passwordResetLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 3,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  message: { error: 'Muitas tentativas. Aguarde alguns minutos e tente novamente.' },
+});
 
 // --- Mailer (console fallback em dev) ---
 function getTransport() {
@@ -72,7 +89,7 @@ function signToken(user) {
 }
 
 // POST /api/auth/send-otp — cria ou encontra usuário e envia código (sem senha)
-router.post('/send-otp', async (req, res) => {
+router.post('/send-otp', otpLimiter, async (req, res) => {
   try {
     const { email, fullName, phone, role } = req.body;
     if (!email) return res.status(400).json({ error: 'E-mail é obrigatório' });
@@ -220,7 +237,7 @@ router.post('/logout', (req, res) => {
 });
 
 // POST /api/auth/reset-password-request
-router.post('/reset-password-request', async (req, res) => {
+router.post('/reset-password-request', passwordResetLimiter, async (req, res) => {
   try {
     const { email } = req.body;
     const user = await User.findOne({ email });
