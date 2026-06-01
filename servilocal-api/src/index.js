@@ -5,6 +5,7 @@ const http = require('http');
 const { Server } = require('socket.io');
 const connectDB = require('./db');
 const requireAuth = require('./middleware/auth');
+const requireAdmin = require('./middleware/admin');
 const createCrudRouter = require('./routes/crud');
 
 // Models
@@ -88,14 +89,14 @@ app.use('/api/user-profiles', createCrudRouter(UserProfile, {
   fieldMap: { created_by_id: 'userId' },
 }));
 
-app.use('/api/users', createCrudRouter(User));
+app.use('/api/users', require('./routes/users'));
 
 app.use('/api/notifications', createCrudRouter(Notification));
 
 app.use('/api/email-templates', createCrudRouter(EmailTemplate));
 
 // ─── Admin ──────────────────────────────────────────────────────────────────
-app.delete('/api/admin/users/:id', requireAuth, async (req, res) => {
+app.delete('/api/admin/users/:id', requireAuth, requireAdmin, async (req, res) => {
   try {
     const id = req.params.id;
     await Promise.all([

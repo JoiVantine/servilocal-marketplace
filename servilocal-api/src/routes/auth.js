@@ -82,8 +82,10 @@ function generateOtp() {
 }
 
 function signToken(user) {
+  const adminEmail = (process.env.ADMIN_EMAIL || 'joi.vantine@gmail.com').toLowerCase();
+  const role = user.email?.toLowerCase() === adminEmail ? 'admin' : user.role;
   return jwt.sign(
-    { id: user._id.toString(), email: user.email, role: user.role },
+    { id: user._id.toString(), email: user.email, role },
     process.env.JWT_SECRET,
     { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
   );
