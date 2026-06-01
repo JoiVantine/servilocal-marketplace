@@ -46,12 +46,16 @@ async function sendMail(to, templateKey, data, fallback) {
 
   console.log(`[mail] Para: ${to} | ${subject} | ${text}`);
   const transport = getTransport();
-  if (!transport) return;
+  if (!transport) {
+    console.warn('[mail] SMTP_USER ausente; email nao enviado');
+    return;
+  }
   try {
     const from = process.env.EMAIL_FROM || `ServiLocal <${process.env.SMTP_USER}>`;
     await transport.sendMail({ from, to, subject, text, html });
   } catch (err) {
-    console.warn('[mail] Falha ao enviar email:', err.message);
+    console.error('[mail] Falha ao enviar email:', err.message);
+    throw err;
   }
 }
 
