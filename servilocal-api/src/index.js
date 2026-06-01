@@ -6,7 +6,6 @@ const { Server } = require('socket.io');
 const connectDB = require('./db');
 const requireAuth = require('./middleware/auth');
 const createCrudRouter = require('./routes/crud');
-const seedEmailTemplates = require('./seed/emailTemplates');
 
 // Models
 const ServiceRequest = require('./models/ServiceRequest');
@@ -105,8 +104,5 @@ io.on('connection', (socket) => {
 const PORT = process.env.PORT || 3001;
 
 connectDB()
-  .then(async () => {
-    await seedEmailTemplates();
-    server.listen(PORT, () => console.log(`[server] http://localhost:${PORT}`));
-  })
+  .then(() => server.listen(PORT, () => console.log(`[server] http://localhost:${PORT}`)))
   .catch((err) => { console.error('[server] Erro ao conectar:', err.message); process.exit(1); });

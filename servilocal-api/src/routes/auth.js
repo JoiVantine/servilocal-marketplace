@@ -88,7 +88,7 @@ router.post('/send-otp', async (req, res) => {
     user.otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
     await user.save();
 
-    await sendMail(email, 'auth_otp', { otp }, {
+    await sendMail(email, 'account_token', { email, fullName: user.fullName, otp, role: user.role }, {
       subject: 'Seu código ServiLocal',
       text: `Seu código de verificação: ${otp}`,
     });
@@ -153,7 +153,7 @@ router.post('/resend-otp', requireAuth, async (req, res) => {
     user.otp = otp;
     user.otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
     await user.save();
-    await sendMail(user.email, 'auth_resend_otp', { otp }, {
+    await sendMail(user.email, 'account_token', { email: user.email, fullName: user.fullName, otp, role: user.role }, {
       subject: 'Seu novo código ServiLocal',
       text: `Seu código de verificação: ${otp}`,
     });
