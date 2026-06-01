@@ -1,4 +1,7 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const API_URL = import.meta.env.VITE_API_URL
+  || (window.location.hostname === 'www.appservilocal.com'
+    ? 'https://servilocal-api-production.up.railway.app'
+    : 'http://localhost:3001');
 
 async function api(method, path, data) {
   const token = localStorage.getItem('token');
