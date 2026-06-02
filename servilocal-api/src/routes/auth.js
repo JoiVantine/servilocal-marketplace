@@ -59,42 +59,41 @@ async function sendMail(to, templateKey, data, fallback) {
 
   console.log(`[mail] Para: ${to} | ${subject} | ${text}`);
 
-  const apiKey = process.env.BREVO_API_KEY;
-  if (!apiKey) throw new Error('BREVO_API_KEY não configurada');
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) throw new Error('RESEND_API_KEY não configurada');
 
-  const sender = parseEmailFrom(process.env.EMAIL_FROM || 'ServiLocal <naoresponda@appservilocal.com>');
+  const from = process.env.EMAIL_FROM || 'ServiLocal <naoresponda@appservilocal.com>';
   const body = JSON.stringify({
-    sender,
-    to: [{ email: to }],
+    from,
+    to: [to],
     subject,
-    textContent: text,
-    ...(html ? { htmlContent: html } : {}),
+    text,
+    ...(html ? { html } : {}),
   });
 
   await new Promise((resolve, reject) => {
     const req = https.request({
-      hostname: 'api.brevo.com',
-      path: '/v3/smtp/email',
+      hostname: 'api.resend.com',
+      path: '/emails',
       method: 'POST',
       headers: {
-        'accept': 'application/json',
-        'api-key': apiKey,
-        'content-type': 'application/json',
-        'content-length': Buffer.byteLength(body),
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(body),
       },
     }, (res) => {
       let raw = '';
       res.on('data', (chunk) => { raw += chunk; });
       res.on('end', () => {
         if (res.statusCode >= 200 && res.statusCode < 300) {
-          console.log(`[mail] Enviado via Brevo: ${raw}`);
+          console.log(`[mail] Enviado via Resend: ${raw}`);
           resolve();
         } else {
-          reject(new Error(`Brevo API ${res.statusCode}: ${raw}`));
+          reject(new Error(`Resend API ${res.statusCode}: ${raw}`));
         }
       });
     });
-    req.setTimeout(15000, () => { req.destroy(); reject(new Error('Brevo API timeout')); });
+    req.setTimeout(15000, () => { req.destroy(); reject(new Error('Resend API timeout')); });
     req.on('error', reject);
     req.write(body);
     req.end();
