@@ -254,9 +254,12 @@ export default function ClientOnboarding() {
 
   return (
     <div className="min-h-screen bg-background pb-20">
-      {/* Header with Home */}
+      {/* Header */}
       <div className="flex items-center justify-between px-4 py-4 border-b border-border bg-card">
-        <h1 className="font-heading text-lg font-bold text-foreground">Completar perfil</h1>
+        <div className="flex items-center gap-2">
+          <img src="/logo.png" alt="ServiLocal" className="w-6 h-6" />
+          <span className="text-sm font-semibold text-foreground">ServiLocal</span>
+        </div>
         <button
           onClick={() => navigate('/client')}
           className="p-2 hover:bg-secondary rounded-lg transition-colors"
@@ -318,20 +321,12 @@ export default function ClientOnboarding() {
               )}
 
               <button
-                onClick={() => setShowPhotoModal(true)}
+                onClick={() => galleryInputRef.current?.click()}
                 className="text-sm font-medium text-primary hover:opacity-80 transition-opacity"
               >
                 {formData.photoPreview ? 'Mudar foto' : 'Adicionar foto'}
               </button>
 
-              <input
-                ref={cameraInputRef}
-                type="file"
-                accept="image/*"
-                capture="environment"
-                onChange={handlePhotoSelect}
-                className="hidden"
-              />
               <input
                 ref={galleryInputRef}
                 type="file"
@@ -472,42 +467,58 @@ export default function ClientOnboarding() {
         {/* Step 2: Resumo */}
         {currentStep === 2 && (
           <div className="space-y-6">
-            <div>
-              <h2 className="font-heading text-xl font-bold text-foreground mb-2">
-                Você está pronto!
-              </h2>
-              <p className="text-muted-foreground text-sm">
-                Revise seus dados antes de começar
-              </p>
+            <div className="text-center">
+              {formData.photoPreview ? (
+                <img src={formData.photoPreview} alt="foto" className="w-20 h-20 rounded-full object-cover mx-auto mb-3 border-2 border-primary shadow" />
+              ) : (
+                <div className="w-20 h-20 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-2xl mx-auto mb-3 shadow">
+                  {formData.name?.[0]?.toUpperCase() || '?'}
+                </div>
+              )}
+              <h2 className="font-heading text-xl font-bold text-foreground mb-1">Você está pronto!</h2>
+              <p className="text-muted-foreground text-sm">Revise seus dados antes de começar</p>
             </div>
 
             <div className="space-y-3">
-              <div className="p-4 bg-secondary/50 rounded-lg">
-                <p className="text-xs text-muted-foreground mb-1">Nome</p>
-                <p className="font-medium text-foreground">{formData.name}</p>
+              <div className="p-4 bg-card border border-border rounded-xl flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <ShieldCheck className="w-4 h-4 text-primary" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs text-muted-foreground">Nome</p>
+                  <p className="font-medium text-foreground truncate">{formData.name}</p>
+                </div>
               </div>
-              <div className="p-4 bg-secondary/50 rounded-lg">
-                <p className="text-xs text-muted-foreground mb-1">Email</p>
-                <p className="font-medium text-foreground">{formData.email}</p>
+              <div className="p-4 bg-card border border-border rounded-xl flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <Mail className="w-4 h-4 text-primary" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs text-muted-foreground">Email</p>
+                  <p className="font-medium text-foreground truncate">{formData.email}</p>
+                </div>
               </div>
-              <div className="p-4 bg-secondary/50 rounded-lg">
-                <p className="text-xs text-muted-foreground mb-1">WhatsApp</p>
-                <p className="font-medium text-foreground">{formData.phone}</p>
+              <div className="p-4 bg-card border border-border rounded-xl flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <Phone className="w-4 h-4 text-primary" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs text-muted-foreground">WhatsApp</p>
+                  <p className="font-medium text-foreground">{formData.phone}</p>
+                </div>
               </div>
-              <div className="p-4 bg-secondary/50 rounded-lg">
-                <p className="text-xs text-muted-foreground mb-1">Endereço</p>
-                <p className="font-medium text-foreground">
-                  {formData.address
-                    ? [
-                        formData.address.endereco,
-                        formData.address.numero,
-                        formData.address.complemento,
-                        formData.address.bairro,
-                        formData.address.cidade,
-                        formData.address.estado,
-                      ].filter(Boolean).join(', ')
-                    : formData.city}
-                </p>
+              <div className="p-4 bg-card border border-border rounded-xl flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <MapPin className="w-4 h-4 text-primary" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs text-muted-foreground">Endereço</p>
+                  <p className="font-medium text-foreground text-sm">
+                    {formData.address
+                      ? [formData.address.endereco, formData.address.numero, formData.address.complemento, formData.address.bairro, formData.address.cidade, formData.address.estado].filter(Boolean).join(', ')
+                      : formData.city}
+                  </p>
+                </div>
               </div>
             </div>
           </div>
@@ -550,40 +561,6 @@ export default function ClientOnboarding() {
 
       </div>
 
-      {/* Photo Modal */}
-      {showPhotoModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-end">
-          <div className="w-full bg-card rounded-t-2xl p-6 animate-in slide-in-from-bottom">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="font-semibold text-foreground">Adicionar foto</h3>
-              <button
-                onClick={() => setShowPhotoModal(false)}
-                className="w-6 h-6 flex items-center justify-center text-muted-foreground hover:bg-secondary rounded"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="flex gap-3">
-              <button
-                onClick={handleCameraClick}
-                className="flex-1 flex flex-col items-center gap-3 p-4 bg-secondary rounded-lg hover:bg-secondary/80 transition-colors"
-              >
-                <Camera className="w-6 h-6 text-primary" />
-                <span className="text-sm font-medium text-foreground">Tirar foto</span>
-              </button>
-
-              <button
-                onClick={handleGalleryClick}
-                className="flex-1 flex flex-col items-center gap-3 p-4 bg-secondary rounded-lg hover:bg-secondary/80 transition-colors"
-              >
-                <Image className="w-6 h-6 text-primary" />
-                <span className="text-sm font-medium text-foreground">Galeria</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

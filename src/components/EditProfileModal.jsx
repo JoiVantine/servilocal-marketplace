@@ -1,17 +1,15 @@
 import { useState, useEffect, useRef } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
-import { X, Camera, Image, Upload } from 'lucide-react';
+import { X, Camera } from 'lucide-react';
 
 export default function EditProfileModal({ user, onClose, onSaved }) {
-  const cameraRef = useRef(null);
   const galleryRef = useRef(null);
 
   const [name, setName] = useState(user.fullName || user.full_name || '');
   const [phone, setPhone] = useState(user.phone || '');
   const [photoPreview, setPhotoPreview] = useState(user.photo || null);
   const [photoFile, setPhotoFile] = useState(null);
-  const [showPhotoSheet, setShowPhotoSheet] = useState(false);
 
   const [profile, setProfile] = useState(null);
   const [address, setAddress] = useState('');
@@ -35,29 +33,31 @@ export default function EditProfileModal({ user, onClose, onSaved }) {
     mutationFn: (file) => base44.integrations.Core.UploadFile({ file }).then((r) => r.file_url),
   });
 
+  const formatPhone = (val) => {
+    const d = val.replace(/\D/g, '').slice(0, 11);
+    if (d.length === 0) return '';
+    if (d.length <= 2) return `(${d}`;
+    if (d.length <= 7) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
+    return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+  };
+
   const saveMutation = useMutation({
     mutationFn: async () => {
       let photoUrl = user.photo;
       if (photoFile) photoUrl = await uploadMutation.mutateAsync(photoFile);
 
-      const formatPhone = (v) => {
-        const d = v.replace(/\D/g, '');
-        if (d.length === 0) return '';
-        if (d.length <= 2) return `(${d}`;
-        if (d.length <= 7) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
-        return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
-      };
+      const fmt = formatPhone(phone);
 
       await base44.auth.updateMe({
         full_name: name,
-        phone: formatPhone(phone),
+        phone: fmt,
         city,
         ...(photoUrl ? { photo: photoUrl } : {}),
       });
 
       const profileData = {
         userId: user.id,
-        phone: formatPhone(phone),
+        phone: fmt,
         city,
         neighborhood,
         address,
@@ -71,9 +71,11 @@ export default function EditProfileModal({ user, onClose, onSaved }) {
       } else {
         await base44.entities.UserProfile.create(profileData);
       }
+
+      return { photo: photoUrl, name, city };
     },
-    onSuccess: () => {
-      onSaved?.();
+    onSuccess: (updates) => {
+      onSaved?.(updates);
       onClose();
     },
   });
@@ -83,15 +85,6 @@ export default function EditProfileModal({ user, onClose, onSaved }) {
     if (!file) return;
     setPhotoFile(file);
     setPhotoPreview(URL.createObjectURL(file));
-    setShowPhotoSheet(false);
-  };
-
-  const formatPhone = (val) => {
-    const d = val.replace(/\D/g, '').slice(0, 11);
-    if (d.length === 0) return '';
-    if (d.length <= 2) return `(${d}`;
-    if (d.length <= 7) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
-    return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
   };
 
   return (
@@ -111,9 +104,9 @@ export default function EditProfileModal({ user, onClose, onSaved }) {
         </div>
 
         <div className="px-5 py-4 space-y-4">
-          {/* Photo */}
-          <div className="flex flex-col items-center gap-2 pb-2">
-            <button onClick={() => setShowPhotoSheet(true)} className="relative">
+          {/* Photo — click direto na galeria */}
+          <div className="flex flex-col items-center gap-1 pb-2">
+            <button onClick={() => galleryRef.current?.click()} className="relative group">
               {photoPreview ? (
                 <img src={photoPreview} alt="foto" className="w-20 h-20 rounded-full object-cover border-2 border-primary" />
               ) : (
@@ -121,14 +114,10 @@ export default function EditProfileModal({ user, onClose, onSaved }) {
                   {name?.[0]?.toUpperCase() || '?'}
                 </div>
               )}
-              <div className="absolute bottom-0 right-0 w-6 h-6 bg-primary rounded-full flex items-center justify-center">
+              <div className="absolute bottom-0 right-0 w-6 h-6 bg-primary rounded-full flex items-center justify-center shadow">
                 <Camera className="w-3.5 h-3.5 text-white" />
               </div>
             </button>
-            <span className="text-xs text-primary font-medium cursor-pointer" onClick={() => setShowPhotoSheet(true)}>
-              {photoPreview ? 'Trocar foto' : 'Adicionar foto'}
-            </span>
-            <input ref={cameraRef} type="file" accept="image/*" capture="environment" onChange={handlePhotoSelect} className="hidden" />
             <input ref={galleryRef} type="file" accept="image/*" onChange={handlePhotoSelect} className="hidden" />
           </div>
 
@@ -173,7 +162,6 @@ export default function EditProfileModal({ user, onClose, onSaved }) {
               type="text"
               value={city}
               onChange={(e) => setCity(e.target.value)}
-              placeholder="São Paulo"
               className="w-full px-4 py-2.5 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm bg-card"
             />
           </div>
@@ -185,7 +173,6 @@ export default function EditProfileModal({ user, onClose, onSaved }) {
               type="text"
               value={neighborhood}
               onChange={(e) => setNeighborhood(e.target.value)}
-              placeholder="Centro"
               className="w-full px-4 py-2.5 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm bg-card"
             />
           </div>
@@ -197,7 +184,6 @@ export default function EditProfileModal({ user, onClose, onSaved }) {
               type="text"
               value={address}
               onChange={(e) => setAddress(e.target.value)}
-              placeholder="Rua das Flores, 123 - Centro"
               className="w-full px-4 py-2.5 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm bg-card"
             />
           </div>
@@ -211,35 +197,6 @@ export default function EditProfileModal({ user, onClose, onSaved }) {
           </button>
         </div>
       </div>
-
-      {/* Photo sheet */}
-      {showPhotoSheet && (
-        <div className="absolute inset-0 z-10 flex items-end justify-center">
-          <div className="absolute inset-0 bg-black/30" onClick={() => setShowPhotoSheet(false)} />
-          <div className="relative w-full sm:max-w-md bg-card rounded-t-2xl p-6">
-            <div className="flex items-center justify-between mb-5">
-              <h3 className="font-semibold text-foreground">Foto de perfil</h3>
-              <button onClick={() => setShowPhotoSheet(false)}><X className="w-4 h-4 text-muted-foreground" /></button>
-            </div>
-            <div className="flex gap-3">
-              <button
-                onClick={() => cameraRef.current?.click()}
-                className="flex-1 flex flex-col items-center gap-3 p-4 bg-secondary rounded-lg hover:bg-secondary/80 transition-colors"
-              >
-                <Camera className="w-6 h-6 text-primary" />
-                <span className="text-sm font-medium text-foreground">Tirar foto</span>
-              </button>
-              <button
-                onClick={() => galleryRef.current?.click()}
-                className="flex-1 flex flex-col items-center gap-3 p-4 bg-secondary rounded-lg hover:bg-secondary/80 transition-colors"
-              >
-                <Image className="w-6 h-6 text-primary" />
-                <span className="text-sm font-medium text-foreground">Galeria</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

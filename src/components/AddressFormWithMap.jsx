@@ -160,7 +160,7 @@ export default function AddressFormWithMap({ onAddressChange, initialData, valid
             value={formData.cep}
             onChange={handleInputChange}
             onBlur={() => handleBlur('cep')}
-            placeholder="09720-470"
+            placeholder=""
             className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm"
           />
           <p className="text-xs text-muted-foreground mt-1">
@@ -179,7 +179,7 @@ export default function AddressFormWithMap({ onAddressChange, initialData, valid
             value={formData.endereco}
             onChange={handleInputChange}
             onBlur={() => handleBlur('endereco')}
-            placeholder="Rua Comandador Cário Mário Gardano"
+            placeholder=""
             className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm"
           />
         </div>
@@ -196,7 +196,7 @@ export default function AddressFormWithMap({ onAddressChange, initialData, valid
               value={sn ? 'S/N' : formData.numero}
               onChange={handleInputChange}
               onBlur={() => handleBlur('numero')}
-              placeholder="123"
+              placeholder=""
               disabled={sn}
               className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm ${
                 sn ? 'bg-secondary text-muted-foreground cursor-not-allowed' : 'bg-card'
@@ -230,7 +230,7 @@ export default function AddressFormWithMap({ onAddressChange, initialData, valid
               name="complemento"
               value={formData.complemento}
               onChange={handleInputChange}
-              placeholder={sn ? 'Ex: Bloco A, fundos...' : 'Apto 45'}
+              placeholder={sn ? 'Referência de localização' : ''}
               className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm bg-card ${
                 sn && !formData.complemento ? 'border-primary/50' : 'border-border'
               }`}
@@ -249,7 +249,7 @@ export default function AddressFormWithMap({ onAddressChange, initialData, valid
             value={formData.bairro}
             onChange={handleInputChange}
             onBlur={() => handleBlur('bairro')}
-            placeholder="Centro"
+            placeholder=""
             className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm"
           />
         </div>
@@ -266,7 +266,7 @@ export default function AddressFormWithMap({ onAddressChange, initialData, valid
               value={formData.cidade}
               onChange={handleInputChange}
               onBlur={() => handleBlur('cidade')}
-              placeholder="São Bernardo do Campo"
+              placeholder=""
               className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm"
             />
           </div>

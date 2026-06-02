@@ -253,7 +253,15 @@ export default function ClientHome() {
         <EditProfileModal
           user={user}
           onClose={() => setShowEditProfile(false)}
-          onSaved={loadUser}
+          onSaved={(updates) => {
+            if (updates) setUser(prev => ({
+              ...prev,
+              photo: updates.photo ?? prev.photo,
+              fullName: updates.name ?? prev.fullName,
+              full_name: updates.name ?? prev.full_name,
+              city: updates.city ?? prev.city,
+            }));
+          }}
         />
       )}
     </div>

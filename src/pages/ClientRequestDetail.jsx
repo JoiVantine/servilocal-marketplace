@@ -25,6 +25,7 @@ export default function ClientRequestDetail() {
   const queryClient = useQueryClient();
   const [user, setUser] = useState(null);
   const [showEdit, setShowEdit] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
 
   // Load user
   useEffect(() => {
@@ -261,11 +262,7 @@ export default function ClientRequestDetail() {
               Editar
             </button>
             <button
-              onClick={() => {
-                if (confirm('Tem certeza que deseja cancelar este pedido?')) {
-                  cancelMutation.mutate();
-                }
-              }}
+              onClick={() => setShowCancelModal(true)}
               disabled={cancelMutation.isPending}
               className="flex-1 px-4 py-3 bg-red-100/20 text-red-600 border border-red-200 rounded-lg hover:bg-red-100/30 transition-colors font-medium disabled:opacity-50"
             >
@@ -289,6 +286,34 @@ export default function ClientRequestDetail() {
           onClose={() => setShowEdit(false)}
           onUpdated={() => queryClient.invalidateQueries({ queryKey: ['request', requestId] })}
         />
+      )}
+
+      {showCancelModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setShowCancelModal(false)} />
+          <div className="relative bg-background rounded-2xl p-6 w-full max-w-sm text-center">
+            <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <span className="text-2xl">⚠️</span>
+            </div>
+            <h3 className="font-heading text-base font-bold text-foreground mb-2">Cancelar pedido?</h3>
+            <p className="text-sm text-muted-foreground mb-6">Esta ação não poderá ser desfeita. Todos os prestadores interessados serão notificados.</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowCancelModal(false)}
+                className="flex-1 px-4 py-2.5 border border-border rounded-xl text-sm font-medium text-foreground hover:bg-secondary/50 transition-colors"
+              >
+                Voltar
+              </button>
+              <button
+                onClick={() => { setShowCancelModal(false); cancelMutation.mutate(); }}
+                disabled={cancelMutation.isPending}
+                className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
+              >
+                {cancelMutation.isPending ? 'Cancelando...' : 'Confirmar'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useNavigate } from 'react-router-dom';
-import { X, Send, Calendar } from 'lucide-react';
+import { X, Send, Calendar, CheckCircle } from 'lucide-react';
 
 const WHEN_OPTIONS = [
   { id: 'today', label: 'Hoje' },
@@ -19,6 +19,14 @@ export default function NewServiceRequestModal({ category, request, onClose, onU
   const [description, setDescription] = useState(request?.description ?? '');
   const [when, setWhen] = useState(request?.when ?? '');
   const [scheduledAt, setScheduledAt] = useState(request?.scheduledAt ?? '');
+  const [showSuccess, setShowSuccess] = useState(false);
+
+  const hasChanged = isEdit && (
+    title !== (request?.title ?? '') ||
+    description !== (request?.description ?? '') ||
+    when !== (request?.when ?? '') ||
+    scheduledAt !== (request?.scheduledAt ?? '')
+  );
 
   const createMutation = useMutation({
     mutationFn: (data) => base44.entities.ServiceRequest.create(data),
@@ -30,10 +38,7 @@ export default function NewServiceRequestModal({ category, request, onClose, onU
 
   const updateMutation = useMutation({
     mutationFn: (data) => base44.entities.ServiceRequest.update(request.id, data),
-    onSuccess: () => {
-      onClose();
-      onUpdated?.();
-    },
+    onSuccess: () => setShowSuccess(true),
   });
 
   const mutation = isEdit ? updateMutation : createMutation;
@@ -174,7 +179,8 @@ export default function NewServiceRequestModal({ category, request, onClose, onU
             disabled={
               !title.trim() ||
               (when === 'scheduled' && !scheduledAt) ||
-              createMutation.isPending
+              mutation.isPending ||
+              (isEdit && !hasChanged)
             }
             className="w-full flex items-center justify-center gap-2 py-3.5 bg-primary text-primary-foreground rounded-xl font-semibold text-sm hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
           >
@@ -183,6 +189,25 @@ export default function NewServiceRequestModal({ category, request, onClose, onU
           </button>
         </div>
       </div>
+
+      {showSuccess && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center px-4">
+          <div className="absolute inset-0 bg-black/50" />
+          <div className="relative bg-background rounded-2xl p-8 w-full max-w-xs text-center">
+            <div className="w-14 h-14 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+              <CheckCircle className="w-8 h-8 text-primary" />
+            </div>
+            <h3 className="font-heading text-lg font-bold text-foreground mb-2">Alterações salvas!</h3>
+            <p className="text-sm text-muted-foreground mb-6">Seu pedido foi atualizado com sucesso.</p>
+            <button
+              onClick={() => { onUpdated?.(); onClose(); }}
+              className="w-full py-2.5 bg-primary text-primary-foreground rounded-xl font-semibold text-sm hover:opacity-90"
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
