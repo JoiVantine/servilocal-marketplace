@@ -3,7 +3,7 @@ import { useMutation } from '@tanstack/react-query';
 import { api } from '@/api/apiClient';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { ChevronLeft, Home, ClipboardList, Send, ChevronDown } from 'lucide-react';
-import { CATEGORIES } from '@/lib/categories';
+import { useServices } from '@/hooks/useServices';
 
 const LOGO_URL = "/logo.png";
 
@@ -19,6 +19,7 @@ const WHEN_OPTIONS = [
 export default function NewServiceRequest() {
   const navigate = useNavigate();
   const { state } = useLocation();
+  const { categories } = useServices();
   const [title, setTitle] = useState(state?.subcategory || '');
   const [description, setDescription] = useState('');
   const [when, setWhen] = useState('');
@@ -119,7 +120,7 @@ export default function NewServiceRequest() {
           </button>
           {categoryExpanded && (
             <div className="mt-2 border border-border rounded-xl overflow-hidden bg-card shadow-sm max-h-72 overflow-y-auto">
-              {CATEGORIES.map(cat => {
+              {categories.map(cat => {
                 const Icon = cat.icon;
                 const isExp = expandedCat === cat.name;
                 return (

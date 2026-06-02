@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '@/api/apiClient';
 import { useMutation } from '@tanstack/react-query';
 import { ChevronRight, User, Phone, Mail, Lock, Eye, EyeOff, MapPin, CheckCircle2, Circle, Search, ShieldCheck, Pencil, ChevronDown } from 'lucide-react';
-import { CATEGORIES, CATEGORY_GROUPS } from '@/lib/categories';
+import { CATEGORY_GROUPS } from '@/lib/categories';
+import { useServices } from '@/hooks/useServices';
 import ProviderServiceModal from '@/components/ProviderServiceModal';
 
 const LOGO_URL = '/logo.png';
@@ -21,6 +22,7 @@ export default function ProviderOnboarding() {
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
   const [user, setUser] = useState(null);
+  const { categories } = useServices();
 
   // Step 1 - Dados
   const [name, setName] = useState('');
@@ -481,7 +483,7 @@ export default function ProviderOnboarding() {
 
             {/* Categories with expandable subcategories */}
             {CATEGORY_GROUPS.map(group => {
-              const groupCategories = CATEGORIES.filter(c => group.items.includes(c.name));
+              const groupCategories = categories.filter(c => group.items.includes(c.name));
               const filtered = serviceSearch
                 ? groupCategories.filter(c =>
                     c.name.toLowerCase().includes(serviceSearch.toLowerCase()) ||

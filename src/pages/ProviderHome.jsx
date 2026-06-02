@@ -22,14 +22,19 @@ export default function ProviderHome() {
   useEffect(() => {
     api.auth.me().then(async (u) => {
       setUser(u);
-      const profiles = await api.entities.UserProfile.filter({ userId: u.id });
-      const providerProfile = profiles.find(p => p.role === 'provider' || p.role === 'both');
-      if (!providerProfile || providerProfile.firstAccess !== false) { navigate('/provider/onboarding'); return; }
-      setUserProfileId(providerProfile.id);
-      setAccepting(providerProfile.active !== false);
-      // Load provider specialties for matching
+      // ProviderProfile is created only after completing provider onboarding — use it as the gate
       const provProfiles = await api.entities.ProviderProfile.filter({ created_by_id: u.id });
-      if (provProfiles.length > 0) setProviderSpecialties(provProfiles[0].specialties || []);
+      if (provProfiles.length === 0) { navigate('/provider/onboarding'); return; }
+      setProviderSpecialties(provProfiles[0].specialties || []);
+
+      // UserProfile controls the "recebendo pedidos" toggle and active status
+      const userProfiles = await api.entities.UserProfile.filter({ userId: u.id });
+      const up = userProfiles.find(p => p.role === 'provider') || userProfiles[0];
+      if (up) {
+        setUserProfileId(up.id);
+        setAccepting(up.active !== false);
+      }
+
       const services = await api.entities.ProviderService.filter({ providerId: u.id });
       setHasProviderServices(services.length > 0);
     }).catch(() => navigate('/provider/onboarding'));

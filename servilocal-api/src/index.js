@@ -20,6 +20,7 @@ const UserProfile = require('./models/UserProfile');
 const User = require('./models/User');
 const Notification = require('./models/Notification');
 const EmailTemplate = require('./models/EmailTemplate');
+const Service = require('./models/Service');
 
 const { sendMail } = require('./utils/mail');
 
@@ -125,6 +126,8 @@ app.use('/api/notifications', createCrudRouter(Notification));
 
 app.use('/api/email-templates', createCrudRouter(EmailTemplate));
 
+app.use('/api/services', createCrudRouter(Service, { publicRead: true }));
+
 // ─── Admin ──────────────────────────────────────────────────────────────────
 app.delete('/api/admin/users/:id', requireAuth, requireAdmin, async (req, res) => {
   try {
@@ -152,6 +155,40 @@ io.on('connection', (socket) => {
 // ─── Start ──────────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 3001;
 
+const SERVICE_SEED = [
+  { name: 'Construção e Reformas', order: 1, subcategories: ['Pedreiro', 'Pintor', 'Gesseiro', 'Drywall', 'Azulejista', 'Carpinteiro', 'Serralheiro', 'Reforma Geral', 'Instalação de Pisos', 'Impermeabilização', 'Outros'] },
+  { name: 'Elétrica', order: 2, subcategories: ['Eletricista Residencial', 'Eletricista Predial', 'Instalação de Tomadas', 'Instalação de Luminárias', 'Quadro Elétrico', 'Automação Residencial', 'Energia Solar', 'Outros'] },
+  { name: 'Hidráulica', order: 3, subcategories: ['Encanador', 'Desentupimento', 'Vazamentos', 'Instalação de Torneiras', 'Instalação de Chuveiros', "Caixa d'Água", 'Aquecedores', 'Outros'] },
+  { name: 'Pintura', order: 4, subcategories: ['Pintura Residencial', 'Pintura Comercial', 'Pintura de Fachadas', 'Pintura Interna', 'Pintura Externa', 'Texturização', 'Grafiato', 'Cimento Queimado', 'Pintura de Portões e Grades', 'Pintura de Telhados', 'Outros'] },
+  { name: 'Jardinagem', order: 5, subcategories: ['Jardinagem Residencial', 'Paisagismo', 'Corte de Grama', 'Poda de Árvores', 'Manutenção de Jardins', 'Irrigação', 'Outros'] },
+  { name: 'Limpeza', order: 6, subcategories: ['Limpeza Residencial', 'Limpeza Comercial', 'Pós-Obra', 'Limpeza de Estofados', 'Limpeza de Vidros', 'Higienização de Ambientes', 'Outros'] },
+  { name: 'Serviços Domésticos', order: 7, subcategories: ['Diarista', 'Faxineira', 'Passadeira', 'Cozinheira', 'Babá', 'Cuidador de Idosos', 'Organizador Residencial', 'Outros'] },
+  { name: 'Costuras e Ajustes', order: 8, subcategories: ['Bainha', 'Ajustes de Roupas', 'Costura Sob Medida', 'Consertos', 'Customização', 'Confecção de Peças', 'Outros'] },
+  { name: 'Beleza e Estética', order: 9, subcategories: ['Cabeleireiro', 'Manicure', 'Pedicure', 'Maquiagem', 'Design de Sobrancelhas', 'Alongamento de Cílios', 'Estética Facial', 'Estética Corporal', 'Outros'] },
+  { name: 'Saúde e Bem-Estar', order: 10, subcategories: ['Massagista', 'Personal Trainer', 'Nutricionista', 'Psicólogo', 'Fisioterapeuta', 'Cuidador Particular', 'Outros'] },
+  { name: 'Aulas e Consultoria', order: 11, subcategories: ['Aulas Particulares', 'Idiomas', 'Música', 'Reforço Escolar', 'Consultoria Empresarial', 'Consultoria Financeira', 'Mentoria', 'Outros'] },
+  { name: 'Tecnologia', order: 12, subcategories: ['Desenvolvimento de Sites', 'Desenvolvimento de Apps', 'Automação', 'IA', 'Suporte de TI', 'Banco de Dados', 'Integrações', 'Outros'] },
+  { name: 'Assistência Técnica', order: 13, subcategories: ['Computadores', 'Notebooks', 'Celulares', 'Impressoras', 'TVs', 'Eletrodomésticos', 'Ar-Condicionado', 'Outros'] },
+  { name: 'Design e Marketing', order: 14, subcategories: ['Designer Gráfico', 'Social Media', 'Tráfego Pago', 'Branding', 'Copywriting', 'UX/UI', 'Criação de Sites', 'Outros'] },
+  { name: 'Fotografia e Vídeo', order: 15, subcategories: ['Fotógrafo', 'Filmagem', 'Drone', 'Edição de Fotos', 'Edição de Vídeos', 'Ensaios Fotográficos', 'Outros'] },
+  { name: 'Eventos', order: 16, subcategories: ['Garçom', 'Bartender', 'DJ', 'Cerimonialista', 'Decoração', 'Recreação Infantil', 'Fotografia para Eventos', 'Outros'] },
+  { name: 'Automotivo', order: 17, subcategories: ['Mecânico', 'Funilaria', 'Pintura Automotiva', 'Elétrica Automotiva', 'Lavação', 'Outros'] },
+];
+
+async function seedServices() {
+  try {
+    const count = await Service.countDocuments();
+    if (count > 0) return;
+    await Service.insertMany(SERVICE_SEED);
+    console.log('[seed] Services seeded:', SERVICE_SEED.length, 'categories');
+  } catch (err) {
+    console.error('[seed] Failed to seed services:', err.message);
+  }
+}
+
 connectDB()
-  .then(() => server.listen(PORT, () => console.log(`[server] http://localhost:${PORT}`)))
+  .then(async () => {
+    await seedServices();
+    server.listen(PORT, () => console.log(`[server] http://localhost:${PORT}`));
+  })
   .catch((err) => { console.error('[server] Erro ao conectar:', err.message); process.exit(1); });

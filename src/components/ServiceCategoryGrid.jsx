@@ -1,13 +1,22 @@
 import { useState } from 'react';
-import { ChevronRight, ChevronDown } from 'lucide-react';
-import { CATEGORIES } from '@/lib/categories';
+import { ChevronDown } from 'lucide-react';
+import { useServices } from '@/hooks/useServices';
 
 export default function ServiceCategoryGrid({ onSelectCategory }) {
   const [expanded, setExpanded] = useState(null);
+  const { categories, isLoading } = useServices();
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center py-8">
+        <div className="w-5 h-5 border-4 border-border border-t-primary rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-2">
-      {CATEGORIES.map((category) => {
+      {categories.map((category) => {
         const Icon = category.icon;
         const isExpanded = expanded === category.name;
         return (

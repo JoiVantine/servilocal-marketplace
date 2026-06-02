@@ -120,3 +120,6 @@ export function getSubcategories(categoryName) {
 export function getCategoryForSubcategory(subcategory) {
   return CATEGORIES.find(c => c.subcategories.includes(subcategory))?.name || '';
 }
+
+// Icon map for merging with DB data
+export const ICON_MAP = Object.fromEntries(CATEGORIES.map(c => [c.name, c.icon]));

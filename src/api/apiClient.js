@@ -33,8 +33,8 @@ async function request(method, path, data) {
 const auth = {
   me: () => request('GET', '/api/auth/me'),
 
-  loginViaEmailPassword: async (email, password) => {
-    const data = await request('POST', '/api/auth/login', { email, password });
+  loginViaEmailPassword: async (identifier, password) => {
+    const data = await request('POST', '/api/auth/login', { identifier, password });
     if (data.token) localStorage.setItem('token', data.token);
     return data;
   },
@@ -122,6 +122,7 @@ export const api = {
     ProviderService: createEntity('/api/provider-services'),
     ProviderReview: createEntity('/api/provider-reviews'),
     Notification: createEntity('/api/notifications'),
+    Service: createEntity('/api/services'),
   },
 
   functions: {

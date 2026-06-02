@@ -156,13 +156,28 @@ router.post('/resend-otp', requireAuth, async (req, res) => {
   }
 });
 
-// POST /api/auth/login
+// POST /api/auth/login — aceita email ou celular como identificador
 router.post('/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
-    if (!email || !password) return res.status(400).json({ error: 'Email e senha são obrigatórios' });
+    const { email, password, identifier } = req.body;
+    const login = (identifier || email || '').trim();
+    if (!login || !password) return res.status(400).json({ error: 'E-mail/celular e senha são obrigatórios' });
 
-    const user = await User.findOne({ email });
+    let user;
+    if (login.includes('@')) {
+      user = await User.findOne({ email: login.toLowerCase() });
+    } else {
+      // Busca por telefone — normaliza para só dígitos e testa formatos comuns
+      const digits = login.replace(/\D/g, '');
+      const phoneVariants = [
+        digits,
+        `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`,
+        `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`,
+        login,
+      ].filter(Boolean);
+      user = await User.findOne({ phone: { $in: phoneVariants } });
+    }
+
     if (!user) return res.status(401).json({ error: 'Credenciais inválidas' });
 
     const valid = await bcrypt.compare(password, user.passwordHash);

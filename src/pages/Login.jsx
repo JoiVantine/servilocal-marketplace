@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { api } from '@/api/apiClient';
-import { Lock, Mail, Eye, EyeOff, Loader2, MapPin, Search, Building2 } from 'lucide-react';
+import { Lock, Mail, Phone, Eye, EyeOff, Loader2, MapPin, Search, Building2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const LOGO_URL = '/logo.png';
@@ -12,7 +12,7 @@ export default function Login() {
   const role = searchParams.get('role') || 'client';
   const emailParam = searchParams.get('email') || '';
 
-  const [email, setEmail] = useState(emailParam);
+  const [identifier, setIdentifier] = useState(emailParam);
   const [password, setPassword] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState('');
@@ -30,7 +30,7 @@ export default function Login() {
     setError('');
     setLoading(true);
     try {
-      await api.auth.loginViaEmailPassword(email, password);
+      await api.auth.loginViaEmailPassword(identifier, password);
       navigate(isClient ? '/client' : '/provider');
     } catch (err) {
       setError(err.message || 'E-mail ou senha incorretos.');
@@ -40,10 +40,11 @@ export default function Login() {
   };
 
   const handleForgot = async () => {
-    if (!email) { setError('Digite seu e-mail para receber o link.'); return; }
+    const emailForReset = identifier.includes('@') ? identifier : '';
+    if (!emailForReset) { setError('Digite seu e-mail para receber o link de recuperação.'); return; }
     setError('');
     try {
-      await api.auth.resetPasswordRequest(email);
+      await api.auth.resetPasswordRequest(emailForReset);
       setResetSent(true);
     } catch {
       setError('Erro ao enviar link.');
@@ -91,16 +92,18 @@ export default function Login() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-foreground mb-1.5">E-mail</label>
+              <label className="block text-sm font-medium text-foreground mb-1.5">E-mail ou celular</label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                {identifier.includes('@') || !identifier
+                  ? <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  : <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />}
                 <input
-                  type="email"
-                  autoComplete="email"
+                  type="text"
+                  autoComplete="username"
                   autoFocus
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  placeholder="voce@exemplo.com"
+                  value={identifier}
+                  onChange={e => setIdentifier(e.target.value)}
+                  placeholder="voce@exemplo.com ou (11) 98765-4321"
                   className="w-full pl-10 pr-4 py-2.5 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm bg-background"
                   required
                 />
@@ -146,7 +149,7 @@ export default function Login() {
             </button>
             <span className="text-muted-foreground text-xs">ou</span>
             <button
-              onClick={() => navigate(`/login?role=${oppositeRole}${email ? `&email=${encodeURIComponent(email)}` : ''}`)}
+              onClick={() => navigate(`/login?role=${oppositeRole}${identifier.includes('@') ? `&email=${encodeURIComponent(identifier)}` : ''}`)}
               className="text-foreground font-medium hover:underline"
             >
               Entrar como {oppLabel}
