@@ -24,6 +24,8 @@ const EmailTemplate = require('./models/EmailTemplate');
 const app = express();
 const server = http.createServer(app);
 
+app.set('trust proxy', 1);
+
 const clientOrigins = [
   'http://localhost:5173',
   'https://appservilocal.com',
