@@ -114,7 +114,7 @@ export default function ProviderOnboarding() {
 
       // Cria UserProfile se não existir
       const existingUp = await api.entities.UserProfile.filter({ userId: me.id });
-      const upData = { userId: me.id, role: 'provider', onboardingCompleted: true };
+      const upData = { userId: me.id, role: 'provider', onboardingCompleted: true, firstAccess: false };
       if (existingUp.length > 0) {
         await api.entities.UserProfile.update(existingUp[0].id, upData);
       } else {

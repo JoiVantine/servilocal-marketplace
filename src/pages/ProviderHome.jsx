@@ -23,8 +23,8 @@ export default function ProviderHome() {
     api.auth.me().then(async (u) => {
       setUser(u);
       const profiles = await api.entities.UserProfile.filter({ userId: u.id });
-      const providerProfile = profiles.find(p => (p.role === 'provider' || p.role === 'both') && p.onboardingCompleted);
-      if (!providerProfile) { navigate('/provider/onboarding'); return; }
+      const providerProfile = profiles.find(p => p.role === 'provider' || p.role === 'both');
+      if (!providerProfile || providerProfile.firstAccess !== false) { navigate('/provider/onboarding'); return; }
       setUserProfileId(providerProfile.id);
       setAccepting(providerProfile.active !== false);
       // Load provider specialties for matching

@@ -36,8 +36,8 @@ export default function ClientHome() {
       const u = await api.auth.me();
       setUser(u);
       const profiles = await api.entities.UserProfile.filter({ userId: u.id });
-      const clientProfile = profiles.find(p => (p.role === 'client' || p.role === 'both') && p.onboardingCompleted);
-      if (!clientProfile) navigate('/client/onboarding');
+      const clientProfile = profiles.find(p => p.role === 'client' || p.role === 'both');
+      if (!clientProfile || clientProfile.firstAccess !== false) navigate('/client/onboarding');
     } catch {
       navigate('/client/onboarding');
     }

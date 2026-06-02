@@ -227,6 +227,7 @@ export default function ClientOnboarding() {
           : '',
         role: 'client',
         onboardingCompleted: true,
+        firstAccess: false,
       };
       if (existing.length > 0) {
         await api.entities.UserProfile.update(existing[0].id, profileData);

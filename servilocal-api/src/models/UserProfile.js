@@ -10,6 +10,7 @@ const userProfileSchema = new mongoose.Schema({
   neighborhood: String,
   address: String,
   onboardingCompleted: { type: Boolean, default: false },
+  firstAccess: { type: Boolean, default: true },
 }, { timestamps: true });
 
 userProfileSchema.set('toJSON', {

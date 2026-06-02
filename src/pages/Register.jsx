@@ -44,7 +44,7 @@ export default function Register() {
       if (result?.token) {
         api.auth.setToken(result.token);
       }
-      navigate(`/setup-password?email=${encodeURIComponent(email)}&next=${encodeURIComponent('/')}`);
+      navigate(`/setup-password?email=${encodeURIComponent(email)}&next=${encodeURIComponent('/client')}`);
     } catch (err) {
       setError(err.message || "Código inválido");
     } finally {
