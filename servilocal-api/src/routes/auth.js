@@ -2,7 +2,7 @@ const router = require('express').Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
-const nodemailer = require('nodemailer');
+const https = require('https');
 const rateLimit = require('express-rate-limit');
 const requireAuth = require('../middleware/auth');
 const User = require('../models/User');
@@ -24,24 +24,11 @@ const passwordResetLimiter = rateLimit({
   message: { error: 'Muitas tentativas. Aguarde alguns minutos e tente novamente.' },
 });
 
-// --- Mailer (console fallback em dev) ---
-function getTransport() {
-  const required = ['SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', 'SMTP_PASS'];
-  const missing = required.filter((key) => !process.env[key]);
-  if (missing.length) {
-    throw new Error(`SMTP nao configurado: ${missing.join(', ')}`);
-  }
-
-  return nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: Number(process.env.SMTP_PORT),
-    secure: Number(process.env.SMTP_PORT) === 465,
-    requireTLS: Number(process.env.SMTP_PORT) === 587,
-    connectionTimeout: 10000,
-    greetingTimeout: 10000,
-    socketTimeout: 10000,
-    auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
-  });
+// --- Mailer via Brevo HTTP API ---
+function parseEmailFrom(emailFrom) {
+  const match = emailFrom && emailFrom.match(/^(.+?)\s*<(.+?)>$/);
+  if (match) return { name: match[1].trim(), email: match[2].trim() };
+  return { name: 'ServiLocal', email: emailFrom || 'naoresponda@appservilocal.com' };
 }
 
 function escapeHtml(value) {
@@ -71,15 +58,47 @@ async function sendMail(to, templateKey, data, fallback) {
   const html = template ? renderTemplate(template.html, data, true) : undefined;
 
   console.log(`[mail] Para: ${to} | ${subject} | ${text}`);
-  try {
-    const transport = getTransport();
-    const from = process.env.EMAIL_FROM || `ServiLocal <${process.env.SMTP_USER}>`;
-    const result = await transport.sendMail({ from, to, subject, text, html });
-    console.log(`[mail] Enviado: ${result.messageId || 'sem messageId'} | accepted=${JSON.stringify(result.accepted || [])} | rejected=${JSON.stringify(result.rejected || [])}`);
-  } catch (err) {
-    console.error('[mail] Falha ao enviar email:', err.message);
-    throw err;
-  }
+
+  const apiKey = process.env.BREVO_API_KEY;
+  if (!apiKey) throw new Error('BREVO_API_KEY não configurada');
+
+  const sender = parseEmailFrom(process.env.EMAIL_FROM || 'ServiLocal <naoresponda@appservilocal.com>');
+  const body = JSON.stringify({
+    sender,
+    to: [{ email: to }],
+    subject,
+    textContent: text,
+    ...(html ? { htmlContent: html } : {}),
+  });
+
+  await new Promise((resolve, reject) => {
+    const req = https.request({
+      hostname: 'api.brevo.com',
+      path: '/v3/smtp/email',
+      method: 'POST',
+      headers: {
+        'accept': 'application/json',
+        'api-key': apiKey,
+        'content-type': 'application/json',
+        'content-length': Buffer.byteLength(body),
+      },
+    }, (res) => {
+      let raw = '';
+      res.on('data', (chunk) => { raw += chunk; });
+      res.on('end', () => {
+        if (res.statusCode >= 200 && res.statusCode < 300) {
+          console.log(`[mail] Enviado via Brevo: ${raw}`);
+          resolve();
+        } else {
+          reject(new Error(`Brevo API ${res.statusCode}: ${raw}`));
+        }
+      });
+    });
+    req.setTimeout(15000, () => { req.destroy(); reject(new Error('Brevo API timeout')); });
+    req.on('error', reject);
+    req.write(body);
+    req.end();
+  });
 }
 
 function generateOtp() {
