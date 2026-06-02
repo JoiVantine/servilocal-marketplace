@@ -202,6 +202,20 @@ export default function AddressFormWithMap({ onAddressChange, initialData, valid
                 sn ? 'bg-secondary text-muted-foreground cursor-not-allowed' : 'bg-card'
               } ${showNumeroError ? 'border-red-400' : 'border-border'}`}
             />
+            <label className="flex items-center gap-2 mt-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={sn}
+                onChange={(e) => handleSn(e.target.checked)}
+                className="w-4 h-4 rounded accent-primary"
+              />
+              <span className="text-xs text-muted-foreground">Sem número (S/N)</span>
+            </label>
+            {sn && (
+              <p className="text-xs text-primary mt-1 leading-relaxed">
+                Informe o complemento completo para facilitar a localização
+              </p>
+            )}
             {showNumeroError && (
               <p className="text-xs text-red-500 mt-1">O número do endereço é obrigatório</p>
             )}

@@ -455,42 +455,6 @@ export default function ProviderOnboarding() {
                   <p className="text-xs text-muted-foreground">Recebo pedidos de qualquer bairro.</p>
                 </div>
               </button>
-
-              <button
-                onClick={() => setCoverage('neighborhoods')}
-                className={`w-full flex items-center gap-3 p-4 rounded-xl border transition-all text-left ${coverage === 'neighborhoods' ? 'border-primary bg-primary/5' : 'border-border bg-card'}`}
-              >
-                {coverage === 'neighborhoods' ? <CheckCircle2 className="w-5 h-5 text-primary shrink-0" /> : <Circle className="w-5 h-5 text-muted-foreground shrink-0" />}
-                <div>
-                  <p className="text-sm font-semibold text-foreground">Apenas alguns bairros</p>
-                  <p className="text-xs text-muted-foreground">Eu escolho quais bairros aparecem primeiro pra mim.</p>
-                </div>
-              </button>
-            </div>
-
-            {/* Radius option */}
-            <div className="border border-border rounded-xl p-4 space-y-3">
-              <label className="flex items-center gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={acceptRadius}
-                  onChange={e => setAcceptRadius(e.target.checked)}
-                  className="w-4 h-4 rounded"
-                />
-                <span className="text-sm font-medium text-foreground">Aceitar pedidos com até {radiusKm} km da minha cidade</span>
-              </label>
-              {acceptRadius && (
-                <div className="flex items-center gap-2 ml-7">
-                  <input
-                    type="text"
-                    value={radiusKm}
-                    onChange={e => setRadiusKm(e.target.value)}
-                    placeholder="15"
-                    className="w-20 px-3 py-2 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
-                  />
-                  <span className="text-sm text-muted-foreground">km</span>
-                </div>
-              )}
             </div>
           </div>
         )}
