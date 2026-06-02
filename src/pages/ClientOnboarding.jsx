@@ -2,7 +2,7 @@
 import { useMutation } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '@/api/apiClient';
-import { Check, Upload, MapPin, Phone, Camera, Image, X, Home, Mail, ShieldCheck } from 'lucide-react';
+import { Check, Upload, MapPin, Phone, Camera, Image, X, Mail, ShieldCheck } from 'lucide-react';
 import AddressFormWithMap from '../components/AddressFormWithMap';
 
 const STEPS = [
@@ -265,12 +265,7 @@ export default function ClientOnboarding() {
           <img src="/logo.png" alt="ServiLocal" className="w-6 h-6" />
           <span className="text-sm font-semibold text-foreground">ServiLocal</span>
         </div>
-        <button
-          onClick={() => navigate('/client')}
-          className="p-2 hover:bg-secondary rounded-lg transition-colors"
-        >
-          <Home className="w-5 h-5 text-muted-foreground" />
-        </button>
+        <div className="w-9" />
       </div>
 
       <div className="max-w-lg mx-auto px-4 py-6">
