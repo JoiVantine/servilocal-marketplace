@@ -22,6 +22,7 @@ export default function NewServiceRequest() {
   const [title, setTitle] = useState(state?.subcategory || '');
   const [description, setDescription] = useState('');
   const [when, setWhen] = useState('');
+  const [scheduledAt, setScheduledAt] = useState('');
   const [selectedCategory, setSelectedCategory] = useState(state?.category || '');
   const [selectedSubcategory, setSelectedSubcategory] = useState(state?.subcategory || '');
   const [categoryExpanded, setCategoryExpanded] = useState(false);
@@ -30,25 +31,31 @@ export default function NewServiceRequest() {
   const createMutation = useMutation({
     mutationFn: (data) => api.entities.ServiceRequest.create(data),
     onSuccess: (result) => {
-      navigate(`/client/request/${result.id}`);
+      navigate(`/client/request/${result.id || result._id}`);
     },
   });
 
   const handleSubmit = async () => {
-    const user = await api.auth.me();
-    const profiles = await api.entities.UserProfile.filter({ userId: user.id });
-    const profile = profiles[0];
-    createMutation.mutate({
-      title: title || selectedSubcategory,
-      description,
-      category: selectedCategory,
-      subcategory: selectedSubcategory,
-      city: user.city || '',
-      neighborhood: profile?.neighborhood || '',
-      address: profile?.address || '',
-      urgency: 'medium',
-      status: 'open',
-    });
+    try {
+      const user = await api.auth.me();
+      const profiles = await api.entities.UserProfile.filter({ userId: user.id });
+      const profile = profiles[0];
+      createMutation.mutate({
+        title: title || selectedSubcategory,
+        description,
+        category: selectedCategory,
+        subcategory: selectedSubcategory,
+        city: user.city || '',
+        neighborhood: profile?.neighborhood || '',
+        address: profile?.address || '',
+        when,
+        scheduledAt: when === 'scheduled' && scheduledAt ? scheduledAt : undefined,
+        urgency: 'medium',
+        status: 'open',
+      });
+    } catch {
+      // auth/profile fetch failed silently — mutation won't fire
+    }
   };
 
   const isValid = selectedSubcategory !== '' || title.trim().length > 0;
@@ -212,12 +219,25 @@ export default function NewServiceRequest() {
               </button>
             ))}
           </div>
+
+          {when === 'scheduled' && (
+            <div className="mt-3">
+              <label className="block text-xs font-medium text-foreground mb-1.5">Escolha a data e horário</label>
+              <input
+                type="datetime-local"
+                value={scheduledAt}
+                min={new Date(Date.now() + 30 * 60000).toISOString().slice(0, 16)}
+                onChange={(e) => setScheduledAt(e.target.value)}
+                className="w-full px-4 py-2.5 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm bg-card"
+              />
+            </div>
+          )}
         </div>
 
         {/* Submit Button */}
         <button
           onClick={handleSubmit}
-          disabled={!isValid || createMutation.isPending}
+          disabled={!isValid || (when === 'scheduled' && !scheduledAt) || createMutation.isPending}
           className="w-full flex items-center justify-center gap-2 py-4 bg-primary text-primary-foreground rounded-xl font-semibold text-base hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Publicar solicitação

@@ -181,6 +181,22 @@ router.patch('/me', requireAuth, async (req, res) => {
   }
 });
 
+// PATCH /api/auth/me/password — define ou troca senha (usuário autenticado, pós-OTP)
+router.patch('/me/password', requireAuth, async (req, res) => {
+  try {
+    const { password } = req.body;
+    if (!password) return res.status(400).json({ error: 'Senha é obrigatória' });
+    if (password.length < 8) return res.status(400).json({ error: 'Senha deve ter ao menos 8 caracteres' });
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
+    user.passwordHash = await bcrypt.hash(password, 10);
+    await user.save();
+    res.json({ message: 'Senha definida com sucesso' });
+  } catch (err) {
+    res.status(500).json({ error: 'Erro interno' });
+  }
+});
+
 // POST /api/auth/logout  (cliente apaga o token; servidor apenas confirma)
 router.post('/logout', (req, res) => {
   res.json({ message: 'Logout realizado' });
@@ -215,8 +231,7 @@ router.post('/reset-password-request', passwordResetLimiter, async (req, res) =>
 router.post('/reset-password', async (req, res) => {
   try {
     const { token, password } = req.body;
-    if (!token || !password) return res.status(400).json({ error: 'Token e senha são obrigatórios' });
-
+tr
     const user = await User.findOne({ resetToken: token, resetTokenExpiry: { $gt: new Date() } });
     if (!user) return res.status(400).json({ error: 'Link inválido ou expirado' });
 

@@ -4,6 +4,7 @@ import { api } from '@/api/apiClient';
 import { Home, List, CalendarDays, Pencil, MessageCircle, CheckCircle, Star, Inbox, Zap, MapPin, Clock, Briefcase } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import ProposalModal from '@/components/ProposalModal';
+import EditProviderModal from '@/components/EditProviderModal';
 
 const LOGO_URL = "/logo.png";
 
@@ -16,6 +17,7 @@ export default function ProviderHome() {
   const [accepting, setAccepting] = useState(true);
   const [userProfileId, setUserProfileId] = useState(null);
   const [proposalRequest, setProposalRequest] = useState(null);
+  const [showEditProfile, setShowEditProfile] = useState(false);
 
   useEffect(() => {
     api.auth.me().then(async (u) => {
@@ -102,7 +104,7 @@ export default function ProviderHome() {
           <div className="flex items-center gap-2">
             <h1 className="font-heading text-3xl font-bold text-foreground">{firstName || '...'}</h1>
             <button
-              onClick={() => navigate('/provider/onboarding')}
+              onClick={() => setShowEditProfile(true)}
               className="p-1.5 rounded-lg hover:bg-secondary/50 transition-colors"
             >
               <Pencil className="w-4 h-4 text-muted-foreground" />
@@ -258,6 +260,22 @@ export default function ProviderHome() {
           request={proposalRequest}
           onClose={() => setProposalRequest(null)}
           onSent={() => setProposalRequest(null)}
+        />
+      )}
+
+      {showEditProfile && user && (
+        <EditProviderModal
+          user={user}
+          onClose={() => setShowEditProfile(false)}
+          onSaved={(updates) => {
+            if (updates) setUser(prev => ({
+              ...prev,
+              photo: updates.photo ?? prev.photo,
+              fullName: updates.name ?? prev.fullName,
+              full_name: updates.name ?? prev.full_name,
+              city: updates.city ?? prev.city,
+            }));
+          }}
         />
       )}
 

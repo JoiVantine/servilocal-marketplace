@@ -65,6 +65,8 @@ const auth = {
 
   updateMe: (data) => request('PATCH', '/api/auth/me', data),
 
+  setPassword: (password) => request('PATCH', '/api/auth/me/password', { password }),
+
   resetPasswordRequest: (email) =>
     request('POST', '/api/auth/reset-password-request', { email }),
 

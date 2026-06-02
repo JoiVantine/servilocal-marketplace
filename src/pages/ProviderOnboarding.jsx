@@ -51,8 +51,16 @@ export default function ProviderOnboarding() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const goServices = params.get('step') === 'services';
+    const goStep1 = params.get('step') === '1';
     api.auth.me().then(async (u) => {
       setUser(u);
+      if (goStep1) {
+        setName(u.fullName || u.full_name || '');
+        setPhone(u.phone || '');
+        setEmail(u.email || '');
+        setStep(1);
+        return;
+      }
       if (goServices) {
         setName(u.fullName || u.full_name || '');
         setPhone(u.phone || '');
@@ -212,7 +220,12 @@ export default function ProviderOnboarding() {
           await api.auth.sendOtp({ email, fullName: name, phone, role: 'provider' });
           setOtpSent(true);
         } catch (err) {
-          setFieldErrors({ email: err.message });
+          const msg = (err.message || '').toLowerCase();
+          if (msg.includes('already') || msg.includes('exist') || msg.includes('já') || msg.includes('cadastrado') || msg.includes('registered') || msg.includes('duplicate')) {
+            setFieldErrors({ email: 'Ops! E-mail já cadastrado. Tente fazer login.' });
+          } else {
+            setFieldErrors({ email: err.message });
+          }
         } finally {
           setOtpLoading(false);
         }
@@ -222,8 +235,8 @@ export default function ProviderOnboarding() {
       setOtpLoading(true);
       try {
         const res = await api.auth.verifyOtp({ email, otp: otpCode });
-        setUser(res.user);
-        setStep(1);
+        if (res.token) api.auth.setToken(res.token);
+        navigate(`/setup-password?email=${encodeURIComponent(email)}&next=${encodeURIComponent('/provider/onboarding?step=1')}`);
       } catch (err) {
         setFieldErrors({ otp: err.message });
       } finally {

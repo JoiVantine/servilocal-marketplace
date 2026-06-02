@@ -27,6 +27,7 @@ import ProviderRequestsMap from './pages/ProviderRequestsMap';
 import ProviderConversations from './pages/ProviderConversations';
 import ProviderServices from './pages/ProviderServices';
 import ChatPage from './pages/ChatPage';
+import PasswordSetup from './pages/PasswordSetup';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -69,6 +70,7 @@ const AuthenticatedApp = () => {
       <Route path="/provider/conversations" element={<ProviderConversations />} />
       <Route path="/provider/services" element={<ProviderServices />} />
       <Route path="/chat/:conversationId" element={<ChatPage />} />
+      <Route path="/setup-password" element={<PasswordSetup />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
