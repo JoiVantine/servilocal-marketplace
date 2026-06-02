@@ -2,11 +2,11 @@ const router = require('express').Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
-const https = require('https');
 const rateLimit = require('express-rate-limit');
 const requireAuth = require('../middleware/auth');
 const User = require('../models/User');
 const EmailTemplate = require('../models/EmailTemplate');
+const { sendMail } = require('../utils/mail');
 
 const otpLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -23,82 +23,6 @@ const passwordResetLimiter = rateLimit({
   legacyHeaders: false,
   message: { error: 'Muitas tentativas. Aguarde alguns minutos e tente novamente.' },
 });
-
-// --- Mailer via Brevo HTTP API ---
-function parseEmailFrom(emailFrom) {
-  const match = emailFrom && emailFrom.match(/^(.+?)\s*<(.+?)>$/);
-  if (match) return { name: match[1].trim(), email: match[2].trim() };
-  return { name: 'ServiLocal', email: emailFrom || 'naoresponda@appservilocal.com' };
-}
-
-function escapeHtml(value) {
-  return String(value ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
-function getValue(data, path) {
-  return path.split('.').reduce((acc, key) => acc?.[key], data);
-}
-
-function renderTemplate(template, data, escapeValues = false) {
-  return template.replace(/{{\s*([\w.]+)\s*}}/g, (_, key) => {
-    const value = getValue(data, key);
-    return escapeValues ? escapeHtml(value) : String(value ?? '');
-  });
-}
-
-async function sendMail(to, templateKey, data, fallback) {
-  const template = await EmailTemplate.findOne({ key: templateKey, active: true });
-  const subject = template ? renderTemplate(template.subject, data) : fallback.subject;
-  const text = template ? renderTemplate(template.text, data) : fallback.text;
-  const html = template ? renderTemplate(template.html, data, true) : undefined;
-
-  console.log(`[mail] Para: ${to} | ${subject} | ${text}`);
-
-  const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) throw new Error('RESEND_API_KEY não configurada');
-
-  const from = process.env.EMAIL_FROM || 'ServiLocal <naoresponda@appservilocal.com>';
-  const body = JSON.stringify({
-    from,
-    to: [to],
-    subject,
-    text,
-    ...(html ? { html } : {}),
-  });
-
-  await new Promise((resolve, reject) => {
-    const req = https.request({
-      hostname: 'api.resend.com',
-      path: '/emails',
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-        'Content-Length': Buffer.byteLength(body),
-      },
-    }, (res) => {
-      let raw = '';
-      res.on('data', (chunk) => { raw += chunk; });
-      res.on('end', () => {
-        if (res.statusCode >= 200 && res.statusCode < 300) {
-          console.log(`[mail] Enviado via Resend: ${raw}`);
-          resolve();
-        } else {
-          reject(new Error(`Resend API ${res.statusCode}: ${raw}`));
-        }
-      });
-    });
-    req.setTimeout(15000, () => { req.destroy(); reject(new Error('Resend API timeout')); });
-    req.on('error', reject);
-    req.write(body);
-    req.end();
-  });
-}
 
 function generateOtp() {
   return String(Math.floor(100000 + Math.random() * 900000));
@@ -200,9 +124,9 @@ router.post('/resend-otp', requireAuth, async (req, res) => {
     user.otp = otp;
     user.otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
     await user.save();
-    await sendMail(user.email, 'account_token', { email: user.email, fullName: user.fullName, otp, role: user.role }, {
+    await sendMail(user.email, 'account_resend_otp', { fullName: user.fullName || '', otp }, {
       subject: 'Seu novo código ServiLocal',
-      text: `Seu código de verificação: ${otp}`,
+      text: `Seu novo código de verificação: ${otp}. Ele expira em 10 minutos.`,
     });
     res.json({ message: 'Código reenviado' });
   } catch (err) {

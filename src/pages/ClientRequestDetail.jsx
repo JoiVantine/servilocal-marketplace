@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { ChevronLeft, Search, Clock, Home } from 'lucide-react';
+import NewServiceRequestModal from '../components/NewServiceRequestModal';
 
 const URGENCY_LABELS = {
   low: 'Baixa',
@@ -23,6 +24,7 @@ export default function ClientRequestDetail() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [user, setUser] = useState(null);
+  const [showEdit, setShowEdit] = useState(false);
 
   // Load user
   useEffect(() => {
@@ -252,7 +254,10 @@ export default function ClientRequestDetail() {
         {/* Action buttons */}
         {request.status !== 'completed' && request.status !== 'cancelled' && (
           <div className="flex gap-3 mt-6">
-            <button className="flex-1 px-4 py-3 text-muted-foreground border border-border rounded-lg hover:bg-secondary/50 transition-colors font-medium">
+            <button
+              onClick={() => setShowEdit(true)}
+              className="flex-1 px-4 py-3 text-muted-foreground border border-border rounded-lg hover:bg-secondary/50 transition-colors font-medium"
+            >
               Editar
             </button>
             <button
@@ -269,11 +274,22 @@ export default function ClientRequestDetail() {
           </div>
         )}
         {(request.status === 'completed' || request.status === 'cancelled') && (
-          <button className="w-full mt-6 px-4 py-3 text-muted-foreground border border-border rounded-lg hover:bg-secondary/50 transition-colors font-medium">
+          <button
+            onClick={() => navigate('/client/orders')}
+            className="w-full mt-6 px-4 py-3 text-muted-foreground border border-border rounded-lg hover:bg-secondary/50 transition-colors font-medium"
+          >
             Voltar aos pedidos
           </button>
         )}
       </div>
+
+      {showEdit && (
+        <NewServiceRequestModal
+          request={request}
+          onClose={() => setShowEdit(false)}
+          onUpdated={() => queryClient.invalidateQueries({ queryKey: ['request', requestId] })}
+        />
+      )}
     </div>
   );
 }

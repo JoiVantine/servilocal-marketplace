@@ -21,6 +21,8 @@ const User = require('./models/User');
 const Notification = require('./models/Notification');
 const EmailTemplate = require('./models/EmailTemplate');
 
+const { sendMail } = require('./utils/mail');
+
 const app = express();
 const server = http.createServer(app);
 
@@ -62,6 +64,32 @@ app.use('/api/maps', require('./routes/maps'));
 app.use('/api/service-requests', createCrudRouter(ServiceRequest, {
   fieldMap: { created_by_id: 'clientId' },
   injectUser: 'clientId',
+  afterCreate: async (doc, req) => {
+    try {
+      const user = await User.findById(req.user.id);
+      if (user?.email) {
+        const WHEN_LABELS = { today: 'Hoje', tomorrow: 'Amanhã', this_week: 'Esta semana', next_30: 'Nos próximos 30 dias' };
+        const whenLabel = doc.when === 'scheduled' && doc.scheduledAt
+          ? new Date(doc.scheduledAt).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+          : (WHEN_LABELS[doc.when] || doc.when || '—');
+        const baseUrl = process.env.CLIENT_URL || 'https://www.appservilocal.com';
+        await sendMail(user.email, 'service_request_created', {
+          fullName: user.fullName || '',
+          title: doc.title,
+          description: doc.description || '',
+          city: doc.city || '',
+          whenLabel,
+          id: doc._id.toString().slice(-8).toUpperCase(),
+          requestUrl: `${baseUrl}/client/request/${doc._id}`,
+        }, {
+          subject: 'Seu pedido foi publicado! ✅',
+          text: `Olá ${user.fullName || ''}! Seu pedido "${doc.title}" foi publicado em ${doc.city}. Em breve profissionais da sua região vão se interessar.`,
+        });
+      }
+    } catch (err) {
+      console.error('[mail] Falha ao notificar pedido criado:', err.message);
+    }
+  },
 }));
 
 app.use('/api/service-request-interests', createCrudRouter(ServiceRequestInterest));

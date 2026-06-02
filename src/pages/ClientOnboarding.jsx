@@ -548,12 +548,6 @@ export default function ClientOnboarding() {
           </button>
         </div>
 
-        <button
-          onClick={() => navigate('/client')}
-          className="w-full mt-3 px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-        >
-          Pular por enquanto
-        </button>
       </div>
 
       {/* Photo Modal */}

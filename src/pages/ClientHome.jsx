@@ -4,6 +4,7 @@ import { base44 } from '@/api/base44Client';
 import { Home, Search, ChevronRight, MapPin, ArrowLeft, ClipboardList } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import ServiceCategoryGrid from '../components/ServiceCategoryGrid';
+import EditProfileModal from '../components/EditProfileModal';
 
 const LOGO_URL = "/logo.png";
 
@@ -28,15 +29,21 @@ export default function ClientHome() {
   const [user, setUser] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showCategories, setShowCategories] = useState(false);
+  const [showEditProfile, setShowEditProfile] = useState(false);
 
-  useEffect(() => {
-    base44.auth.me().then(async (u) => {
+  const loadUser = async () => {
+    try {
+      const u = await base44.auth.me();
       setUser(u);
       const profiles = await base44.entities.UserProfile.filter({ userId: u.id });
       const clientProfile = profiles.find(p => (p.role === 'client' || p.role === 'both') && p.onboardingCompleted);
       if (!clientProfile) navigate('/client/onboarding');
-    }).catch(() => navigate('/client/onboarding'));
-  }, []);
+    } catch {
+      navigate('/client/onboarding');
+    }
+  };
+
+  useEffect(() => { loadUser(); }, []);
 
   const { data: requests = [] } = useQuery({
     queryKey: ['client-requests'],
@@ -64,7 +71,7 @@ export default function ClientHome() {
   return (
     <div className="min-h-screen bg-background flex flex-col items-center">
       {/* Wrapper card no desktop */}
-      <div className="w-full max-w-md flex flex-col min-h-screen md:min-h-0 md:my-6 md:rounded-2xl md:border md:border-border md:shadow-xl md:overflow-hidden bg-background">
+      <div className="w-full max-w-md flex flex-col min-h-screen bg-background">
 
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-4 border-b border-border bg-card">
@@ -92,38 +99,31 @@ export default function ClientHome() {
           {!showCategories ? (
             <>
               {/* Profile Section */}
-              <div className="flex flex-col items-center mb-8">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-12 h-12 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-lg">
+              <div className="flex items-center gap-4 mb-8 p-4 bg-card border border-border rounded-xl">
+                {user.photo ? (
+                  <img src={user.photo} alt="foto" className="w-14 h-14 rounded-full object-cover flex-shrink-0 border-2 border-primary/20" />
+                ) : (
+                  <div className="w-14 h-14 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-xl flex-shrink-0">
                     {(user.fullName || user.full_name)?.[0]?.toUpperCase()}
                   </div>
-                  <div className="text-left">
-                    <p className="text-sm font-medium text-foreground">
-                      Olá, <strong>{(user.fullName || user.full_name)?.split(' ')[0]}</strong>
-                    </p>
-                    <button
-                      onClick={() => navigate('/client/onboarding')}
-                      className="text-xs text-primary font-medium hover:opacity-80"
-                    >
-                      Editar dados
-                    </button>
-                  </div>
-                </div>
-                {user.city && (
-                  <div className="flex items-center gap-1 text-muted-foreground text-sm">
-                    <MapPin className="w-4 h-4 text-primary" />
-                    {user.city}
-                  </div>
                 )}
-              </div>
-
-              {/* Illustration */}
-              <div className="flex justify-center mb-8">
-                <img
-                  src="/logo.png"
-                  alt="ServiLocal"
-                  className="w-44 h-44 object-contain"
-                />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-foreground truncate">
+                    Olá, {(user.fullName || user.full_name)?.split(' ')[0]}
+                  </p>
+                  {user.city && (
+                    <div className="flex items-center gap-1 text-muted-foreground text-xs mt-0.5">
+                      <MapPin className="w-3 h-3 text-primary flex-shrink-0" />
+                      <span className="truncate">{user.city}</span>
+                    </div>
+                  )}
+                  <button
+                    onClick={() => setShowEditProfile(true)}
+                    className="text-xs text-primary font-medium hover:opacity-80 mt-1"
+                  >
+                    Editar dados
+                  </button>
+                </div>
               </div>
 
               {/* Question */}
@@ -152,17 +152,10 @@ export default function ClientHome() {
                 </div>
 
                 <Link
-                  to="/client/map"
+                  to="/client/services"
                   className="w-full p-4 bg-primary text-primary-foreground rounded-lg flex items-center justify-between font-medium text-sm mb-3 hover:opacity-90 transition-opacity"
                 >
-                  <span>🗺️ Ver profissionais no mapa</span>
-                  <ChevronRight className="w-5 h-5" />
-                </Link>
-                <Link
-                  to="/client/services"
-                  className="w-full p-4 border border-border bg-card text-foreground rounded-lg flex items-center justify-between font-medium text-sm mb-3 hover:bg-secondary/50 transition-colors"
-                >
-                  <span>Ver todos os serviços da sua cidade</span>
+                  <span>Ver todos os serviços na sua cidade</span>
                   <ChevronRight className="w-5 h-5" />
                 </Link>
 
@@ -255,6 +248,14 @@ export default function ClientHome() {
         </div>
 
       </div>
+
+      {showEditProfile && (
+        <EditProfileModal
+          user={user}
+          onClose={() => setShowEditProfile(false)}
+          onSaved={loadUser}
+        />
+      )}
     </div>
   );
 }
