@@ -12,6 +12,7 @@ const serviceRequestSchema = new mongoose.Schema({
   status: { type: String, enum: ['open', 'in_conversation', 'agreed', 'completed', 'cancelled'], default: 'open' },
   lat: Number,
   lng: Number,
+  clientPhone: { type: String, default: '' },
 }, { timestamps: true });
 
 serviceRequestSchema.set('toJSON', {

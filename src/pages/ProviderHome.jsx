@@ -1,7 +1,7 @@
 ﻿import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/api/apiClient';
-import { Home, List, CalendarDays, Pencil, MessageCircle, CheckCircle, Star, Inbox, Zap, MapPin, Clock, Briefcase } from 'lucide-react';
+import { Home, List, CalendarDays, Pencil, MessageCircle, CheckCircle, Star, Inbox, Zap, MapPin, Clock, Briefcase, Phone } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import ProposalModal from '@/components/ProposalModal';
 import EditProviderModal from '@/components/EditProviderModal';
@@ -243,12 +243,24 @@ export default function ProviderHome() {
                   <div className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" />{request.city}</div>
                   <div className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{Math.floor((Date.now() - new Date(request.created_date)) / 60000)} min atrás</div>
                 </div>
-                <button
-                  onClick={() => setProposalRequest(request)}
-                  className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground rounded-lg py-2 text-sm font-medium hover:opacity-90"
-                >
-                  <Zap className="w-4 h-4" /> Tenho interesse
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setProposalRequest(request)}
+                    className="flex-1 flex items-center justify-center gap-2 bg-primary text-primary-foreground rounded-lg py-2 text-sm font-medium hover:opacity-90"
+                  >
+                    <Zap className="w-4 h-4" /> Tenho interesse
+                  </button>
+                  {request.clientPhone && (
+                    <a
+                      href={`https://wa.me/55${String(request.clientPhone).replace(/\D/g, '').replace(/^55/, '')}?text=${encodeURIComponent(`Olá! Vi seu pedido "${request.title}" no ServiLocal e tenho interesse em atendê-lo.`)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center gap-1.5 px-3 py-2 border border-green-500 text-green-600 rounded-lg text-sm font-medium hover:bg-green-50 transition-colors"
+                    >
+                      <Phone className="w-4 h-4" /> WhatsApp
+                    </a>
+                  )}
+                </div>
               </div>
             ))}
           </div>

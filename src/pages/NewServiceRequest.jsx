@@ -48,6 +48,7 @@ export default function NewServiceRequest() {
         city: user.city || '',
         neighborhood: profile?.neighborhood || '',
         address: profile?.address || '',
+        clientPhone: user.phone || '',
         when,
         scheduledAt: when === 'scheduled' && scheduledAt ? scheduledAt : undefined,
         urgency: 'medium',

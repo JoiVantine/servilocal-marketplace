@@ -64,6 +64,7 @@ export default function NewServiceRequestModal({ category, request, onClose, onU
       city: user.city || '',
       neighborhood: profile?.neighborhood || '',
       address: profile?.address || '',
+      clientPhone: user.phone || '',
       when,
       scheduledAt: when === 'scheduled' && scheduledAt ? scheduledAt : undefined,
       urgency: 'medium',
