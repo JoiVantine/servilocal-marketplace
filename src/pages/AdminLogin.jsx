@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { base44 } from '@/api/base44Client';
+﻿import { useState } from 'react';
+import { api } from '@/api/apiClient';
 import { ShieldCheck, Mail, Lock, Loader2 } from 'lucide-react';
 import { ADMIN_EMAIL } from '@/components/AdminRoute';
 
@@ -18,7 +18,7 @@ export default function AdminLogin() {
     }
     setLoading(true);
     try {
-      await base44.auth.loginViaEmailPassword(email.trim(), password);
+      await api.auth.loginViaEmailPassword(email.trim(), password);
       window.location.href = '/admin/users';
     } catch (err) {
       setError(err.message || 'Falha no login. Verifique e-mail e senha.');

@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+﻿import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Send, CheckCircle } from 'lucide-react';
-import { base44 } from '@/api/base44Client';
+import { api } from '@/api/apiClient';
 import ReviewModal from '@/components/ReviewModal';
 
 export default function ChatPage() {
@@ -15,24 +15,24 @@ export default function ChatPage() {
   const [showReview, setShowReview] = useState(false);
 
   useEffect(() => {
-    base44.auth.me().then(setUser).catch(() => navigate('/'));
+    api.auth.me().then(setUser).catch(() => navigate('/'));
   }, []);
 
   const { data: conversation } = useQuery({
     queryKey: ['conversation', conversationId],
-    queryFn: () => base44.entities.Conversation.get(conversationId),
+    queryFn: () => api.entities.Conversation.get(conversationId),
     enabled: !!conversationId,
   });
 
   const { data: messages = [] } = useQuery({
     queryKey: ['messages', conversationId],
-    queryFn: () => base44.entities.Message.filter({ conversationId }, 'created_date'),
+    queryFn: () => api.entities.Message.filter({ conversationId }, 'created_date'),
     enabled: !!conversationId,
   });
 
   const { data: existingReviews = [] } = useQuery({
     queryKey: ['review', conversationId],
-    queryFn: () => base44.entities.ProviderReview.filter({ conversationId }),
+    queryFn: () => api.entities.ProviderReview.filter({ conversationId }),
     enabled: !!conversationId,
   });
 
@@ -45,8 +45,8 @@ export default function ChatPage() {
     const unread = messages.filter((message) => message.senderId !== user.id && !message.read);
     if (unread.length === 0) return;
 
-    Promise.all(unread.map((message) => base44.entities.Message.update(message.id, { read: true }))).then(() => {
-      base44.entities.Conversation.update(conversation.id, { unreadCount: 0 });
+    Promise.all(unread.map((message) => api.entities.Message.update(message.id, { read: true }))).then(() => {
+      api.entities.Conversation.update(conversation.id, { unreadCount: 0 });
       queryClient.invalidateQueries({ queryKey: ['messages', conversationId] });
       queryClient.invalidateQueries({ queryKey: ['conversation', conversationId] });
     });
@@ -54,7 +54,7 @@ export default function ChatPage() {
 
   useEffect(() => {
     if (!conversationId) return;
-    return base44.entities.Message.subscribe((event) => {
+    return api.entities.Message.subscribe((event) => {
       if (event.type === 'create' && event.data?.conversationId === conversationId) {
         queryClient.invalidateQueries({ queryKey: ['messages', conversationId] });
         queryClient.invalidateQueries({ queryKey: ['conversation', conversationId] });
@@ -69,7 +69,7 @@ export default function ChatPage() {
       const senderType = user.id === conversation.clientId ? 'client' : 'provider';
       const recipientId = senderType === 'client' ? conversation.providerId : conversation.clientId;
 
-      await base44.entities.Message.create({
+      await api.entities.Message.create({
         conversationId,
         senderId: user.id,
         senderName: user.full_name,
@@ -78,13 +78,13 @@ export default function ChatPage() {
         read: false,
       });
 
-      await base44.entities.Conversation.update(conversationId, {
+      await api.entities.Conversation.update(conversationId, {
         lastMessage: cleanText,
         lastMessageTime: new Date().toISOString(),
         unreadCount: (conversation.unreadCount || 0) + 1,
       });
 
-      await base44.entities.Notification.create({
+      await api.entities.Notification.create({
         userId: recipientId,
         type: 'new_message',
         title: 'Nova mensagem no chat',
@@ -104,15 +104,15 @@ export default function ChatPage() {
 
   const handleMarkComplete = async () => {
     if (!confirm('Marcar este serviço como concluído?')) return;
-    await base44.entities.Conversation.update(conversationId, { status: 'completed' });
+    await api.entities.Conversation.update(conversationId, { status: 'completed' });
     if (conversation?.serviceRequestId) {
-      await base44.entities.ServiceRequest.update(conversation.serviceRequestId, { status: 'completed' });
-      const interests = await base44.entities.ServiceRequestInterest.filter({
+      await api.entities.ServiceRequest.update(conversation.serviceRequestId, { status: 'completed' });
+      const interests = await api.entities.ServiceRequestInterest.filter({
         serviceRequestId: conversation.serviceRequestId,
         providerId: conversation.providerId,
       });
       if (interests[0]) {
-        await base44.entities.ServiceRequestInterest.update(interests[0].id, { status: 'completed' });
+        await api.entities.ServiceRequestInterest.update(interests[0].id, { status: 'completed' });
       }
     }
     queryClient.invalidateQueries({ queryKey: ['conversation', conversationId] });

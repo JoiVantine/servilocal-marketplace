@@ -1,6 +1,6 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { base44 } from '@/api/base44Client';
+import { api } from '@/api/apiClient';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { ChevronLeft, Home, ClipboardList, Send, ChevronDown } from 'lucide-react';
 import { CATEGORIES } from '@/lib/categories';
@@ -28,15 +28,15 @@ export default function NewServiceRequest() {
   const [expandedCat, setExpandedCat] = useState(null);
 
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.ServiceRequest.create(data),
+    mutationFn: (data) => api.entities.ServiceRequest.create(data),
     onSuccess: (result) => {
       navigate(`/client/request/${result.id}`);
     },
   });
 
   const handleSubmit = async () => {
-    const user = await base44.auth.me();
-    const profiles = await base44.entities.UserProfile.filter({ userId: user.id });
+    const user = await api.auth.me();
+    const profiles = await api.entities.UserProfile.filter({ userId: user.id });
     const profile = profiles[0];
     createMutation.mutate({
       title: title || selectedSubcategory,

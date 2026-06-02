@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { base44 } from '@/api/base44Client';
+import { api } from '@/api/apiClient';
 import { ChevronLeft, Search, Clock, Home } from 'lucide-react';
 import NewServiceRequestModal from '../components/NewServiceRequestModal';
 
@@ -31,7 +31,7 @@ export default function ClientRequestDetail() {
   useEffect(() => {
     const loadUser = async () => {
       try {
-        const me = await base44.auth.me();
+        const me = await api.auth.me();
         setUser(me);
       } catch (error) {
         console.error('Error loading user:', error);
@@ -43,14 +43,14 @@ export default function ClientRequestDetail() {
   // Fetch request details
   const { data: request, isLoading } = useQuery({
     queryKey: ['request', requestId],
-    queryFn: () => base44.entities.ServiceRequest.get(requestId),
+    queryFn: () => api.entities.ServiceRequest.get(requestId),
   });
 
   // Fetch interested providers
   const { data: interests = [] } = useQuery({
     queryKey: ['interests', requestId],
     queryFn: () =>
-      base44.entities.ServiceRequestInterest.filter(
+      api.entities.ServiceRequestInterest.filter(
         { serviceRequestId: requestId },
         '-created_date'
       ),
@@ -58,7 +58,7 @@ export default function ClientRequestDetail() {
 
   const { data: conversations = [] } = useQuery({
     queryKey: ['request-conversations', requestId],
-    queryFn: () => base44.entities.Conversation.filter({ serviceRequestId: requestId }),
+    queryFn: () => api.entities.Conversation.filter({ serviceRequestId: requestId }),
     enabled: !!requestId,
     refetchInterval: 10000,
   });
@@ -66,14 +66,14 @@ export default function ClientRequestDetail() {
   // Cancel request mutation
   const cancelMutation = useMutation({
     mutationFn: async () => {
-      await base44.entities.ServiceRequest.update(requestId, { status: 'cancelled' });
+      await api.entities.ServiceRequest.update(requestId, { status: 'cancelled' });
       const [convs, interests] = await Promise.all([
-        base44.entities.Conversation.filter({ serviceRequestId: requestId }),
-        base44.entities.ServiceRequestInterest.filter({ serviceRequestId: requestId }),
+        api.entities.Conversation.filter({ serviceRequestId: requestId }),
+        api.entities.ServiceRequestInterest.filter({ serviceRequestId: requestId }),
       ]);
       await Promise.all([
-        ...convs.map(c => base44.entities.Conversation.update(c.id, { status: 'cancelled' })),
-        ...interests.map(i => base44.entities.ServiceRequestInterest.update(i.id, { status: 'cancelled' })),
+        ...convs.map(c => api.entities.Conversation.update(c.id, { status: 'cancelled' })),
+        ...interests.map(i => api.entities.ServiceRequestInterest.update(i.id, { status: 'cancelled' })),
       ]);
     },
     onSuccess: () => {

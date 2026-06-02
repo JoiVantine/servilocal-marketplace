@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { base44 } from '@/api/base44Client';
+﻿import { useEffect, useState } from 'react';
+import { api } from '@/api/apiClient';
 import { useQuery } from '@tanstack/react-query';
 import { CheckCircle2, XCircle, AlertCircle, RefreshCw } from 'lucide-react';
 
@@ -35,30 +35,30 @@ export default function DiagnosticsPage() {
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
-    base44.auth.me().then(setUser).catch(console.error);
+    api.auth.me().then(setUser).catch(console.error);
   }, [refreshKey]);
 
   const { data: userProfiles = [] } = useQuery({
     queryKey: ['diag-userprofile', user?.id, refreshKey],
-    queryFn: () => base44.entities.UserProfile.filter({ userId: user.id }),
+    queryFn: () => api.entities.UserProfile.filter({ userId: user.id }),
     enabled: !!user?.id,
   });
 
   const { data: providerProfiles = [] } = useQuery({
     queryKey: ['diag-providerprofile', user?.id, refreshKey],
-    queryFn: () => base44.entities.ProviderProfile.filter({ name: user.full_name }),
+    queryFn: () => api.entities.ProviderProfile.filter({ name: user.full_name }),
     enabled: !!user?.full_name,
   });
 
   const { data: requests = [] } = useQuery({
     queryKey: ['diag-requests', user?.id, refreshKey],
-    queryFn: () => base44.entities.ServiceRequest.filter({ created_by_id: user.id }),
+    queryFn: () => api.entities.ServiceRequest.filter({ created_by_id: user.id }),
     enabled: !!user?.id,
   });
 
   const { data: conversations = [] } = useQuery({
     queryKey: ['diag-convs', user?.id, refreshKey],
-    queryFn: () => base44.entities.Conversation.filter({ clientId: user.id }),
+    queryFn: () => api.entities.Conversation.filter({ clientId: user.id }),
     enabled: !!user?.id,
   });
 

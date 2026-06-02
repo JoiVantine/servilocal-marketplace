@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
-import { base44 } from '@/api/base44Client';
+import { api } from '@/api/apiClient';
 
 export const ADMIN_EMAIL = 'joi.vantine@gmail.com';
 
@@ -8,7 +8,7 @@ export default function AdminRoute() {
   const [status, setStatus] = useState('loading');
 
   useEffect(() => {
-    base44.auth
+    api.auth
       .me()
       .then((u) => {
         const isAdmin = u?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();

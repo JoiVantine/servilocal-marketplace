@@ -1,6 +1,6 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { base44 } from '@/api/base44Client';
+import { api } from '@/api/apiClient';
 import { Trash2, Pencil, X, Check, Search, User, MapPin, Phone, Shield, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -16,17 +16,17 @@ export default function AdminUsers() {
 
   const { data: profiles = [], isLoading, refetch } = useQuery({
     queryKey: ['admin-profiles'],
-    queryFn: () => base44.entities.UserProfile.list('-created_date', 200),
+    queryFn: () => api.entities.UserProfile.list('-created_date', 200),
   });
 
   const { data: providerProfiles = [] } = useQuery({
     queryKey: ['admin-provider-profiles'],
-    queryFn: () => base44.entities.ProviderProfile.list('-created_date', 200),
+    queryFn: () => api.entities.ProviderProfile.list('-created_date', 200),
   });
 
   const { data: requests = [] } = useQuery({
     queryKey: ['admin-requests'],
-    queryFn: () => base44.entities.ServiceRequest.list('-created_date', 200),
+    queryFn: () => api.entities.ServiceRequest.list('-created_date', 200),
   });
 
   const [userCache, setUserCache] = useState({});
@@ -34,7 +34,7 @@ export default function AdminUsers() {
   const fetchUserData = async (userId) => {
     if (userCache[userId]) return userCache[userId];
     try {
-      const u = await base44.entities.User.get(userId);
+      const u = await api.entities.User.get(userId);
       const data = { name: u.full_name || u.fullName, phone: u.phone, city: u.city };
       setUserCache(prev => ({ ...prev, [userId]: data }));
       return data;
@@ -44,17 +44,17 @@ export default function AdminUsers() {
   };
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.UserProfile.update(id, data),
+    mutationFn: ({ id, data }) => api.entities.UserProfile.update(id, data),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin-profiles'] }); setEditingId(null); },
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.UserProfile.delete(id),
+    mutationFn: (id) => api.entities.UserProfile.delete(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-profiles'] }),
   });
 
   const deleteProviderMutation = useMutation({
-    mutationFn: (id) => base44.entities.ProviderProfile.delete(id),
+    mutationFn: (id) => api.entities.ProviderProfile.delete(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['admin-provider-profiles'] }),
   });
 
@@ -75,7 +75,7 @@ export default function AdminUsers() {
   const handleDelete = async (profile) => {
     if (!confirm('Deletar este perfil de usuário? Isso também removerá todos os dados relacionados.')) return;
     try {
-      await base44.functions.invoke('deleteUserCascade', { userId: profile.userId });
+      await api.functions.invoke('deleteUserCascade', { userId: profile.userId });
       qc.invalidateQueries({ queryKey: ['admin-profiles'] });
       qc.invalidateQueries({ queryKey: ['admin-provider-profiles'] });
       qc.invalidateQueries({ queryKey: ['admin-requests'] });

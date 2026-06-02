@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { base44 } from '@/api/base44Client';
+import { api } from '@/api/apiClient';
 import { Home, Briefcase, MessageCircle, Pencil, Trash2, Plus, MapPin, Clock, DollarSign } from 'lucide-react';
 import ProviderServiceModal from '@/components/ProviderServiceModal';
 
@@ -15,10 +15,10 @@ export default function ProviderServices() {
   const [deletingId, setDeletingId] = useState(null);
 
   useEffect(() => {
-    base44.auth.me()
+    api.auth.me()
       .then(async (u) => {
         setUser(u);
-        const svcs = await base44.entities.ProviderService.filter({ providerId: u.id });
+        const svcs = await api.entities.ProviderService.filter({ providerId: u.id });
         setServices(svcs);
       })
       .catch(() => navigate('/provider/onboarding'))
@@ -29,7 +29,7 @@ export default function ProviderServices() {
     if (!window.confirm('Remover este serviço?')) return;
     setDeletingId(id);
     try {
-      await base44.entities.ProviderService.delete(id);
+      await api.entities.ProviderService.delete(id);
       setServices(prev => prev.filter(s => s.id !== id));
     } finally {
       setDeletingId(null);
@@ -37,7 +37,7 @@ export default function ProviderServices() {
   };
 
   const handleSave = async (config) => {
-    const updated = await base44.entities.ProviderService.update(editingService.id, config);
+    const updated = await api.entities.ProviderService.update(editingService.id, config);
     setServices(prev => prev.map(s => s.id === editingService.id ? { ...s, ...updated } : s));
     setEditingService(null);
   };
@@ -51,7 +51,7 @@ export default function ProviderServices() {
           <span className="text-sm font-semibold text-foreground">Servi<span className="font-bold">Local</span></span>
         </div>
         <button
-          onClick={() => base44.auth.logout('/')}
+          onClick={() => api.auth.logout('/')}
           className="px-3 py-1.5 text-sm font-medium text-foreground border border-border rounded-lg hover:bg-secondary/50 transition-colors"
         >
           → Sair

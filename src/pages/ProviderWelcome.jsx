@@ -1,7 +1,7 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, Clock, X, ShieldCheck } from 'lucide-react';
-import { base44 } from '@/api/base44Client';
+import { api } from '@/api/apiClient';
 import GoogleIcon from '../components/GoogleIcon';
 
 const LOGO_URL = '/logo.png';
@@ -81,7 +81,7 @@ export default function ProviderWelcome() {
   };
 
   const handleGoogle = () => {
-    base44.auth.loginWithProvider('google', '/provider/onboarding');
+    api.auth.loginWithProvider('google', '/provider/onboarding');
   };
 
   return (

@@ -6,7 +6,7 @@ const API_URL = isProductionHost && isLocalApiUrl
   ? PROD_API_URL
   : (envApiUrl || 'http://localhost:3001');
 
-async function api(method, path, data) {
+async function request(method, path, data) {
   const token = localStorage.getItem('token');
   if (path === '/api/auth/me' && !token) {
     throw new Error('Not authenticated');
@@ -31,46 +31,46 @@ async function api(method, path, data) {
 }
 
 const auth = {
-  me: () => api('GET', '/api/auth/me'),
+  me: () => request('GET', '/api/auth/me'),
 
   loginViaEmailPassword: async (email, password) => {
-    const data = await api('POST', '/api/auth/login', { email, password });
+    const data = await request('POST', '/api/auth/login', { email, password });
     if (data.token) localStorage.setItem('token', data.token);
     return data;
   },
 
   logout: async (redirectUrl = '/') => {
-    await api('POST', '/api/auth/logout').catch(() => {});
+    await request('POST', '/api/auth/logout').catch(() => {});
     localStorage.removeItem('token');
     window.location.href = redirectUrl;
   },
 
   register: async (data) => {
-    const res = await api('POST', '/api/auth/register', data);
+    const res = await request('POST', '/api/auth/register', data);
     if (res.token) localStorage.setItem('token', res.token);
     return res;
   },
 
-  sendOtp: (data) => api('POST', '/api/auth/send-otp', data),
+  sendOtp: (data) => request('POST', '/api/auth/send-otp', data),
 
   verifyOtp: async (data) => {
-    const res = await api('POST', '/api/auth/verify-otp', data);
+    const res = await request('POST', '/api/auth/verify-otp', data);
     if (res.token) localStorage.setItem('token', res.token);
     return res;
   },
 
-  resendOtp: (email) => api('POST', '/api/auth/resend-otp', { email }),
+  resendOtp: (email) => request('POST', '/api/auth/resend-otp', { email }),
 
   setToken: (token) => localStorage.setItem('token', token),
 
-  updateMe: (data) => api('PATCH', '/api/auth/me', data),
+  updateMe: (data) => request('PATCH', '/api/auth/me', data),
 
   resetPasswordRequest: (email) =>
-    api('POST', '/api/auth/reset-password-request', { email }),
+    request('POST', '/api/auth/reset-password-request', { email }),
 
-  resetPassword: (data) => api('POST', '/api/auth/reset-password', data),
+  resetPassword: (data) => request('POST', '/api/auth/reset-password', data),
 
-  loginWithProvider: (provider, redirectUrl) => {
+  loginWithProvider: () => {
     console.warn('[auth] loginWithProvider não implementado ainda');
   },
 };
@@ -84,7 +84,7 @@ function createEntity(path) {
       if (sort) params.set('_sort', sort);
       if (limit) params.set('_limit', String(limit));
       const qs = params.toString();
-      return api('GET', `${path}${qs ? `?${qs}` : ''}`);
+      return request('GET', `${path}${qs ? `?${qs}` : ''}`);
     },
 
     list: (sort, limit) => {
@@ -92,19 +92,19 @@ function createEntity(path) {
       if (sort) params.set('_sort', sort);
       if (limit) params.set('_limit', String(limit));
       const qs = params.toString();
-      return api('GET', `${path}${qs ? `?${qs}` : ''}`);
+      return request('GET', `${path}${qs ? `?${qs}` : ''}`);
     },
 
-    get: (id) => api('GET', `${path}/${id}`),
-    create: (data) => api('POST', path, data),
-    update: (id, data) => api('PATCH', `${path}/${id}`, data),
-    delete: (id) => api('DELETE', `${path}/${id}`),
+    get: (id) => request('GET', `${path}/${id}`),
+    create: (data) => request('POST', path, data),
+    update: (id, data) => request('PATCH', `${path}/${id}`, data),
+    delete: (id) => request('DELETE', `${path}/${id}`),
 
     subscribe: () => ({ unsubscribe: () => {} }),
   };
 }
 
-export const base44 = {
+export const api = {
   auth,
 
   entities: {
@@ -123,11 +123,11 @@ export const base44 = {
   functions: {
     invoke: async (name, params) => {
       if (name === 'maps') {
-        const data = await api('POST', '/api/maps', params);
+        const data = await request('POST', '/api/maps', params);
         return { data };
       }
       if (name === 'deleteUserCascade')
-        return api('DELETE', `/api/admin/users/${params.userId}`);
+        return request('DELETE', `/api/admin/users/${params.userId}`);
       throw new Error(`Função não implementada: ${name}`);
     },
   },

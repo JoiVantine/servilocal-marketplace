@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+﻿import { useState, useEffect, useRef, useCallback } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { base44 } from '@/api/base44Client';
+import { api } from '@/api/apiClient';
 import { Check, Upload, MapPin, Phone, Camera, Image, X, Home, Mail, ShieldCheck } from 'lucide-react';
 import AddressFormWithMap from '../components/AddressFormWithMap';
 
@@ -54,7 +54,7 @@ export default function ClientOnboarding() {
   useEffect(() => {
     const loadUser = async () => {
       try {
-        const me = await base44.auth.me();
+        const me = await api.auth.me();
         setUser(me);
         setFormData((prev) => ({ ...prev, city: me.city || '' }));
       
@@ -68,12 +68,12 @@ export default function ClientOnboarding() {
   }, []);
 
   const updateMutation = useMutation({
-    mutationFn: (data) => base44.auth.updateMe(data),
+    mutationFn: (data) => api.auth.updateMe(data),
   });
 
   const uploadMutation = useMutation({
     mutationFn: async (file) => {
-      const result = await base44.integrations.Core.UploadFile({ file });
+      const result = await api.integrations.Core.UploadFile({ file });
       return result.file_url;
     },
   });
@@ -124,7 +124,7 @@ export default function ClientOnboarding() {
       if (!validateStep0()) return;
       setOtpLoading(true);
       try {
-        await base44.auth.sendOtp({ email: formData.email, fullName: formData.name, phone: formData.phone, role: 'client' });
+        await api.auth.sendOtp({ email: formData.email, fullName: formData.name, phone: formData.phone, role: 'client' });
         setOtpSent(true);
       } catch (err) {
         setFieldErrors(p => ({ ...p, email: err.message }));
@@ -137,7 +137,7 @@ export default function ClientOnboarding() {
     // Verificar OTP
     setOtpLoading(true);
     try {
-      const res = await base44.auth.verifyOtp({ email: formData.email, otp: otpCode });
+      const res = await api.auth.verifyOtp({ email: formData.email, otp: otpCode });
       setUser(res.user);
       setCurrentStep(1);
     } catch (err) {
@@ -218,7 +218,7 @@ export default function ClientOnboarding() {
     }
     try {
       await updateMutation.mutateAsync({ phone: formData.phone });
-      const existing = await base44.entities.UserProfile.filter({ userId: user.id });
+      const existing = await api.entities.UserProfile.filter({ userId: user.id });
       const profileData = {
         userId: user.id,
         neighborhood: formData.address?.bairro || '',
@@ -229,9 +229,9 @@ export default function ClientOnboarding() {
         onboardingCompleted: true,
       };
       if (existing.length > 0) {
-        await base44.entities.UserProfile.update(existing[0].id, profileData);
+        await api.entities.UserProfile.update(existing[0].id, profileData);
       } else {
-        await base44.entities.UserProfile.create(profileData);
+        await api.entities.UserProfile.create(profileData);
       }
       navigate('/client');
     } catch (err) {
@@ -409,7 +409,7 @@ export default function ClientOnboarding() {
                 <button
                   onClick={async () => {
                     setOtpLoading(true);
-                    try { await base44.auth.sendOtp({ email: formData.email, fullName: formData.name, phone: formData.phone, role: 'client' }); } catch {}
+                    try { await api.auth.sendOtp({ email: formData.email, fullName: formData.name, phone: formData.phone, role: 'client' }); } catch {}
                     setOtpLoading(false);
                   }}
                   className="text-xs text-primary underline mt-2 block"

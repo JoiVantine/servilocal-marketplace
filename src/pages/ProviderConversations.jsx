@@ -1,20 +1,20 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Home, Map, MessageCircle } from 'lucide-react';
-import { base44 } from '@/api/base44Client';
+import { api } from '@/api/apiClient';
 
 export default function ProviderConversations() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
 
   useEffect(() => {
-    base44.auth.me().then(setUser).catch(() => navigate('/provider/onboarding'));
+    api.auth.me().then(setUser).catch(() => navigate('/provider/onboarding'));
   }, []);
 
   const { data: conversations = [], isLoading } = useQuery({
     queryKey: ['provider-conversations-list', user?.id],
-    queryFn: () => base44.entities.Conversation.filter({ providerId: user.id }, '-lastMessageTime'),
+    queryFn: () => api.entities.Conversation.filter({ providerId: user.id }, '-lastMessageTime'),
     enabled: !!user?.id,
   });
 

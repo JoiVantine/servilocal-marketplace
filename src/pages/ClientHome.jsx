@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { base44 } from '@/api/base44Client';
+import { api } from '@/api/apiClient';
 import { Home, Search, ChevronRight, MapPin, ArrowLeft, ClipboardList } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import ServiceCategoryGrid from '../components/ServiceCategoryGrid';
@@ -33,9 +33,9 @@ export default function ClientHome() {
 
   const loadUser = async () => {
     try {
-      const u = await base44.auth.me();
+      const u = await api.auth.me();
       setUser(u);
-      const profiles = await base44.entities.UserProfile.filter({ userId: u.id });
+      const profiles = await api.entities.UserProfile.filter({ userId: u.id });
       const clientProfile = profiles.find(p => (p.role === 'client' || p.role === 'both') && p.onboardingCompleted);
       if (!clientProfile) navigate('/client/onboarding');
     } catch {
@@ -47,17 +47,17 @@ export default function ClientHome() {
 
   const { data: requests = [] } = useQuery({
     queryKey: ['client-requests'],
-    queryFn: () => base44.entities.ServiceRequest.list('-created_date'),
+    queryFn: () => api.entities.ServiceRequest.list('-created_date'),
   });
 
   const { data: providers = [] } = useQuery({
     queryKey: ['providers', user?.city],
-    queryFn: () => base44.entities.ProviderProfile.filter({ city: user?.city }, '', 5),
+    queryFn: () => api.entities.ProviderProfile.filter({ city: user?.city }, '', 5),
     enabled: !!user?.city,
   });
 
   const handleLogout = async () => {
-    await base44.auth.logout('/');
+    await api.auth.logout('/');
   };
 
   if (!user) {

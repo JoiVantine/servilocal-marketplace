@@ -1,5 +1,5 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
+﻿import React, { createContext, useState, useContext, useEffect } from 'react';
+import { api } from '@/api/apiClient';
 
 const AuthContext = createContext();
 
@@ -21,7 +21,7 @@ export const AuthProvider = ({ children }) => {
       return;
     }
     try {
-      const currentUser = await base44.auth.me();
+      const currentUser = await api.auth.me();
       setUser(currentUser);
       setIsAuthenticated(true);
     } catch {
@@ -34,7 +34,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
-    base44.auth.logout('/');
+    api.auth.logout('/');
     setUser(null);
     setIsAuthenticated(false);
   };

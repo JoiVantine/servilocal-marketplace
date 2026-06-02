@@ -1,6 +1,6 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { X, Star, Loader } from 'lucide-react';
-import { base44 } from '@/api/base44Client';
+import { api } from '@/api/apiClient';
 
 export default function ReviewModal({ conversation, onClose, onReviewed }) {
   const [rating, setRating] = useState(0);
@@ -12,7 +12,7 @@ export default function ReviewModal({ conversation, onClose, onReviewed }) {
     if (rating === 0) return;
     setSubmitting(true);
     try {
-      await base44.entities.ProviderReview.create({
+      await api.entities.ProviderReview.create({
         conversationId: conversation.id,
         providerId: conversation.providerId,
         clientId: conversation.clientId,
@@ -20,11 +20,11 @@ export default function ReviewModal({ conversation, onClose, onReviewed }) {
         comment: comment.trim(),
       });
 
-      const reviews = await base44.entities.ProviderReview.filter({ providerId: conversation.providerId });
+      const reviews = await api.entities.ProviderReview.filter({ providerId: conversation.providerId });
       const avg = reviews.reduce((s, r) => s + r.rating, 0) / reviews.length;
-      const providerProfiles = await base44.entities.ProviderProfile.filter({ created_by_id: conversation.providerId });
+      const providerProfiles = await api.entities.ProviderProfile.filter({ created_by_id: conversation.providerId });
       if (providerProfiles[0]) {
-        await base44.entities.ProviderProfile.update(providerProfiles[0].id, {
+        await api.entities.ProviderProfile.update(providerProfiles[0].id, {
           rating: parseFloat(avg.toFixed(1)),
           reviewCount: reviews.length,
         });

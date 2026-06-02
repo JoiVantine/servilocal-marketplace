@@ -1,6 +1,6 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { base44 } from '@/api/base44Client';
+import { api } from '@/api/apiClient';
 import { useNavigate } from 'react-router-dom';
 import { X, Send, Calendar, CheckCircle } from 'lucide-react';
 
@@ -29,7 +29,7 @@ export default function NewServiceRequestModal({ category, request, onClose, onU
   );
 
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.ServiceRequest.create(data),
+    mutationFn: (data) => api.entities.ServiceRequest.create(data),
     onSuccess: (result) => {
       onClose();
       navigate(`/client/request/${result.id}`);
@@ -37,7 +37,7 @@ export default function NewServiceRequestModal({ category, request, onClose, onU
   });
 
   const updateMutation = useMutation({
-    mutationFn: (data) => base44.entities.ServiceRequest.update(request.id, data),
+    mutationFn: (data) => api.entities.ServiceRequest.update(request.id, data),
     onSuccess: () => setShowSuccess(true),
   });
 
@@ -53,8 +53,8 @@ export default function NewServiceRequestModal({ category, request, onClose, onU
       });
       return;
     }
-    const user = await base44.auth.me();
-    const profiles = await base44.entities.UserProfile.filter({ userId: user.id });
+    const user = await api.auth.me();
+    const profiles = await api.entities.UserProfile.filter({ userId: user.id });
     const profile = profiles[0];
     mutation.mutate({
       title,

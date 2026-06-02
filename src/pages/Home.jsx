@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { base44 } from '@/api/base44Client';
+import { api } from '@/api/apiClient';
 import { useAuth } from '@/lib/AuthContext';
 import { Search, Building2, ChevronRight } from 'lucide-react';
 import HeroSection from "../components/HeroSection";
@@ -21,7 +21,7 @@ export default function Home() {
       return;
     }
     setCheckingProfile(true);
-    base44.entities.UserProfile.filter({ userId: authUser.id })
+    api.entities.UserProfile.filter({ userId: authUser.id })
       .then(profiles => setHasProfile(profiles.some(p => p.onboardingCompleted)))
       .catch(() => setHasProfile(false))
       .finally(() => setCheckingProfile(false));
@@ -29,7 +29,7 @@ export default function Home() {
 
   const enterAs = async (role) => {
     localStorage.setItem('sl_role', role);
-    const profiles = await base44.entities.UserProfile.filter({ userId: authUser.id });
+    const profiles = await api.entities.UserProfile.filter({ userId: authUser.id });
     const profile = profiles.find(
       p => (p.role === role || p.role === 'both') && p.onboardingCompleted
     );

@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { base44 } from '@/api/base44Client';
+import { api } from '@/api/apiClient';
 import { Link, useNavigate } from 'react-router-dom';
 import { Home, ClipboardList, MapPin, ChevronRight, CheckCircle2, MessageCircle } from 'lucide-react';
 
@@ -19,18 +19,18 @@ export default function ClientOrders() {
   const [userId, setUserId] = useState(null);
 
   useEffect(() => {
-    base44.auth.me().then((u) => setUserId(u.id)).catch(console.error);
+    api.auth.me().then((u) => setUserId(u.id)).catch(console.error);
   }, []);
 
   const { data: requests = [], isLoading } = useQuery({
     queryKey: ['my-orders', userId],
-    queryFn: () => base44.entities.ServiceRequest.filter({ created_by_id: userId }, '-created_date'),
+    queryFn: () => api.entities.ServiceRequest.filter({ created_by_id: userId }, '-created_date'),
     enabled: !!userId,
   });
 
   const { data: conversations = [] } = useQuery({
     queryKey: ['client-conversations', userId],
-    queryFn: () => base44.entities.Conversation.filter({ clientId: userId }, '-lastMessageTime'),
+    queryFn: () => api.entities.Conversation.filter({ clientId: userId }, '-lastMessageTime'),
     enabled: !!userId,
   });
 
@@ -43,7 +43,7 @@ export default function ClientOrders() {
           <span className="text-sm font-semibold text-foreground">Servi<span className="font-bold">Local</span></span>
         </div>
         <button
-          onClick={() => base44.auth.logout('/')}
+          onClick={() => api.auth.logout('/')}
           className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-foreground border border-border rounded-lg hover:bg-secondary/50 transition-colors"
         >
           ⤳ Sair
@@ -119,14 +119,14 @@ export default function ClientOrders() {
                         onClick={async (e) => {
                           e.preventDefault();
                           if (confirm('Tem certeza que deseja cancelar este pedido?')) {
-                            await base44.entities.ServiceRequest.update(req.id, { status: 'cancelled' });
+                            await api.entities.ServiceRequest.update(req.id, { status: 'cancelled' });
                             const [convs, interests] = await Promise.all([
-                              base44.entities.Conversation.filter({ serviceRequestId: req.id }),
-                              base44.entities.ServiceRequestInterest.filter({ serviceRequestId: req.id }),
+                              api.entities.Conversation.filter({ serviceRequestId: req.id }),
+                              api.entities.ServiceRequestInterest.filter({ serviceRequestId: req.id }),
                             ]);
                             await Promise.all([
-                              ...convs.map(c => base44.entities.Conversation.update(c.id, { status: 'cancelled' })),
-                              ...interests.map(i => base44.entities.ServiceRequestInterest.update(i.id, { status: 'cancelled' })),
+                              ...convs.map(c => api.entities.Conversation.update(c.id, { status: 'cancelled' })),
+                              ...interests.map(i => api.entities.ServiceRequestInterest.update(i.id, { status: 'cancelled' })),
                             ]);
                           }
                         }}

@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { base44 } from '@/api/base44Client';
+import { api } from '@/api/apiClient';
 import { Home, List, CalendarDays, Pencil, MessageCircle, CheckCircle, Star, Inbox, Zap, MapPin, Clock, Briefcase } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import ProposalModal from '@/components/ProposalModal';
@@ -18,17 +18,17 @@ export default function ProviderHome() {
   const [proposalRequest, setProposalRequest] = useState(null);
 
   useEffect(() => {
-    base44.auth.me().then(async (u) => {
+    api.auth.me().then(async (u) => {
       setUser(u);
-      const profiles = await base44.entities.UserProfile.filter({ userId: u.id });
+      const profiles = await api.entities.UserProfile.filter({ userId: u.id });
       const providerProfile = profiles.find(p => (p.role === 'provider' || p.role === 'both') && p.onboardingCompleted);
       if (!providerProfile) { navigate('/provider/onboarding'); return; }
       setUserProfileId(providerProfile.id);
       setAccepting(providerProfile.active !== false);
       // Load provider specialties for matching
-      const provProfiles = await base44.entities.ProviderProfile.filter({ created_by_id: u.id });
+      const provProfiles = await api.entities.ProviderProfile.filter({ created_by_id: u.id });
       if (provProfiles.length > 0) setProviderSpecialties(provProfiles[0].specialties || []);
-      const services = await base44.entities.ProviderService.filter({ providerId: u.id });
+      const services = await api.entities.ProviderService.filter({ providerId: u.id });
       setHasProviderServices(services.length > 0);
     }).catch(() => navigate('/provider/onboarding'));
   }, []);
@@ -37,7 +37,7 @@ export default function ProviderHome() {
     const next = !accepting;
     setAccepting(next);
     if (userProfileId) {
-      await base44.entities.UserProfile.update(userProfileId, { active: next });
+      await api.entities.UserProfile.update(userProfileId, { active: next });
     }
   };
 
@@ -46,7 +46,7 @@ export default function ProviderHome() {
     queryFn: async () => {
       const query = { status: 'open' };
       if (user?.city) query.city = user.city;
-      return base44.entities.ServiceRequest.filter(query, '-created_date', 50);
+      return api.entities.ServiceRequest.filter(query, '-created_date', 50);
     },
     enabled: !!user,
   });
@@ -58,13 +58,13 @@ export default function ProviderHome() {
 
   const { data: conversations = [] } = useQuery({
     queryKey: ['provider-conversations', user?.id],
-    queryFn: () => base44.entities.Conversation.filter({ providerId: user.id }),
+    queryFn: () => api.entities.Conversation.filter({ providerId: user.id }),
     enabled: !!user?.id,
   });
 
   const { data: reviews = [] } = useQuery({
     queryKey: ['provider-reviews', user?.id],
-    queryFn: () => base44.entities.ProviderReview.filter({ providerId: user.id }),
+    queryFn: () => api.entities.ProviderReview.filter({ providerId: user.id }),
     enabled: !!user?.id,
   });
 
@@ -75,7 +75,7 @@ export default function ProviderHome() {
 
   const inConversation = conversations.filter(c => c.status === 'active').length;
 
-  const handleLogout = () => base44.auth.logout('/');
+  const handleLogout = () => api.auth.logout('/');
 
   const firstName = (user?.fullName || user?.full_name)?.split(' ')[0] || '';
 

@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { X, Send, Loader } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { base44 } from '@/api/base44Client';
+import { api } from '@/api/apiClient';
 
 export default function ProposalModal({ request, onClose, onSent }) {
   const navigate = useNavigate();
@@ -13,10 +13,10 @@ export default function ProposalModal({ request, onClose, onSent }) {
 
   useEffect(() => {
     const loadDefaultProposal = async () => {
-      const me = await base44.auth.me();
+      const me = await api.auth.me();
       setUser(me);
 
-      const services = await base44.entities.ProviderService.filter({ providerId: me.id });
+      const services = await api.entities.ProviderService.filter({ providerId: me.id });
       const matchedService = services.find((service) =>
         service.specialty === request?.subcategory || service.serviceName === request?.category
       );
@@ -36,22 +36,22 @@ export default function ProposalModal({ request, onClose, onSent }) {
     if (!text || !user || !request) return;
 
     setSending(true);
-    const providerProfiles = await base44.entities.ProviderProfile.filter({ created_by_id: user.id });
+    const providerProfiles = await api.entities.ProviderProfile.filter({ created_by_id: user.id });
     const providerProfile = providerProfiles[0];
 
     let clientName = 'Cliente';
     try {
-      const clientUser = await base44.entities.User.get(request.created_by_id);
+      const clientUser = await api.entities.User.get(request.created_by_id);
       clientName = clientUser?.full_name || 'Cliente';
     } catch {}
 
-    const existingInterests = await base44.entities.ServiceRequestInterest.filter({
+    const existingInterests = await api.entities.ServiceRequestInterest.filter({
       serviceRequestId: request.id,
       providerId: user.id,
     });
 
     if (existingInterests.length === 0) {
-      await base44.entities.ServiceRequestInterest.create({
+      await api.entities.ServiceRequestInterest.create({
         serviceRequestId: request.id,
         providerId: user.id,
         providerName: user.full_name,
@@ -61,17 +61,17 @@ export default function ProposalModal({ request, onClose, onSent }) {
         reviewCount: providerProfile?.reviewCount || 0,
         status: 'in_conversation',
       });
-      await base44.entities.ServiceRequest.update(request.id, {
+      await api.entities.ServiceRequest.update(request.id, {
         status: 'in_conversation',
       });
     }
 
-    const existingConversations = await base44.entities.Conversation.filter({
+    const existingConversations = await api.entities.Conversation.filter({
       serviceRequestId: request.id,
       providerId: user.id,
     });
 
-    const conversation = existingConversations[0] || await base44.entities.Conversation.create({
+    const conversation = existingConversations[0] || await api.entities.Conversation.create({
       serviceRequestId: request.id,
       clientId: request.created_by_id,
       providerId: user.id,
@@ -83,7 +83,7 @@ export default function ProposalModal({ request, onClose, onSent }) {
       unreadCount: 0,
     });
 
-    await base44.entities.Message.create({
+    await api.entities.Message.create({
       conversationId: conversation.id,
       senderId: user.id,
       senderName: user.full_name,
@@ -92,14 +92,14 @@ export default function ProposalModal({ request, onClose, onSent }) {
       read: false,
     });
 
-    await base44.entities.Conversation.update(conversation.id, {
+    await api.entities.Conversation.update(conversation.id, {
       lastMessage: text,
       lastMessageTime: new Date().toISOString(),
       unreadCount: (conversation.unreadCount || 0) + 1,
     });
 
     if (request.created_by_id) {
-      await base44.entities.Notification.create({
+      await api.entities.Notification.create({
         userId: request.created_by_id,
         type: 'new_interest',
         title: 'Nova proposta recebida',

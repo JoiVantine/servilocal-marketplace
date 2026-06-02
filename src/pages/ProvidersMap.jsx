@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
+﻿import { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
-import { base44 } from '@/api/base44Client';
+import { api } from '@/api/apiClient';
 import { ArrowLeft, MapPin, Star, Search, SlidersHorizontal, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import 'leaflet/dist/leaflet.css';
@@ -37,7 +37,7 @@ function MapController({ center }) {
 
 async function reverseGeocode(lat, lng) {
   try {
-    const res = await base44.functions.invoke('maps', { type: 'reverse', lat, lng });
+    const res = await api.functions.invoke('maps', { type: 'reverse', lat, lng });
     if (res.data?.cidade) return res.data;
   } catch {}
   // fallback Nominatim
@@ -52,7 +52,7 @@ async function reverseGeocode(lat, lng) {
 
 async function geocodeCity(city) {
   try {
-    const res = await base44.functions.invoke('maps', { type: 'geocode', query: city + ', Brasil' });
+    const res = await api.functions.invoke('maps', { type: 'geocode', query: city + ', Brasil' });
     if (res.data?.lat) return { lat: res.data.lat, lng: res.data.lng };
   } catch {}
   // fallback Nominatim
@@ -104,8 +104,8 @@ export default function ProvidersMap() {
   const { data: providers = [] } = useQuery({
     queryKey: ['providers-map', userCity],
     queryFn: () => userCity
-      ? base44.entities.ProviderProfile.filter({ city: userCity, active: true }, '-rating', 50)
-      : base44.entities.ProviderProfile.list('-rating', 50),
+      ? api.entities.ProviderProfile.filter({ city: userCity, active: true }, '-rating', 50)
+      : api.entities.ProviderProfile.list('-rating', 50),
     enabled: !locating,
   });
 

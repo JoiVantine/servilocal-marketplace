@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
+﻿import { useState, useEffect, useRef } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { base44 } from '@/api/base44Client';
+import { api } from '@/api/apiClient';
 import { X, Camera } from 'lucide-react';
 
 export default function EditProfileModal({ user, onClose, onSaved }) {
@@ -17,7 +17,7 @@ export default function EditProfileModal({ user, onClose, onSaved }) {
   const [city, setCity] = useState(user.city || '');
 
   useEffect(() => {
-    base44.entities.UserProfile.filter({ userId: user.id }).then((profiles) => {
+    api.entities.UserProfile.filter({ userId: user.id }).then((profiles) => {
       const p = profiles[0];
       if (p) {
         setProfile(p);
@@ -28,7 +28,7 @@ export default function EditProfileModal({ user, onClose, onSaved }) {
   }, []);
 
   const uploadMutation = useMutation({
-    mutationFn: (file) => base44.integrations.Core.UploadFile({ file }).then((r) => r.file_url),
+    mutationFn: (file) => api.integrations.Core.UploadFile({ file }).then((r) => r.file_url),
   });
 
   const formatPhone = (val) => {
@@ -46,7 +46,7 @@ export default function EditProfileModal({ user, onClose, onSaved }) {
 
       const fmt = formatPhone(phone);
 
-      await base44.auth.updateMe({
+      await api.auth.updateMe({
         full_name: name,
         phone: fmt,
         city,
@@ -62,9 +62,9 @@ export default function EditProfileModal({ user, onClose, onSaved }) {
       };
 
       if (profile) {
-        await base44.entities.UserProfile.update(profile.id, profileData);
+        await api.entities.UserProfile.update(profile.id, profileData);
       } else {
-        await base44.entities.UserProfile.create(profileData);
+        await api.entities.UserProfile.create(profileData);
       }
 
       return { photo: photoUrl, name, city };

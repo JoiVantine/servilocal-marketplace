@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
+﻿import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { base44 } from '@/api/base44Client';
+import { api } from '@/api/apiClient';
 import { useMutation } from '@tanstack/react-query';
 import { ChevronRight, User, Phone, Mail, Lock, Eye, EyeOff, MapPin, CheckCircle2, Circle, Search, ShieldCheck, Pencil, ChevronDown } from 'lucide-react';
 import { CATEGORIES, CATEGORY_GROUPS } from '@/lib/categories';
@@ -51,7 +51,7 @@ export default function ProviderOnboarding() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const goServices = params.get('step') === 'services';
-    base44.auth.me().then(async (u) => {
+    api.auth.me().then(async (u) => {
       setUser(u);
       if (goServices) {
         setName(u.fullName || u.full_name || '');
@@ -59,9 +59,9 @@ export default function ProviderOnboarding() {
         setEmail(u.email || '');
         setSelectedCity(u.city || '');
         setCityQuery(u.city || '');
-        const provProfiles = await base44.entities.ProviderProfile.filter({ userId: u.id });
+        const provProfiles = await api.entities.ProviderProfile.filter({ userId: u.id });
         if (provProfiles.length > 0) setSelectedServices(provProfiles[0].specialties || []);
-        const existingSvcs = await base44.entities.ProviderService.filter({ providerId: u.id });
+        const existingSvcs = await api.entities.ProviderService.filter({ providerId: u.id });
         const configs = {};
         for (const svc of existingSvcs) {
           configs[svc.serviceName || svc.specialty] = svc;
@@ -78,7 +78,7 @@ export default function ProviderOnboarding() {
     debounceRef.current = setTimeout(async () => {
       setSearchLoading(true);
       try {
-        const res = await base44.functions.invoke('maps', { type: 'cities', query });
+        const res = await api.functions.invoke('maps', { type: 'cities', query });
         const cities = (res.data.cities || []).map(c => ({
           label: c.label,
           city: c.city,
@@ -96,35 +96,35 @@ export default function ProviderOnboarding() {
     mutationFn: async () => {
       let me = user;
       if (!me) {
-        me = await base44.auth.me().catch(() => null);
+        me = await api.auth.me().catch(() => null);
       }
       if (!me) {
         navigate('/');
         return;
       }
-      await base44.auth.updateMe({ full_name: name, phone, city: selectedCity });
+      await api.auth.updateMe({ full_name: name, phone, city: selectedCity });
 
       // Cria UserProfile se não existir
-      const existingUp = await base44.entities.UserProfile.filter({ userId: me.id });
+      const existingUp = await api.entities.UserProfile.filter({ userId: me.id });
       const upData = { userId: me.id, role: 'provider', onboardingCompleted: true };
       if (existingUp.length > 0) {
-        await base44.entities.UserProfile.update(existingUp[0].id, upData);
+        await api.entities.UserProfile.update(existingUp[0].id, upData);
       } else {
-        await base44.entities.UserProfile.create(upData);
+        await api.entities.UserProfile.create(upData);
       }
 
       // Verifica se ProviderProfile existe para este userId
-      const existingProfiles = await base44.entities.ProviderProfile.filter({ userId: me.id });
+      const existingProfiles = await api.entities.ProviderProfile.filter({ userId: me.id });
 
       if (existingProfiles.length > 0) {
-        await base44.entities.ProviderProfile.update(existingProfiles[0].id, {
+        await api.entities.ProviderProfile.update(existingProfiles[0].id, {
           name,
           city: selectedCity,
           specialties: selectedServices.length > 0 ? selectedServices : existingProfiles[0].specialties,
           active: true,
         });
       } else {
-        await base44.entities.ProviderProfile.create({
+        await api.entities.ProviderProfile.create({
           userId: me.id,
           name,
           city: selectedCity,
@@ -138,7 +138,7 @@ export default function ProviderOnboarding() {
       }
 
       // Upsert ProviderService — atualiza se já existe, cria se for novo
-      const existingSvcs = await base44.entities.ProviderService.filter({ providerId: me.id });
+      const existingSvcs = await api.entities.ProviderService.filter({ providerId: me.id });
       const existingByName = {};
       for (const svc of existingSvcs) {
         existingByName[svc.serviceName || svc.specialty] = svc;
@@ -158,9 +158,9 @@ export default function ProviderOnboarding() {
           active: true,
         };
         if (existingByName[specialty]) {
-          await base44.entities.ProviderService.update(existingByName[specialty].id, data);
+          await api.entities.ProviderService.update(existingByName[specialty].id, data);
         } else {
-          await base44.entities.ProviderService.create(data);
+          await api.entities.ProviderService.create(data);
         }
       }
     },
@@ -209,7 +209,7 @@ export default function ProviderOnboarding() {
         if (!validateStep0()) return;
         setOtpLoading(true);
         try {
-          await base44.auth.sendOtp({ email, fullName: name, phone, role: 'provider' });
+          await api.auth.sendOtp({ email, fullName: name, phone, role: 'provider' });
           setOtpSent(true);
         } catch (err) {
           setFieldErrors({ email: err.message });
@@ -221,7 +221,7 @@ export default function ProviderOnboarding() {
       // Verificar OTP
       setOtpLoading(true);
       try {
-        const res = await base44.auth.verifyOtp({ email, otp: otpCode });
+        const res = await api.auth.verifyOtp({ email, otp: otpCode });
         setUser(res.user);
         setStep(1);
       } catch (err) {
@@ -362,7 +362,7 @@ export default function ProviderOnboarding() {
                 <button
                   onClick={async () => {
                     setOtpLoading(true);
-                    try { await base44.auth.sendOtp({ email, fullName: name, phone, role: 'provider' }); } catch {}
+                    try { await api.auth.sendOtp({ email, fullName: name, phone, role: 'provider' }); } catch {}
                     setOtpLoading(false);
                   }}
                   className="text-xs text-primary underline mt-2 block"

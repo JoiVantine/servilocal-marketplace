@@ -1,5 +1,5 @@
-import { useNavigate } from 'react-router-dom';
-import { base44 } from '@/api/base44Client';
+﻿import { useNavigate } from 'react-router-dom';
+import { api } from '@/api/apiClient';
 import { Users, Briefcase } from 'lucide-react';
 import { useState } from 'react';
 
@@ -10,7 +10,7 @@ export default function RoleSelector() {
   const switchRole = async (mode) => {
     setLoading(true);
     try {
-      await base44.auth.updateMe({ currentMode: mode });
+      await api.auth.updateMe({ currentMode: mode });
       navigate(mode === 'client' ? '/client' : '/provider');
     } catch (error) {
       console.error('Error switching role:', error);

@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
+﻿import { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
-import { base44 } from '@/api/base44Client';
+import { api } from '@/api/apiClient';
 import { ArrowLeft, MapPin, Clock, SlidersHorizontal, X, Zap } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import ProposalModal from '@/components/ProposalModal';
@@ -43,7 +43,7 @@ function MapController({ center }) {
 
 async function reverseGeocode(lat, lng) {
   try {
-    const res = await base44.functions.invoke('maps', { type: 'reverse', lat, lng });
+    const res = await api.functions.invoke('maps', { type: 'reverse', lat, lng });
     if (res.data?.cidade) return res.data;
   } catch {}
   const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1`, { headers: { 'Accept-Language': 'pt-BR' } });
@@ -53,7 +53,7 @@ async function reverseGeocode(lat, lng) {
 
 async function geocodeCity(city) {
   try {
-    const res = await base44.functions.invoke('maps', { type: 'geocode', query: city + ', Brasil' });
+    const res = await api.functions.invoke('maps', { type: 'geocode', query: city + ', Brasil' });
     if (res.data?.lat) return { lat: res.data.lat, lng: res.data.lng };
   } catch {}
   const r = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(city + ', Brasil')}&limit=1&format=json`);
@@ -100,7 +100,7 @@ export default function ProviderRequestsMap() {
     queryFn: () => {
       const q = { status: 'open' };
       if (userCity) q.city = userCity;
-      return base44.entities.ServiceRequest.filter(q, '-created_date', 50);
+      return api.entities.ServiceRequest.filter(q, '-created_date', 50);
     },
     enabled: !locating,
   });

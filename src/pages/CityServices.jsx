@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { base44 } from '@/api/base44Client';
+import { api } from '@/api/apiClient';
 import { ChevronRight, ChevronLeft, MapPin, Home, ClipboardList } from 'lucide-react';
 import NewServiceRequestModal from '../components/NewServiceRequestModal';
 import { useNavigate, Link } from 'react-router-dom';
@@ -53,12 +53,12 @@ export default function CityServices() {
   const [selectedCategory, setSelectedCategory] = useState(null);
 
   useEffect(() => {
-    base44.auth.me().then(setUser).catch(console.error);
+    api.auth.me().then(setUser).catch(console.error);
   }, []);
 
   const { data: providers = [] } = useQuery({
     queryKey: ['providers-city', user?.city],
-    queryFn: () => base44.entities.ProviderProfile.filter({ city: user?.city, active: true }),
+    queryFn: () => api.entities.ProviderProfile.filter({ city: user?.city, active: true }),
     enabled: !!user?.city,
   });
 
