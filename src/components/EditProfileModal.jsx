@@ -23,8 +23,6 @@ export default function EditProfileModal({ user, onClose, onSaved }) {
         setProfile(p);
         setAddress(p.address || '');
         setNeighborhood(p.neighborhood || '');
-        setCity(p.city || user.city || '');
-        if (!phone) setPhone(p.phone || '');
       }
     });
   }, []);
@@ -57,13 +55,10 @@ export default function EditProfileModal({ user, onClose, onSaved }) {
 
       const profileData = {
         userId: user.id,
-        phone: fmt,
-        city,
         neighborhood,
         address,
         role: profile?.role || 'client',
         onboardingCompleted: true,
-        photo: photoUrl || '',
       };
 
       if (profile) {

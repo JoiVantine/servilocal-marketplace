@@ -106,7 +106,7 @@ export default function ProviderOnboarding() {
 
       // Cria UserProfile se não existir
       const existingUp = await base44.entities.UserProfile.filter({ userId: me.id });
-      const upData = { userId: me.id, phone, city: selectedCity, role: 'provider', onboardingCompleted: true };
+      const upData = { userId: me.id, role: 'provider', onboardingCompleted: true };
       if (existingUp.length > 0) {
         await base44.entities.UserProfile.update(existingUp[0].id, upData);
       } else {

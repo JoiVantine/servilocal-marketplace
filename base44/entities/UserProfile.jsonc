@@ -6,18 +6,6 @@
       "type": "string",
       "description": "ID do usu\u00e1rio (User entity)"
     },
-    "phone": {
-      "type": "string",
-      "description": "Celular com DDD"
-    },
-    "photo": {
-      "type": "string",
-      "description": "URL da foto de perfil"
-    },
-    "city": {
-      "type": "string",
-      "description": "Cidade"
-    },
     "neighborhood": {
       "type": "string",
       "description": "Bairro"

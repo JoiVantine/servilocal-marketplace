@@ -221,15 +221,12 @@ export default function ClientOnboarding() {
       const existing = await base44.entities.UserProfile.filter({ userId: user.id });
       const profileData = {
         userId: user.id,
-        phone: formData.phone,
-        city: formData.address?.cidade || formData.city,
         neighborhood: formData.address?.bairro || '',
         address: formData.address
           ? `${formData.address.endereco || ''} ${formData.address.numero || ''}, ${formData.address.bairro || ''} - ${formData.address.cidade || ''}`
           : '',
         role: 'client',
         onboardingCompleted: true,
-        photo: user.photo || '',
       };
       if (existing.length > 0) {
         await base44.entities.UserProfile.update(existing[0].id, profileData);

@@ -29,16 +29,17 @@ export default function AdminUsers() {
     queryFn: () => base44.entities.ServiceRequest.list('-created_date', 200),
   });
 
-  const [userNames, setUserNames] = useState({});
+  const [userCache, setUserCache] = useState({});
 
-  const fetchUserName = async (userId) => {
-    if (userNames[userId]) return userNames[userId];
+  const fetchUserData = async (userId) => {
+    if (userCache[userId]) return userCache[userId];
     try {
-      const user = await base44.entities.User.get(userId);
-      setUserNames(prev => ({ ...prev, [userId]: user.full_name }));
-      return user.full_name;
+      const u = await base44.entities.User.get(userId);
+      const data = { name: u.full_name || u.fullName, phone: u.phone, city: u.city };
+      setUserCache(prev => ({ ...prev, [userId]: data }));
+      return data;
     } catch {
-      return userId;
+      return { name: userId };
     }
   };
 
@@ -58,17 +59,17 @@ export default function AdminUsers() {
   });
 
   const filtered = profiles.filter(p => {
-    const userName = userNames[p.userId] || '';
+    const u = userCache[p.userId];
     return !search ||
-    userName.toLowerCase().includes(search.toLowerCase()) ||
-    p.city?.toLowerCase().includes(search.toLowerCase()) ||
-    p.phone?.includes(search) ||
+    (u?.name || '').toLowerCase().includes(search.toLowerCase()) ||
+    (u?.city || '').toLowerCase().includes(search.toLowerCase()) ||
+    (u?.phone || '').includes(search) ||
     p.role?.includes(search);
   });
 
   const startEdit = (profile) => {
     setEditingId(profile.id);
-    setEditData({ phone: profile.phone || '', city: profile.city || '', neighborhood: profile.neighborhood || '', role: profile.role || 'client', active: profile.active ?? true });
+    setEditData({ neighborhood: profile.neighborhood || '', role: profile.role || 'client', active: profile.active ?? true });
   };
 
   const handleDelete = async (profile) => {
@@ -145,10 +146,9 @@ export default function AdminUsers() {
               const isExpanded = expandedId === profile.id;
               const providerProfile = providerProfiles.find(pp => pp.name);
               const userRequests = requests.filter(r => r.created_by_id === profile.userId);
-              const userName = userNames[profile.userId];
+              const cachedUser = userCache[profile.userId];
 
-              // Load user name if not cached
-              if (!userName) fetchUserName(profile.userId);
+              if (!cachedUser) fetchUserData(profile.userId);
 
               return (
                 <div key={profile.id} className="bg-card border border-border rounded-xl overflow-hidden">
@@ -157,16 +157,6 @@ export default function AdminUsers() {
                     {isEditing ? (
                       <div className="space-y-3">
                         <div className="grid grid-cols-2 gap-3">
-                          <div>
-                            <label className="text-xs text-muted-foreground mb-1 block">Telefone</label>
-                            <input value={editData.phone} onChange={e => setEditData(p => ({...p, phone: e.target.value}))}
-                              className="w-full px-3 py-2 border border-border rounded-lg text-sm" />
-                          </div>
-                          <div>
-                            <label className="text-xs text-muted-foreground mb-1 block">Cidade</label>
-                            <input value={editData.city} onChange={e => setEditData(p => ({...p, city: e.target.value}))}
-                              className="w-full px-3 py-2 border border-border rounded-lg text-sm" />
-                          </div>
                           <div>
                             <label className="text-xs text-muted-foreground mb-1 block">Bairro</label>
                             <input value={editData.neighborhood} onChange={e => setEditData(p => ({...p, neighborhood: e.target.value}))}
@@ -209,7 +199,7 @@ export default function AdminUsers() {
                             </div>
                             <div>
                               <div className="flex items-center gap-2 flex-wrap">
-                                <p className="text-sm font-semibold text-foreground">{userName || 'Carregando...'}</p>
+                                <p className="text-sm font-semibold text-foreground">{cachedUser?.name || 'Carregando...'}</p>
                                 {profile.role && (
                                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${ROLE_COLORS[profile.role] || 'bg-gray-100 text-gray-600'}`}>
                                     {ROLE_LABELS[profile.role] || profile.role}
@@ -223,8 +213,8 @@ export default function AdminUsers() {
                                 )}
                               </div>
                               <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
-                                {profile.phone && <span className="flex items-center gap-1"><Phone className="w-3 h-3" />{profile.phone}</span>}
-                                {profile.city && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{profile.city}{profile.neighborhood ? `, ${profile.neighborhood}` : ''}</span>}
+                                {cachedUser?.phone && <span className="flex items-center gap-1"><Phone className="w-3 h-3" />{cachedUser.phone}</span>}
+                                {cachedUser?.city && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{cachedUser.city}{profile.neighborhood ? `, ${profile.neighborhood}` : ''}</span>}
                               </div>
                             </div>
                           </div>
