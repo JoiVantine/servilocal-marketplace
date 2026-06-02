@@ -12,6 +12,7 @@ export default defineConfig({
   preview: {
     port: parseInt(process.env.PORT) || 4173,
     host: true,
+    allowedHosts: ['appservilocal.com', 'www.appservilocal.com'],
   },
   server: {
     port: parseInt(process.env.PORT) || 5173,
