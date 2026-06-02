@@ -38,6 +38,22 @@ function signToken(user) {
   );
 }
 
+// POST /api/auth/check-profile — verifica se e-mail + perfil de role já existem
+router.post('/check-profile', async (req, res) => {
+  try {
+    const { email, role } = req.body;
+    if (!email) return res.json({ exists: false, hasProfile: false });
+    const user = await User.findOne({ email });
+    if (!user) return res.json({ exists: false, hasProfile: false });
+    const UserProfile = require('../models/UserProfile');
+    const profile = await UserProfile.findOne({ userId: user._id });
+    const hasProfile = !!profile && (profile.role === role || profile.role === 'both');
+    res.json({ exists: true, hasProfile });
+  } catch (err) {
+    res.status(500).json({ error: 'Erro interno' });
+  }
+});
+
 // POST /api/auth/send-otp — cria ou encontra usuário e envia código (sem senha)
 router.post('/send-otp', otpLimiter, async (req, res) => {
   try {

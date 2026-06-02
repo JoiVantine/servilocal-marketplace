@@ -28,6 +28,7 @@ import ProviderConversations from './pages/ProviderConversations';
 import ProviderServices from './pages/ProviderServices';
 import ChatPage from './pages/ChatPage';
 import PasswordSetup from './pages/PasswordSetup';
+import Login from './pages/Login';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -71,6 +72,7 @@ const AuthenticatedApp = () => {
       <Route path="/provider/services" element={<ProviderServices />} />
       <Route path="/chat/:conversationId" element={<ChatPage />} />
       <Route path="/setup-password" element={<PasswordSetup />} />
+      <Route path="/login" element={<Login />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );

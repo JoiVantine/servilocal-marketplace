@@ -67,6 +67,8 @@ const auth = {
 
   setPassword: (password) => request('PATCH', '/api/auth/me/password', { password }),
 
+  checkProfile: (email, role) => request('POST', '/api/auth/check-profile', { email, role }),
+
   resetPasswordRequest: (email) =>
     request('POST', '/api/auth/reset-password-request', { email }),
 

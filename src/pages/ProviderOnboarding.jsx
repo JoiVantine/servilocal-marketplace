@@ -217,6 +217,11 @@ export default function ProviderOnboarding() {
         if (!validateStep0()) return;
         setOtpLoading(true);
         try {
+          const { hasProfile } = await api.auth.checkProfile(email, 'provider');
+          if (hasProfile) {
+            navigate(`/login?role=provider&email=${encodeURIComponent(email)}`);
+            return;
+          }
           await api.auth.sendOtp({ email, fullName: name, phone, role: 'provider' });
           setOtpSent(true);
         } catch (err) {

@@ -22,6 +22,11 @@ export default function Register() {
     setError("");
     setLoading(true);
     try {
+      const { hasProfile } = await api.auth.checkProfile(email, 'client');
+      if (hasProfile) {
+        navigate(`/login?role=client&email=${encodeURIComponent(email)}`);
+        return;
+      }
       await api.auth.sendOtp({ email, role: 'client' });
       setShowOtp(true);
     } catch (err) {

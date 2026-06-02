@@ -74,6 +74,24 @@ export default function HeroSection() {
           <span className="flex-1 text-foreground">Quero oferecer meu serviço</span>
           <ChevronRight className="w-5 h-5 text-muted-foreground opacity-70" />
         </button>
+
+        {/* Já possuo conta */}
+        <div className="pt-1 text-center text-sm text-muted-foreground">
+          Já possuo conta:{' '}
+          <button
+            onClick={() => navigate('/login?role=client')}
+            className="text-primary font-medium hover:underline"
+          >
+            Entrar como Cliente
+          </button>
+          {' '}ou{' '}
+          <button
+            onClick={() => navigate('/login?role=provider')}
+            className="text-primary font-medium hover:underline"
+          >
+            Entrar como Prestador
+          </button>
+        </div>
       </div>
     </section>
   );
