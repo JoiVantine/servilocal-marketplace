@@ -24,6 +24,7 @@ export default function ClientRequestDetail() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [user, setUser] = useState(null);
+  const [userProfile, setUserProfile] = useState(null);
   const [showEdit, setShowEdit] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
 
@@ -33,6 +34,8 @@ export default function ClientRequestDetail() {
       try {
         const me = await api.auth.me();
         setUser(me);
+        const profiles = await api.entities.UserProfile.filter({ userId: me.id });
+        if (profiles.length > 0) setUserProfile(profiles[0]);
       } catch (error) {
         console.error('Error loading user:', error);
       }
@@ -168,7 +171,9 @@ export default function ClientRequestDetail() {
             <div>
               <p className="text-xs text-muted-foreground mb-1">Endereço</p>
               <p className="text-sm text-foreground">
-                {request.address || [request.neighborhood, request.city].filter(Boolean).join(', ') || request.city}
+                {userProfile?.address
+                  ? `${userProfile.address}${userProfile.neighborhood ? `, ${userProfile.neighborhood}` : ''} - ${user?.city || request.city}`
+                  : request.address || [request.neighborhood, request.city].filter(Boolean).join(', ') || request.city}
               </p>
             </div>
 
