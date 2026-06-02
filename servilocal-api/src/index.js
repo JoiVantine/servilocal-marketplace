@@ -23,6 +23,7 @@ const EmailTemplate = require('./models/EmailTemplate');
 const Service = require('./models/Service');
 
 const { sendMail } = require('./utils/mail');
+const multer = require('multer');
 
 const app = express();
 const server = http.createServer(app);
@@ -127,6 +128,41 @@ app.use('/api/notifications', createCrudRouter(Notification));
 app.use('/api/email-templates', createCrudRouter(EmailTemplate));
 
 app.use('/api/services', createCrudRouter(Service, { publicRead: true }));
+
+// ─── Upload ─────────────────────────────────────────────────────────────────
+const _upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (_, file, cb) => {
+    if (!file.mimetype.startsWith('image/')) return cb(new Error('Apenas imagens são permitidas'));
+    cb(null, true);
+  },
+});
+
+app.post('/api/upload', requireAuth, _upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'Nenhum arquivo enviado' });
+
+    if (process.env.CLOUDINARY_URL) {
+      const cloudinary = require('cloudinary').v2;
+      const result = await new Promise((resolve, reject) => {
+        cloudinary.uploader
+          .upload_stream({ folder: 'servilocal', resource_type: 'image' }, (err, r) =>
+            err ? reject(err) : resolve(r)
+          )
+          .end(req.file.buffer);
+      });
+      return res.json({ url: result.secure_url });
+    }
+
+    // Fallback para dev sem Cloudinary: retorna base64 data URL
+    const b64 = req.file.buffer.toString('base64');
+    res.json({ url: `data:${req.file.mimetype};base64,${b64}` });
+  } catch (err) {
+    console.error('[upload]', err.message);
+    res.status(500).json({ error: 'Falha ao processar arquivo' });
+  }
+});
 
 // ─── Admin ──────────────────────────────────────────────────────────────────
 app.delete('/api/admin/users/:id', requireAuth, requireAdmin, async (req, res) => {

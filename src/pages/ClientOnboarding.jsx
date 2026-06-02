@@ -35,6 +35,7 @@ export default function ClientOnboarding() {
   const [otpCode, setOtpCode] = useState('');
   const [otpLoading, setOtpLoading] = useState(false);
   const [validateAddress, setValidateAddress] = useState(false);
+  const [submitError, setSubmitError] = useState(null);
 
   const validateStep0 = () => {
     const errors = {};
@@ -79,10 +80,7 @@ export default function ClientOnboarding() {
   });
 
   const uploadMutation = useMutation({
-    mutationFn: async (file) => {
-      const result = await api.integrations.Core.UploadFile({ file });
-      return result.file_url;
-    },
+    mutationFn: (file) => api.uploadFile(file),
   });
 
   const handlePhotoSelect = async (e) => {
@@ -118,8 +116,13 @@ export default function ClientOnboarding() {
     if (user) {
       const updates = { full_name: formData.name, email: formData.email };
       if (formData.photo) {
-        const photoUrl = await uploadMutation.mutateAsync(formData.photo);
-        updates.photo = photoUrl;
+        try {
+          const photoUrl = await uploadMutation.mutateAsync(formData.photo);
+          if (photoUrl) updates.photo = photoUrl;
+        } catch {
+          setFieldErrors(prev => ({ ...prev, photo: 'Erro ao enviar foto. Tente novamente.' }));
+          return;
+        }
       }
       await updateMutation.mutateAsync(updates);
       setCurrentStep(s => s + 1);
@@ -223,6 +226,7 @@ export default function ClientOnboarding() {
       navigate('/');
       return;
     }
+    setSubmitError(null);
     try {
       await updateMutation.mutateAsync({ phone: formData.phone });
       const existing = await api.entities.UserProfile.filter({ userId: user.id });
@@ -243,7 +247,7 @@ export default function ClientOnboarding() {
       }
       navigate('/client');
     } catch (err) {
-      console.error('[onboarding] Erro ao finalizar:', err.message);
+      setSubmitError(err.message || 'Erro ao finalizar cadastro. Tente novamente.');
     }
   };
 
@@ -337,6 +341,9 @@ export default function ClientOnboarding() {
               <p className="text-xs text-muted-foreground mt-2">
                 JPG ou PNG, máx 5MB
               </p>
+              {fieldErrors.photo && (
+                <p className="text-xs text-red-500 mt-1">{fieldErrors.photo}</p>
+              )}
             </div>
 
             <div>
@@ -525,7 +532,10 @@ export default function ClientOnboarding() {
         )}
 
         {/* Buttons */}
-        <div className="flex gap-3 mt-8">
+        {submitError && (
+          <p className="text-xs text-red-500 text-center mt-6">{submitError}</p>
+        )}
+        <div className="flex gap-3 mt-3">
           {currentStep > 0 && (
             <button
               onClick={() => setCurrentStep(currentStep - 1)}

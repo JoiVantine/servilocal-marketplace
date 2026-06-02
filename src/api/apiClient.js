@@ -2,7 +2,7 @@ const PROD_API_URL = 'https://servilocal-api-production.up.railway.app';
 const envApiUrl = import.meta.env.VITE_API_URL;
 const isProductionHost = window.location.hostname === 'www.appservilocal.com';
 const isLocalApiUrl = !envApiUrl || envApiUrl.includes('localhost') || envApiUrl.includes('127.0.0.1');
-const API_URL = isProductionHost && isLocalApiUrl
+export const API_URL = isProductionHost && isLocalApiUrl
   ? PROD_API_URL
   : (envApiUrl || 'http://localhost:3001');
 
@@ -110,6 +110,23 @@ function createEntity(path) {
 
 export const api = {
   auth,
+
+  uploadFile: async (file) => {
+    const token = localStorage.getItem('token');
+    const form = new FormData();
+    form.append('file', file);
+    const res = await fetch(`${API_URL}/api/upload`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: form,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: res.statusText }));
+      throw new Error(err.error || res.statusText);
+    }
+    const { url } = await res.json();
+    return url;
+  },
 
   entities: {
     User: createEntity('/api/users'),

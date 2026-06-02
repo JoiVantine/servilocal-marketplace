@@ -2,7 +2,7 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/api/apiClient';
-import { ChevronLeft, Search, Clock, Home } from 'lucide-react';
+import { ChevronLeft, Search, Clock, Home, CheckCircle, XCircle } from 'lucide-react';
 import NewServiceRequestModal from '../components/NewServiceRequestModal';
 
 const URGENCY_LABELS = {
@@ -70,13 +70,22 @@ export default function ClientRequestDetail() {
   const cancelMutation = useMutation({
     mutationFn: async () => {
       await api.entities.ServiceRequest.update(requestId, { status: 'cancelled' });
-      const [convs, interests] = await Promise.all([
+      const [convs, interestsList] = await Promise.all([
         api.entities.Conversation.filter({ serviceRequestId: requestId }),
         api.entities.ServiceRequestInterest.filter({ serviceRequestId: requestId }),
       ]);
       await Promise.all([
         ...convs.map(c => api.entities.Conversation.update(c.id, { status: 'cancelled' })),
-        ...interests.map(i => api.entities.ServiceRequestInterest.update(i.id, { status: 'cancelled' })),
+        ...interestsList.map(i => api.entities.ServiceRequestInterest.update(i.id, { status: 'cancelled' })),
+        ...interestsList.map(i =>
+          api.entities.Notification.create({
+            userId: i.providerId,
+            type: 'request_cancelled',
+            title: 'Pedido cancelado',
+            body: `O pedido de "${request.category}" em ${request.city} foi cancelado pelo cliente.`,
+            read: false,
+          })
+        ),
       ]);
     },
     onSuccess: () => {
@@ -100,6 +109,17 @@ export default function ClientRequestDetail() {
       </div>
     );
   }
+
+  const formatRelativeTime = (date) => {
+    const diff = Date.now() - new Date(date).getTime();
+    const minutes = Math.floor(diff / 60000);
+    if (minutes < 1) return 'agora mesmo';
+    if (minutes < 60) return `há ${minutes} min`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `há ${hours}h`;
+    const days = Math.floor(hours / 24);
+    return `há ${days} dia${days > 1 ? 's' : ''}`;
+  };
 
   const formatDate = (date) => {
     return new Date(date).toLocaleDateString('pt-BR', {
@@ -134,22 +154,37 @@ export default function ClientRequestDetail() {
 
       {/* Content */}
       <div className="max-w-lg mx-auto px-4 py-6">
-        {/* Waiting state */}
-        <div className="text-center mb-8">
-          <div className="flex justify-center mb-4">
-            <Search className="w-12 h-12 text-muted-foreground opacity-40" />
-          </div>
-          <h2 className="font-heading text-2xl font-bold text-foreground mb-2">
-            Aguardando um prestador
-          </h2>
-          <p className="text-muted-foreground text-sm">
-            Enviado há 7 min
-          </p>
-          <p className="text-muted-foreground text-xs mt-3">
-            Seu pedido está visível para prestadores de {request.city}. Avisamós aqui
-            assim que alguém aceitar.
-          </p>
-        </div>
+        {/* Status state */}
+        {(() => {
+          let icon = <Search className="w-12 h-12 text-muted-foreground opacity-40" />;
+          let title = 'Aguardando um prestador';
+          let desc = `Seu pedido está visível para prestadores de ${request.city}. Avisamos aqui assim que alguém aceitar.`;
+
+          if (request.status === 'cancelled') {
+            icon = <XCircle className="w-12 h-12 text-red-400 opacity-70" />;
+            title = 'Pedido cancelado';
+            desc = 'Este pedido foi cancelado e não está mais visível para prestadores.';
+          } else if (request.status === 'completed') {
+            icon = <CheckCircle className="w-12 h-12 text-green-500 opacity-80" />;
+            title = 'Pedido concluído';
+            desc = 'Este pedido foi concluído com sucesso.';
+          } else if (interests.length > 0) {
+            icon = <Search className="w-12 h-12 text-primary opacity-60" />;
+            title = `${interests.length} prestador${interests.length !== 1 ? 'es' : ''} interessado${interests.length !== 1 ? 's' : ''}`;
+            desc = 'Veja os perfis abaixo e inicie uma conversa com quem preferir.';
+          }
+
+          return (
+            <div className="text-center mb-8">
+              <div className="flex justify-center mb-4">{icon}</div>
+              <h2 className="font-heading text-2xl font-bold text-foreground mb-2">{title}</h2>
+              <p className="text-muted-foreground text-sm">
+                Enviado {formatRelativeTime(request.created_date)}
+              </p>
+              <p className="text-muted-foreground text-xs mt-3">{desc}</p>
+            </div>
+          );
+        })()}
 
         {/* Request Summary */}
         <div className="bg-card border border-border rounded-lg p-5 mb-6">

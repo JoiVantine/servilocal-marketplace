@@ -28,7 +28,7 @@ export default function EditProfileModal({ user, onClose, onSaved }) {
   }, []);
 
   const uploadMutation = useMutation({
-    mutationFn: (file) => api.integrations.Core.UploadFile({ file }).then((r) => r.file_url),
+    mutationFn: (file) => api.uploadFile(file),
   });
 
   const formatPhone = (val) => {

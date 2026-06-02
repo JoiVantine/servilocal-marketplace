@@ -144,7 +144,7 @@ export default function AdminUsers() {
             {filtered.map(profile => {
               const isEditing = editingId === profile.id;
               const isExpanded = expandedId === profile.id;
-              const providerProfile = providerProfiles.find(pp => pp.name);
+              const providerProfile = providerProfiles.find(pp => pp.userId === profile.userId);
               const userRequests = requests.filter(r => r.created_by_id === profile.userId);
               const cachedUser = userCache[profile.userId];
 

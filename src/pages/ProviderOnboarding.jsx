@@ -197,7 +197,7 @@ export default function ProviderOnboarding() {
     return Object.keys(errors).length === 0;
   };
 
-  const cityIsValid = !!selectedCity || (cityQuery.trim().length > 2 && /^[a-záéíóúãõâô\s]+$/i.test(cityQuery.trim()));
+  const cityIsValid = !!selectedCity || (cityQuery.trim().length > 2 && /^[a-záéíóúãõâêôç\s'\-0-9]+$/i.test(cityQuery.trim()));
 
   const canNext = [
     !otpSent
@@ -382,8 +382,13 @@ export default function ProviderOnboarding() {
                 <button
                   onClick={async () => {
                     setOtpLoading(true);
-                    try { await api.auth.sendOtp({ email, fullName: name, phone, role: 'provider' }); } catch {}
-                    setOtpLoading(false);
+                    try {
+                      await api.auth.sendOtp({ email, fullName: name, phone, role: 'provider' });
+                    } catch (err) {
+                      setFieldErrors(p => ({ ...p, otp: err.message || 'Falha ao reenviar o código. Tente novamente.' }));
+                    } finally {
+                      setOtpLoading(false);
+                    }
                   }}
                   className="text-xs text-primary underline mt-2 block"
                 >
@@ -666,7 +671,12 @@ export default function ProviderOnboarding() {
               'Continuar'}
             <ChevronRight className="w-5 h-5" />
           </button>
-          {step === 2 && (
+          {saveMutation.isError && (
+            <p className="text-xs text-red-500 text-center mt-2">
+              {saveMutation.error?.message || 'Erro ao salvar. Verifique sua conexão e tente novamente.'}
+            </p>
+          )}
+          {step === 2 && !saveMutation.isError && (
             <p className="text-xs text-muted-foreground text-center mt-2 flex items-center justify-center gap-1">
               <ShieldCheck className="w-3 h-3" /> Sem categorias marcadas você recebe pedidos de todos os tipos.
             </p>

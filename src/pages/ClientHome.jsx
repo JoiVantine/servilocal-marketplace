@@ -36,7 +36,7 @@ export default function ClientHome() {
       const u = await api.auth.me();
       setUser(u);
       const profiles = await api.entities.UserProfile.filter({ userId: u.id });
-      const clientProfile = profiles.find(p => p.role === 'client' || p.role === 'both');
+      const clientProfile = profiles.find(p => p.role === 'client');
       if (!clientProfile || clientProfile.firstAccess !== false) navigate('/client/onboarding');
     } catch {
       navigate('/client/onboarding');
@@ -46,8 +46,9 @@ export default function ClientHome() {
   useEffect(() => { loadUser(); }, []);
 
   const { data: requests = [] } = useQuery({
-    queryKey: ['client-requests'],
-    queryFn: () => api.entities.ServiceRequest.list('-created_date'),
+    queryKey: ['client-requests', user?.id],
+    queryFn: () => api.entities.ServiceRequest.filter({ clientId: user?.id }, '-created_date'),
+    enabled: !!user?.id,
   });
 
   const { data: providers = [] } = useQuery({

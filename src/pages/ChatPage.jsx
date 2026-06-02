@@ -2,7 +2,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Send, CheckCircle } from 'lucide-react';
-import { api } from '@/api/apiClient';
+import { io } from 'socket.io-client';
+import { api, API_URL } from '@/api/apiClient';
 import ReviewModal from '@/components/ReviewModal';
 
 export default function ChatPage() {
@@ -54,12 +55,18 @@ export default function ChatPage() {
 
   useEffect(() => {
     if (!conversationId) return;
-    return api.entities.Message.subscribe((event) => {
-      if (event.type === 'create' && event.data?.conversationId === conversationId) {
+    const socket = io(API_URL);
+    socket.emit('join-conversation', conversationId);
+    socket.on('new-message', (msg) => {
+      if (msg.conversationId === conversationId) {
         queryClient.invalidateQueries({ queryKey: ['messages', conversationId] });
         queryClient.invalidateQueries({ queryKey: ['conversation', conversationId] });
       }
     });
+    return () => {
+      socket.emit('leave-conversation', conversationId);
+      socket.disconnect();
+    };
   }, [conversationId]);
 
   const sendMutation = useMutation({
@@ -72,7 +79,7 @@ export default function ChatPage() {
       await api.entities.Message.create({
         conversationId,
         senderId: user.id,
-        senderName: user.full_name,
+        senderName: user.fullName || user.full_name,
         senderType,
         text: cleanText,
         read: false,
@@ -88,7 +95,7 @@ export default function ChatPage() {
         userId: recipientId,
         type: 'new_message',
         title: 'Nova mensagem no chat',
-        description: `${user.full_name} respondeu sua conversa.`,
+        description: `${user.fullName || user.full_name} respondeu sua conversa.`,
         relatedId: conversationId,
         read: false,
       });
