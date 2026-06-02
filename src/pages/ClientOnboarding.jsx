@@ -1,6 +1,6 @@
 ﻿import { useState, useEffect, useRef, useCallback } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '@/api/apiClient';
 import { Check, Upload, MapPin, Phone, Camera, Image, X, Home, Mail, ShieldCheck } from 'lucide-react';
 import AddressFormWithMap from '../components/AddressFormWithMap';
@@ -13,6 +13,7 @@ const STEPS = [
 
 export default function ClientOnboarding() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [currentStep, setCurrentStep] = useState(0);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -56,8 +57,14 @@ export default function ClientOnboarding() {
       try {
         const me = await api.auth.me();
         setUser(me);
-        setFormData((prev) => ({ ...prev, city: me.city || '' }));
-      
+        setFormData((prev) => ({
+          ...prev,
+          city: me.city || '',
+          name: me.fullName || '',
+          email: me.email || '',
+          phone: me.phone || '',
+        }));
+        if (searchParams.get('step') === '1') setCurrentStep(1);
       } catch (error) {
         // app público: visitante pode preencher o formulário
       } finally {
@@ -138,8 +145,8 @@ export default function ClientOnboarding() {
     setOtpLoading(true);
     try {
       const res = await api.auth.verifyOtp({ email: formData.email, otp: otpCode });
-      setUser(res.user);
-      setCurrentStep(1);
+      if (res?.token) api.auth.setToken(res.token);
+      navigate(`/setup-password?email=${encodeURIComponent(formData.email)}&next=${encodeURIComponent('/client/onboarding?step=1')}`);
     } catch (err) {
       setFieldErrors(p => ({ ...p, otp: err.message }));
     } finally {
@@ -395,7 +402,7 @@ export default function ClientOnboarding() {
                   Código de verificação <span className="text-red-500">*</span>
                 </label>
                 <p className="text-xs text-muted-foreground mb-2">
-                  Digite o código de 6 dígitos enviado para <strong>{formData.email}</strong>.
+                  Digite o código enviado para seu <strong>WhatsApp</strong>.
                 </p>
                 <input
                   type="text"
