@@ -7,6 +7,7 @@ const requireAuth = require('../middleware/auth');
 const User = require('../models/User');
 const EmailTemplate = require('../models/EmailTemplate');
 const { sendMail } = require('../utils/mail');
+const { sendWhatsApp } = require('../utils/whatsapp');
 
 const otpLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -75,10 +76,15 @@ router.post('/send-otp', otpLimiter, async (req, res) => {
     user.otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
     await user.save();
 
-    await sendMail(email, 'account_token', { email, fullName: user.fullName, otp, role: user.role }, {
-      subject: 'Seu código ServiLocal',
-      text: `Seu código de verificação: ${otp}`,
-    });
+    const phoneToUse = phone || user.phone;
+    if (phoneToUse) {
+      await sendWhatsApp(phoneToUse, `Seu código ServiLocal: *${otp}*\n\nEste código expira em 10 minutos.`);
+    } else {
+      await sendMail(email, 'account_token', { email, fullName: user.fullName, otp, role: user.role }, {
+        subject: 'Seu código ServiLocal',
+        text: `Seu código de verificação: ${otp}`,
+      });
+    }
     res.json({ message: 'Código enviado' });
   } catch (err) {
     console.error('[auth] send-otp:', err.message);
@@ -247,7 +253,6 @@ router.post('/reset-password-request', passwordResetLimiter, async (req, res) =>
 router.post('/reset-password', async (req, res) => {
   try {
     const { token, password } = req.body;
-tr
     const user = await User.findOne({ resetToken: token, resetTokenExpiry: { $gt: new Date() } });
     if (!user) return res.status(400).json({ error: 'Link inválido ou expirado' });
 
