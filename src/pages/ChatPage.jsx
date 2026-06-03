@@ -20,22 +20,33 @@ export default function ChatPage() {
     api.auth.me().then(setUser).catch(() => navigate('/'));
   }, []);
 
-  const { data: conversation } = useQuery({
+  const conversationQuery = useQuery({
     queryKey: ['conversation', conversationId],
     queryFn: () => api.entities.Conversation.get(conversationId),
     enabled: !!conversationId,
+    retry: false,
   });
+  const conversation = conversationQuery.data;
 
-  const { data: messages = [] } = useQuery({
+  const messagesQuery = useQuery({
     queryKey: ['messages', conversationId],
     queryFn: () => api.entities.Message.filter({ conversationId }, 'created_date'),
     enabled: !!conversationId,
+    retry: false,
   });
+  const messages = messagesQuery.data || [];
 
   const { data: existingReviews = [] } = useQuery({
     queryKey: ['review', conversationId],
     queryFn: () => api.entities.ProviderReview.filter({ conversationId }),
     enabled: !!conversationId,
+  });
+
+  const requestQuery = useQuery({
+    queryKey: ['conversation-request', conversation?.serviceRequestId],
+    queryFn: () => api.entities.ServiceRequest.get(conversation.serviceRequestId),
+    enabled: !!conversation?.serviceRequestId,
+    retry: false,
   });
 
   useEffect(() => {
@@ -119,7 +130,11 @@ export default function ChatPage() {
     if (!conversation) return;
     navigate(supportPath, {
       state: buildSupportComposerState(
-        buildConversationSupportDraft({ audience, conversation })
+        buildConversationSupportDraft({
+          audience,
+          conversation,
+          request: requestQuery.data || null,
+        })
       ),
     });
   };
@@ -141,10 +156,34 @@ export default function ChatPage() {
     setShowReview(true);
   };
 
-  if (!user || !conversation) {
+  if (!user || conversationQuery.isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="w-8 h-8 border-4 border-border border-t-primary rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (conversationQuery.isError || !conversation) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center px-4">
+        <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 text-center space-y-3">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-secondary text-muted-foreground">
+            <LifeBuoy className="h-5 w-5" />
+          </div>
+          <div className="space-y-1">
+            <h1 className="text-base font-semibold text-foreground">Conversa indisponível</h1>
+            <p className="text-sm text-muted-foreground">
+              {conversationQuery.error?.message || 'Voce nao tem acesso a esta conversa ou ela nao existe mais.'}
+            </p>
+          </div>
+          <button
+            onClick={() => navigate(-1)}
+            className="inline-flex items-center justify-center rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-secondary transition-colors"
+          >
+            Voltar
+          </button>
+        </div>
       </div>
     );
   }
@@ -180,6 +219,11 @@ export default function ChatPage() {
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 py-5 space-y-3 max-w-lg mx-auto w-full">
+        {messagesQuery.isError && (
+          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            Nao foi possivel carregar as mensagens desta conversa agora.
+          </div>
+        )}
         {messages.map((message) => {
           const mine = message.senderId === user.id;
           return (

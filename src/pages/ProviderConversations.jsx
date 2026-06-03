@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Home, LifeBuoy, Map, MessageCircle } from 'lucide-react';
@@ -19,6 +19,30 @@ export default function ProviderConversations() {
     enabled: !!user?.id,
   });
 
+  const linkedRequestIds = useMemo(() => (
+    [...new Set(
+      conversations
+        .map((conversation) => conversation.serviceRequestId)
+        .filter(Boolean)
+    )]
+  ), [conversations]);
+
+  const { data: linkedRequests = [] } = useQuery({
+    queryKey: ['provider-conversation-requests', linkedRequestIds.join('|')],
+    queryFn: async () => {
+      const results = await Promise.all(
+        linkedRequestIds.map((id) => api.entities.ServiceRequest.get(id).catch(() => null))
+      );
+      return results.filter(Boolean);
+    },
+    enabled: linkedRequestIds.length > 0,
+  });
+
+  const requestLookup = useMemo(
+    () => new Map(linkedRequests.map((request) => [request.id, request])),
+    [linkedRequests]
+  );
+
   return (
     <div className="min-h-screen bg-background pb-24">
       <div className="flex items-center gap-3 px-4 py-4 border-b border-border bg-card">
@@ -27,7 +51,7 @@ export default function ProviderConversations() {
         </button>
         <div>
           <h1 className="font-heading text-xl font-bold text-foreground">Conversas</h1>
-          <p className="text-xs text-muted-foreground">Últimas mensagens dos clientes</p>
+          <p className="text-xs text-muted-foreground">Ultimas mensagens dos clientes</p>
         </div>
       </div>
 
@@ -79,6 +103,7 @@ export default function ProviderConversations() {
                         buildConversationSupportDraft({
                           audience: 'provider',
                           conversation,
+                          request: requestLookup.get(conversation.serviceRequestId) || null,
                         })
                       ),
                     })}
@@ -97,7 +122,7 @@ export default function ProviderConversations() {
         <div className="flex items-center justify-around max-w-lg mx-auto">
           <Link to="/provider" className="flex-1 flex flex-col items-center gap-1 py-3 text-muted-foreground hover:text-foreground">
             <Home className="w-5 h-5" />
-            <span className="text-xs">Início</span>
+            <span className="text-xs">Inicio</span>
           </Link>
           <Link to="/provider/map" className="flex-1 flex flex-col items-center gap-1 py-3 text-muted-foreground hover:text-foreground">
             <Map className="w-5 h-5" />

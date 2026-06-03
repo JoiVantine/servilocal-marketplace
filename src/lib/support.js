@@ -58,11 +58,53 @@ export function buildSupportComposerState(supportDraft) {
   };
 }
 
+function normalizeSupportRequestValue(value) {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function getSupportRequestIdentifier(id) {
+  const raw = normalizeSupportRequestValue(id);
+  if (!raw) return '';
+
+  if (/^[a-f0-9]{24}$/i.test(raw)) {
+    return `#${raw.slice(-6).toUpperCase()}`;
+  }
+
+  const compact = raw
+    .replace(/^(service[-_ ]?request|request|pedido)[-_:# ]*/i, '')
+    .trim();
+
+  if (!compact) return '';
+  if (compact.length <= 12) return compact.toUpperCase();
+  return `#${raw.slice(-6).toUpperCase()}`;
+}
+
 export function getSupportRequestLabel(request) {
-  if (request?.title) return request.title;
-  if (request?.category) return request.category;
-  if (request?.id) return `#${request.id.slice(-6).toUpperCase()}`;
-  return 'sem identificacao';
+  const title = normalizeSupportRequestValue(request?.title);
+  const category = normalizeSupportRequestValue(request?.category);
+  const city = normalizeSupportRequestValue(request?.city);
+  const identifier = getSupportRequestIdentifier(request?.id || request?._id);
+
+  if (title) return title;
+  if (category && city) return `${category} em ${city}`;
+  if (category) return category;
+  if (city) return `servico em ${city}`;
+  if (identifier) return identifier;
+  return 'solicitacao vinculada';
+}
+
+export function getSupportRequestOptionLabel(request) {
+  const title = normalizeSupportRequestValue(request?.title);
+  const category = normalizeSupportRequestValue(request?.category);
+  const city = normalizeSupportRequestValue(request?.city);
+
+  if (title && city) return `${title} - ${city}`;
+  if (title) return title;
+  if (category && city) return `${category} - ${city}`;
+  if (category) return category;
+
+  const fallback = getSupportRequestLabel(request);
+  return fallback.startsWith('#') ? `Pedido ${fallback}` : fallback;
 }
 
 export function buildConversationSupportDraft({ audience, conversation, request }) {

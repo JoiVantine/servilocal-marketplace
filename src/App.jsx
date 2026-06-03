@@ -72,6 +72,7 @@ const AuthenticatedApp = () => {
         <Route path="/diagnostics" element={<DiagnosticsPage />} />
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
         <Route path="/admin/support" element={<AdminSupportDesk />} />
+        <Route path="/admin/request/:requestId" element={<ClientRequestDetail viewerMode="admin" />} />
         <Route path="/admin/users" element={<AdminUsers />} />
       </Route>
       <Route path="/client/map" element={<ProvidersMap />} />

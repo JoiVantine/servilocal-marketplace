@@ -679,10 +679,13 @@ export default function AdminSupportDesk() {
                       </Link>
                     ) : null}
                     {selectedTicket.relatedServiceRequestId ? (
-                      <span className="inline-flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm font-medium text-foreground">
+                      <Link
+                        to={`/admin/request/${selectedTicket.relatedServiceRequestId}`}
+                        className="inline-flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-secondary/40"
+                      >
                         <ArrowUpRight className="h-4 w-4" />
-                        Pedido #{selectedTicket.relatedServiceRequestId.slice(-6).toUpperCase()}
-                      </span>
+                        Ver pedido #{selectedTicket.relatedServiceRequestId.slice(-6).toUpperCase()}
+                      </Link>
                     ) : null}
                     <button
                       onClick={() => handleQuickStatus('closed')}

@@ -12,7 +12,6 @@ const createCrudRouter = require('./routes/crud');
 const ServiceRequest = require('./models/ServiceRequest');
 const ServiceRequestInterest = require('./models/ServiceRequestInterest');
 const Conversation = require('./models/Conversation');
-const Message = require('./models/Message');
 const ProviderProfile = require('./models/ProviderProfile');
 const ProviderReview = require('./models/ProviderReview');
 const ProviderService = require('./models/ProviderService');
@@ -98,18 +97,9 @@ app.use('/api/service-requests', createCrudRouter(ServiceRequest, {
 
 app.use('/api/service-request-interests', createCrudRouter(ServiceRequestInterest));
 
-app.use('/api/conversations', createCrudRouter(Conversation));
+app.use('/api/conversations', require('./routes/conversations'));
 
-// Messages: emit socket event + atualiza lastMessage na Conversation
-app.use('/api/messages', createCrudRouter(Message, {
-  afterCreate: async (doc, req) => {
-    req.app.get('io').to(`conversation:${doc.conversationId}`).emit('new-message', doc);
-    await Conversation.findByIdAndUpdate(doc.conversationId, {
-      lastMessage: doc.text || doc.content,
-      lastMessageTime: doc.createdAt,
-    });
-  },
-}));
+app.use('/api/messages', require('./routes/messages'));
 
 app.use('/api/provider-profiles', createCrudRouter(ProviderProfile, {
   fieldMap: { created_by_id: 'userId' },

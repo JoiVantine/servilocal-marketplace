@@ -7,6 +7,7 @@ import SupportTicketComposerDialog from '@/components/SupportTicketComposerDialo
 import {
   formatSupportDate,
   getConversationCounterpart,
+  getSupportRequestOptionLabel,
   SUPPORT_CATEGORY_LABELS,
   SUPPORT_STATUS_COLORS,
   SUPPORT_STATUS_LABELS,
@@ -87,7 +88,7 @@ export default function SupportCenter({ audience }) {
     allRequests.forEach((request) => {
       map.set(request.id, {
         id: request.id,
-        label: request.title || `Pedido ${request.id.slice(-6)}`,
+        label: getSupportRequestOptionLabel(request),
         city: request.city || '',
       });
     });

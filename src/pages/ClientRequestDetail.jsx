@@ -20,10 +20,11 @@ const URGENCY_COLORS = {
   urgent: 'bg-red-100 text-red-700',
 };
 
-export default function ClientRequestDetail() {
+export default function ClientRequestDetail({ viewerMode = 'client' }) {
   const { requestId } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const isAdminView = viewerMode === 'admin';
   const [user, setUser] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
   const [showEdit, setShowEdit] = useState(false);
@@ -35,14 +36,16 @@ export default function ClientRequestDetail() {
       try {
         const me = await api.auth.me();
         setUser(me);
-        const profiles = await api.entities.UserProfile.filter({ userId: me.id });
-        if (profiles.length > 0) setUserProfile(profiles[0]);
+        if (!isAdminView) {
+          const profiles = await api.entities.UserProfile.filter({ userId: me.id });
+          if (profiles.length > 0) setUserProfile(profiles[0]);
+        }
       } catch (error) {
         console.error('Error loading user:', error);
       }
     };
     loadUser();
-  }, []);
+  }, [isAdminView]);
 
   // Fetch request details
   const { data: request, isLoading } = useQuery({
@@ -145,20 +148,26 @@ export default function ClientRequestDetail() {
     });
   };
 
+  const backPath = isAdminView ? '/admin/support' : '/client';
+  const homePath = isAdminView ? '/admin/support' : '/client';
+  const requestAddress = !isAdminView && userProfile?.address
+    ? `${userProfile.address}${userProfile.neighborhood ? `, ${userProfile.neighborhood}` : ''} - ${user?.city || request.city}`
+    : request.address || [request.neighborhood, request.city].filter(Boolean).join(', ') || request.city;
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
       <div className="bg-background border-b border-border">
         <div className="flex items-center justify-between px-4 py-4 max-w-lg mx-auto">
           <button
-            onClick={() => navigate('/client')}
+            onClick={() => navigate(backPath)}
             className="w-8 h-8 flex items-center justify-center text-muted-foreground hover:bg-secondary rounded-lg"
           >
             <ChevronLeft className="w-5 h-5" />
           </button>
           <h1 className="font-heading text-lg font-bold">ServiLocal</h1>
           <button
-            onClick={() => navigate('/client')}
+            onClick={() => navigate(homePath)}
             className="w-8 h-8 flex items-center justify-center text-muted-foreground hover:bg-secondary rounded-lg"
           >
             <Home className="w-5 h-5" />
@@ -219,11 +228,7 @@ export default function ClientRequestDetail() {
 
             <div>
               <p className="text-xs text-muted-foreground mb-1">Endereço</p>
-              <p className="text-sm text-foreground">
-                {userProfile?.address
-                  ? `${userProfile.address}${userProfile.neighborhood ? `, ${userProfile.neighborhood}` : ''} - ${user?.city || request.city}`
-                  : request.address || [request.neighborhood, request.city].filter(Boolean).join(', ') || request.city}
-              </p>
+              <p className="text-sm text-foreground">{requestAddress}</p>
             </div>
 
             <div className="flex items-center gap-2 pt-2">
@@ -318,21 +323,23 @@ export default function ClientRequestDetail() {
                         >
                           <MessageCircle className="w-3.5 h-3.5" /> Conversar
                         </button>
-                        <button
-                          onClick={() => navigate('/client/support', {
-                            state: buildSupportComposerState(
-                              buildRequestSupportDraft({
-                                audience: 'client',
-                                request,
-                                conversation,
-                                counterpartName: interest.providerName || conversation.providerName || '',
-                              })
-                            ),
-                          })}
-                          className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold text-foreground border border-border rounded-lg py-2 hover:bg-secondary/50 transition-colors"
-                        >
-                          <LifeBuoy className="w-3.5 h-3.5" /> Pedir ajuda
-                        </button>
+                        {!isAdminView && (
+                          <button
+                            onClick={() => navigate('/client/support', {
+                              state: buildSupportComposerState(
+                                buildRequestSupportDraft({
+                                  audience: 'client',
+                                  request,
+                                  conversation,
+                                  counterpartName: interest.providerName || conversation.providerName || '',
+                                })
+                              ),
+                            })}
+                            className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold text-foreground border border-border rounded-lg py-2 hover:bg-secondary/50 transition-colors"
+                          >
+                            <LifeBuoy className="w-3.5 h-3.5" /> Pedir ajuda
+                          </button>
+                        )}
                       </div>
                     ) : (
                       <div className="border-t border-border px-4 py-3">
@@ -358,34 +365,36 @@ export default function ClientRequestDetail() {
           </div>
         )}
 
-        <button
-          onClick={() => navigate('/client/support', {
-            state: buildSupportComposerState(
-              buildRequestSupportDraft({
-                audience: 'client',
-                request,
-                conversation: conversations.length === 1 ? conversations[0] : null,
-                counterpartName: conversations.length === 1 ? conversations[0].providerName || '' : '',
-              })
-            ),
-          })}
-          className="mt-6 w-full rounded-xl border border-border bg-card px-4 py-4 text-left transition-colors hover:border-primary/40"
-        >
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
-              <LifeBuoy className="h-5 w-5" />
+        {!isAdminView && (
+          <button
+            onClick={() => navigate('/client/support', {
+              state: buildSupportComposerState(
+                buildRequestSupportDraft({
+                  audience: 'client',
+                  request,
+                  conversation: conversations.length === 1 ? conversations[0] : null,
+                  counterpartName: conversations.length === 1 ? conversations[0].providerName || '' : '',
+                })
+              ),
+            })}
+            className="mt-6 w-full rounded-xl border border-border bg-card px-4 py-4 text-left transition-colors hover:border-primary/40"
+          >
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+                <LifeBuoy className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-foreground">Precisa de ajuda com este pedido?</p>
+                <p className="text-xs text-muted-foreground">
+                  Abra uma solicitacao e envie evidencias para o suporte.
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="text-sm font-semibold text-foreground">Precisa de ajuda com este pedido?</p>
-              <p className="text-xs text-muted-foreground">
-                Abra uma solicitacao e envie evidencias para o suporte.
-              </p>
-            </div>
-          </div>
-        </button>
+          </button>
+        )}
 
         {/* Action buttons */}
-        {request.status !== 'completed' && request.status !== 'cancelled' && (
+        {!isAdminView && request.status !== 'completed' && request.status !== 'cancelled' && (
           <div className="flex gap-3 mt-6">
             <button
               onClick={() => setShowEdit(true)}
@@ -402,17 +411,17 @@ export default function ClientRequestDetail() {
             </button>
           </div>
         )}
-        {(request.status === 'completed' || request.status === 'cancelled') && (
+        {(request.status === 'completed' || request.status === 'cancelled' || isAdminView) && (
           <button
-            onClick={() => navigate('/client/orders')}
+            onClick={() => navigate(isAdminView ? '/admin/support' : '/client/orders')}
             className="w-full mt-6 px-4 py-3 text-muted-foreground border border-border rounded-lg hover:bg-secondary/50 transition-colors font-medium"
           >
-            Voltar aos pedidos
+            {isAdminView ? 'Voltar ao suporte' : 'Voltar aos pedidos'}
           </button>
         )}
       </div>
 
-      {showEdit && (
+      {!isAdminView && showEdit && (
         <NewServiceRequestModal
           request={request}
           onClose={() => setShowEdit(false)}
@@ -420,7 +429,7 @@ export default function ClientRequestDetail() {
         />
       )}
 
-      {showCancelModal && (
+      {!isAdminView && showCancelModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
           <div className="absolute inset-0 bg-black/50" onClick={() => setShowCancelModal(false)} />
           <div className="relative bg-background rounded-2xl p-6 w-full max-w-sm text-center">
