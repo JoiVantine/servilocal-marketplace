@@ -146,10 +146,14 @@ router.post('/resend-otp', requireAuth, async (req, res) => {
     user.otp = otp;
     user.otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
     await user.save();
-    await sendMail(user.email, 'account_resend_otp', { fullName: user.fullName || '', otp }, {
-      subject: 'Seu novo código ServiLocal',
-      text: `Seu novo código de verificação: ${otp}. Ele expira em 10 minutos.`,
-    });
+    if (user.phone) {
+      await sendWhatsApp(user.phone, `Seu novo código ServiLocal: *${otp}*\n\nEste código expira em 10 minutos.`);
+    } else {
+      await sendMail(user.email, 'account_resend_otp', { fullName: user.fullName || '', otp }, {
+        subject: 'Seu novo código ServiLocal',
+        text: `Seu novo código de verificação: ${otp}. Ele expira em 10 minutos.`,
+      });
+    }
     res.json({ message: 'Código reenviado' });
   } catch (err) {
     res.status(500).json({ error: 'Erro interno' });
