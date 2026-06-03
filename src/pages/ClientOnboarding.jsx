@@ -149,6 +149,12 @@ export default function ClientOnboarding() {
     try {
       const res = await api.auth.verifyOtp({ email: formData.email, otp: otpCode });
       if (res?.token) api.auth.setToken(res.token);
+      if (formData.photo) {
+        try {
+          const photoUrl = await api.uploadFile(formData.photo);
+          if (photoUrl) await api.auth.updateMe({ photo: photoUrl });
+        } catch { /* best effort */ }
+      }
       navigate(`/setup-password?email=${encodeURIComponent(formData.email)}&next=${encodeURIComponent('/client/onboarding?step=1')}`);
     } catch (err) {
       setFieldErrors(p => ({ ...p, otp: err.message }));
