@@ -1,7 +1,7 @@
 ﻿import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/api/apiClient';
-import { Home, List, CalendarDays, Pencil, MessageCircle, CheckCircle, Star, Inbox, Zap, MapPin, Clock, Briefcase, Phone } from 'lucide-react';
+import { Home, List, CalendarDays, Pencil, MessageCircle, CheckCircle, Star, Inbox, Zap, MapPin, Clock, Briefcase, Phone, LifeBuoy, ChevronRight } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import ProposalModal from '@/components/ProposalModal';
 import EditProviderModal from '@/components/EditProviderModal';
@@ -137,6 +137,22 @@ export default function ProviderHome() {
             />
           </button>
         </div>
+
+        <Link
+          to="/provider/support"
+          className="flex items-center justify-between rounded-2xl border border-border bg-card px-4 py-4 transition-colors hover:border-primary/40"
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <LifeBuoy className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-foreground">Ajuda e suporte</p>
+              <p className="text-xs text-muted-foreground">Abra um chamado e acompanhe as respostas da equipe.</p>
+            </div>
+          </div>
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+        </Link>
 
         {/* Tabs */}
         <div className="flex gap-2">

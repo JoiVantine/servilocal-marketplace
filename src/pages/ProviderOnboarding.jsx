@@ -56,17 +56,14 @@ export default function ProviderOnboarding() {
     const goStep1 = params.get('step') === '1';
     api.auth.me().then(async (u) => {
       setUser(u);
+      setName(u.fullName || u.full_name || '');
+      setPhone(u.phone || '');
+      setEmail(u.email || '');
       if (goStep1) {
-        setName(u.fullName || u.full_name || '');
-        setPhone(u.phone || '');
-        setEmail(u.email || '');
         setStep(1);
         return;
       }
       if (goServices) {
-        setName(u.fullName || u.full_name || '');
-        setPhone(u.phone || '');
-        setEmail(u.email || '');
         setSelectedCity(u.city || '');
         setCityQuery(u.city || '');
         const provProfiles = await api.entities.ProviderProfile.filter({ userId: u.id });
@@ -200,7 +197,9 @@ export default function ProviderOnboarding() {
   const cityIsValid = !!selectedCity || (cityQuery.trim().length > 2 && /^[a-záéíóúãõâêôç\s'\-0-9]+$/i.test(cityQuery.trim()));
 
   const canNext = [
-    !otpSent
+    user
+      ? true
+      : !otpSent
       ? name.trim() && phone.trim() && email.trim()
       : otpCode.trim().length === 6,
     cityIsValid,

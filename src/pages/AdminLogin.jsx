@@ -19,7 +19,7 @@ export default function AdminLogin() {
     setLoading(true);
     try {
       await api.auth.loginViaEmailPassword(email.trim(), password);
-      window.location.href = '/admin/users';
+      window.location.href = '/admin/support';
     } catch (err) {
       setError(err.message || 'Falha no login. Verifique e-mail e senha.');
       setLoading(false);

@@ -1,10 +1,11 @@
 ﻿import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Send, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Send, CheckCircle, LifeBuoy } from 'lucide-react';
 import { io } from 'socket.io-client';
 import { api, API_URL } from '@/api/apiClient';
 import ReviewModal from '@/components/ReviewModal';
+import { buildConversationSupportDraft, buildSupportComposerState } from '@/lib/support';
 
 export default function ChatPage() {
   const { conversationId } = useParams();
@@ -81,6 +82,7 @@ export default function ChatPage() {
         senderId: user.id,
         senderName: user.fullName || user.full_name,
         senderType,
+        content: cleanText,
         text: cleanText,
         read: false,
       });
@@ -95,7 +97,9 @@ export default function ChatPage() {
         userId: recipientId,
         type: 'new_message',
         title: 'Nova mensagem no chat',
+        body: `${user.fullName || user.full_name} respondeu sua conversa.`,
         description: `${user.fullName || user.full_name} respondeu sua conversa.`,
+        data: { relatedId: conversationId },
         relatedId: conversationId,
         read: false,
       });
@@ -108,6 +112,17 @@ export default function ChatPage() {
   });
 
   const isClient = user?.id === conversation?.clientId;
+  const audience = isClient ? 'client' : 'provider';
+  const supportPath = isClient ? '/client/support' : '/provider/support';
+
+  const handleOpenSupport = () => {
+    if (!conversation) return;
+    navigate(supportPath, {
+      state: buildSupportComposerState(
+        buildConversationSupportDraft({ audience, conversation })
+      ),
+    });
+  };
 
   const handleMarkComplete = async () => {
     if (!confirm('Marcar este serviço como concluído?')) return;
@@ -146,14 +161,22 @@ export default function ChatPage() {
           <h1 className="font-semibold text-foreground text-sm truncate">{otherName || 'Conversa'}</h1>
           <p className="text-xs text-muted-foreground truncate">Chat do pedido</p>
         </div>
-        {isClient && conversation.status === 'active' && (
+        <div className="flex items-center gap-2 shrink-0">
           <button
-            onClick={handleMarkComplete}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-green-600 border border-green-200 rounded-lg hover:bg-green-50 transition-colors shrink-0"
+            onClick={handleOpenSupport}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-foreground border border-border rounded-lg hover:bg-secondary transition-colors"
           >
-            <CheckCircle className="w-3.5 h-3.5" /> Concluído
+            <LifeBuoy className="w-3.5 h-3.5" /> Suporte
           </button>
-        )}
+          {isClient && conversation.status === 'active' && (
+            <button
+              onClick={handleMarkComplete}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-green-600 border border-green-200 rounded-lg hover:bg-green-50 transition-colors"
+            >
+              <CheckCircle className="w-3.5 h-3.5" /> Concluído
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 py-5 space-y-3 max-w-lg mx-auto w-full">
@@ -162,7 +185,7 @@ export default function ChatPage() {
           return (
             <div key={message.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
               <div className={`max-w-[80%] rounded-2xl px-4 py-2 ${mine ? 'bg-primary text-primary-foreground rounded-br-sm' : 'bg-card border border-border text-foreground rounded-bl-sm'}`}>
-                <p className="text-sm whitespace-pre-wrap">{message.text}</p>
+                <p className="text-sm whitespace-pre-wrap">{message.text || message.content}</p>
                 <p className={`text-[10px] mt-1 ${mine ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
                   {new Date(message.created_date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                 </p>

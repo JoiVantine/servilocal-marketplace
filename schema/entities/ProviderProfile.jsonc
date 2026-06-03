@@ -46,6 +46,11 @@
       "type": "boolean",
       "default": true,
       "description": "Is profile active"
+    },
+    "portfolioPhotos": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Portfolio photo URLs (max 5)"
     }
   },
   "required": [

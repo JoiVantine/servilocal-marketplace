@@ -1,8 +1,9 @@
 ﻿import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Home, Map, MessageCircle } from 'lucide-react';
+import { ArrowLeft, Home, LifeBuoy, Map, MessageCircle } from 'lucide-react';
 import { api } from '@/api/apiClient';
+import { buildConversationSupportDraft, buildSupportComposerState } from '@/lib/support';
 
 export default function ProviderConversations() {
   const navigate = useNavigate();
@@ -43,33 +44,50 @@ export default function ProviderConversations() {
         ) : (
           <div className="space-y-3">
             {conversations.map((conversation) => (
-              <Link
-                key={conversation.id}
-                to={`/chat/${conversation.id}`}
-                className="block bg-card border border-border rounded-xl p-4 hover:border-primary/50 transition-colors"
-              >
-                <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold shrink-0">
-                    {conversation.clientName?.[0]?.toUpperCase() || 'C'}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="text-sm font-semibold text-foreground truncate">{conversation.clientName || 'Cliente'}</p>
-                      {(conversation.unreadCount || 0) > 0 && (
-                        <span className="min-w-5 h-5 px-1 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center">
-                          {conversation.unreadCount}
-                        </span>
+              <div key={conversation.id} className="bg-card border border-border rounded-xl overflow-hidden">
+                <Link
+                  to={`/chat/${conversation.id}`}
+                  className="block p-4 hover:border-primary/50 hover:bg-secondary/20 transition-colors"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold shrink-0">
+                      {conversation.clientName?.[0]?.toUpperCase() || 'C'}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-sm font-semibold text-foreground truncate">{conversation.clientName || 'Cliente'}</p>
+                        {(conversation.unreadCount || 0) > 0 && (
+                          <span className="min-w-5 h-5 px-1 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center">
+                            {conversation.unreadCount}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground truncate mt-1">{conversation.lastMessage || 'Sem mensagens'}</p>
+                      {conversation.lastMessageTime && (
+                        <p className="text-[10px] text-muted-foreground mt-1">
+                          {new Date(conversation.lastMessageTime).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                        </p>
                       )}
                     </div>
-                    <p className="text-xs text-muted-foreground truncate mt-1">{conversation.lastMessage || 'Sem mensagens'}</p>
-                    {conversation.lastMessageTime && (
-                      <p className="text-[10px] text-muted-foreground mt-1">
-                        {new Date(conversation.lastMessageTime).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                      </p>
-                    )}
                   </div>
+                </Link>
+
+                <div className="border-t border-border px-4 py-2">
+                  <button
+                    onClick={() => navigate('/provider/support', {
+                      state: buildSupportComposerState(
+                        buildConversationSupportDraft({
+                          audience: 'provider',
+                          conversation,
+                        })
+                      ),
+                    })}
+                    className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold text-foreground border border-border rounded-lg py-2 hover:bg-secondary/50 transition-colors"
+                  >
+                    <LifeBuoy className="w-3.5 h-3.5" /> Pedir suporte
+                  </button>
                 </div>
-              </Link>
+              </div>
             ))}
           </div>
         )}

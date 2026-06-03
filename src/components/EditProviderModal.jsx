@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { api } from '@/api/apiClient';
-import { X, Camera } from 'lucide-react';
+import { X, Camera, ImagePlus, Trash2 } from 'lucide-react';
 
 export default function EditProviderModal({ user, onClose, onSaved }) {
   const galleryRef = useRef(null);
@@ -15,6 +15,10 @@ export default function EditProviderModal({ user, onClose, onSaved }) {
   const [profile, setProfile] = useState(null);
   const [neighborhood, setNeighborhood] = useState('');
   const [state, setState] = useState('');
+  const [description, setDescription] = useState('');
+  const [providerProfile, setProviderProfile] = useState(null);
+  const [portfolioPhotos, setPortfolioPhotos] = useState([]);
+  const portfolioInputRef = useRef(null);
 
   useEffect(() => {
     api.entities.UserProfile.filter({ userId: user.id }).then((profiles) => {
@@ -23,6 +27,14 @@ export default function EditProviderModal({ user, onClose, onSaved }) {
         setProfile(p);
         setNeighborhood(p.neighborhood || '');
         setState(p.state || '');
+      }
+    });
+    api.entities.ProviderProfile.filter({ userId: user.id }).then((profiles) => {
+      const p = profiles[0];
+      if (p) {
+        setProviderProfile(p);
+        setDescription(p.description || '');
+        if (p.portfolioPhotos?.length) setPortfolioPhotos(p.portfolioPhotos);
       }
     });
   }, []);
@@ -67,6 +79,12 @@ export default function EditProviderModal({ user, onClose, onSaved }) {
         await api.entities.UserProfile.create(profileData);
       }
 
+      const providerUpdate = { portfolioPhotos, description };
+      if (photoUrl) providerUpdate.profilePhoto = photoUrl;
+      if (providerProfile) {
+        await api.entities.ProviderProfile.update(providerProfile.id, providerUpdate);
+      }
+
       return { photo: photoUrl, name, city };
     },
     onSuccess: (updates) => {
@@ -80,6 +98,22 @@ export default function EditProviderModal({ user, onClose, onSaved }) {
     if (!file) return;
     setPhotoFile(file);
     setPhotoPreview(URL.createObjectURL(file));
+  };
+
+  const handlePortfolioAdd = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file || portfolioPhotos.length >= 5) return;
+    e.target.value = '';
+    try {
+      const url = await api.uploadFile(file);
+      setPortfolioPhotos(prev => [...prev, url]);
+    } catch {
+      // silently ignore — upload error doesn't block other saves
+    }
+  };
+
+  const handlePortfolioRemove = (index) => {
+    setPortfolioPhotos(prev => prev.filter((_, i) => i !== index));
   };
 
   return (
@@ -183,6 +217,51 @@ export default function EditProviderModal({ user, onClose, onSaved }) {
               maxLength={2}
               className="w-full px-4 py-2.5 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm bg-card uppercase"
             />
+          </div>
+
+          {/* Bio */}
+          <div>
+            <label className="block text-sm font-semibold text-foreground mb-1.5">
+              Sobre você <span className="text-muted-foreground font-normal text-xs">({description.length}/300)</span>
+            </label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value.slice(0, 300))}
+              placeholder="Conte um pouco sobre sua experiência, diferenciais e o que você faz de melhor..."
+              rows={3}
+              className="w-full px-4 py-2.5 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm bg-card resize-none"
+            />
+          </div>
+
+          {/* Portfolio */}
+          <div>
+            <label className="block text-sm font-semibold text-foreground mb-1.5">
+              Portfólio <span className="text-muted-foreground font-normal">({portfolioPhotos.length}/5)</span>
+            </label>
+            <p className="text-xs text-muted-foreground mb-2">Mostre exemplos do seu trabalho. Isso aumenta a chance de ser escolhido.</p>
+            <div className="grid grid-cols-3 gap-2">
+              {portfolioPhotos.map((url, i) => (
+                <div key={i} className="relative aspect-square rounded-lg overflow-hidden bg-secondary">
+                  <img src={url} alt={`portfolio ${i + 1}`} className="w-full h-full object-cover" />
+                  <button
+                    onClick={() => handlePortfolioRemove(i)}
+                    className="absolute top-1 right-1 w-5 h-5 bg-black/60 rounded-full flex items-center justify-center"
+                  >
+                    <Trash2 className="w-3 h-3 text-white" />
+                  </button>
+                </div>
+              ))}
+              {portfolioPhotos.length < 5 && (
+                <button
+                  onClick={() => portfolioInputRef.current?.click()}
+                  className="aspect-square rounded-lg border-2 border-dashed border-border flex flex-col items-center justify-center gap-1 hover:bg-secondary/50 transition-colors"
+                >
+                  <ImagePlus className="w-5 h-5 text-muted-foreground" />
+                  <span className="text-xs text-muted-foreground">Adicionar</span>
+                </button>
+              )}
+            </div>
+            <input ref={portfolioInputRef} type="file" accept="image/*" onChange={handlePortfolioAdd} className="hidden" />
           </div>
 
           {saveMutation.isError && (

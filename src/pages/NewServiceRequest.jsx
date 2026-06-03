@@ -183,13 +183,13 @@ export default function NewServiceRequest() {
           <div className="relative">
             <textarea
               value={description}
-              onChange={(e) => setDescription(e.target.value.slice(0, 70))}
+              onChange={(e) => setDescription(e.target.value.slice(0, 500))}
               placeholder="Conte mais detalhes sobre o serviço que você precisa..."
-              rows={4}
+              rows={5}
               className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm resize-none bg-card"
             />
-            <span className="absolute bottom-3 right-3 text-xs text-muted-foreground">
-              {description.length}/70
+            <span className={`absolute bottom-3 right-3 text-xs ${description.length >= 450 ? 'text-orange-500' : 'text-muted-foreground'}`}>
+              {description.length}/500
             </span>
           </div>
         </div>

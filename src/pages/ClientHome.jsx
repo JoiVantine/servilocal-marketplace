@@ -1,7 +1,7 @@
 ﻿import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/api/apiClient';
-import { Home, Search, ChevronRight, MapPin, ArrowLeft, ClipboardList } from 'lucide-react';
+import { Home, Search, ChevronRight, MapPin, ArrowLeft, ClipboardList, LifeBuoy } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import ServiceCategoryGrid from '../components/ServiceCategoryGrid';
 import EditProfileModal from '../components/EditProfileModal';
@@ -185,6 +185,22 @@ export default function ClientHome() {
                   </div>
                 ))}
               </div>
+
+              <Link
+                to="/client/support"
+                className="mb-6 flex items-center justify-between rounded-xl border border-border bg-card p-4 transition-colors hover:border-primary/40"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/10 text-primary">
+                    <LifeBuoy className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">Ajuda e suporte</p>
+                    <p className="text-xs text-muted-foreground">Abra uma solicitacao e acompanhe o atendimento.</p>
+                  </div>
+                </div>
+                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              </Link>
 
               {/* Recent Requests */}
               {requests.length > 0 && (

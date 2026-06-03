@@ -2,8 +2,9 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/api/apiClient';
-import { ChevronLeft, Search, Clock, Home, CheckCircle, XCircle } from 'lucide-react';
+import { ChevronLeft, Search, Clock, Home, CheckCircle, XCircle, LifeBuoy, MessageCircle } from 'lucide-react';
 import NewServiceRequestModal from '../components/NewServiceRequestModal';
+import { buildRequestSupportDraft, buildSupportComposerState } from '@/lib/support';
 
 const URGENCY_LABELS = {
   low: 'Baixa',
@@ -64,6 +65,19 @@ export default function ClientRequestDetail() {
     queryFn: () => api.entities.Conversation.filter({ serviceRequestId: requestId }),
     enabled: !!requestId,
     refetchInterval: 10000,
+  });
+
+  const interestIds = interests.map(i => i.id).join(',');
+  const { data: providerProfiles = [] } = useQuery({
+    queryKey: ['provider-profiles-for-request', requestId, interestIds],
+    queryFn: async () => {
+      if (!interests.length) return [];
+      const profiles = await Promise.all(
+        interests.map(i => api.entities.ProviderProfile.filter({ userId: i.providerId }))
+      );
+      return profiles.flat();
+    },
+    enabled: interests.length > 0,
   });
 
   // Cancel request mutation
@@ -234,48 +248,100 @@ export default function ClientRequestDetail() {
             <div className="space-y-3">
               {interests.map((interest) => {
                 const conversation = conversations.find((item) => item.providerId === interest.providerId);
+                const providerProfile = providerProfiles.find(pp => pp.userId === interest.providerId);
+                const portfolio = providerProfile?.portfolioPhotos?.filter(Boolean) ?? [];
+                const photo = providerProfile?.profilePhoto;
+                const bio = providerProfile?.description;
+                const completedServices = providerProfile?.completedServices;
+
                 return (
-                  <button
+                  <div
                     key={interest.id}
-                    onClick={() => conversation && navigate(`/chat/${conversation.id}`)}
-                    className="w-full p-4 bg-card border border-border rounded-lg hover:border-primary/50 transition-colors text-left"
+                    className="bg-card border border-border rounded-lg overflow-hidden"
                   >
-                    <div className="flex items-start justify-between mb-2">
-                      <div>
-                        <p className="font-medium text-foreground">
-                          {interest.providerName}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {interest.city}
-                        </p>
+                    <div className="p-4">
+                      {/* Header: avatar + nome + rating */}
+                      <div className="flex items-start gap-3 mb-2">
+                        <div className="shrink-0">
+                          {photo ? (
+                            <img src={photo} alt={interest.providerName} className="w-11 h-11 rounded-full object-cover" />
+                          ) : (
+                            <div className="w-11 h-11 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-base">
+                              {interest.providerName?.[0]?.toUpperCase() || '?'}
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <p className="font-medium text-foreground text-sm">{interest.providerName}</p>
+                              <p className="text-xs text-muted-foreground">{interest.city}</p>
+                            </div>
+                            <div className="text-right shrink-0">
+                              <div className="flex items-center gap-0.5 justify-end">
+                                {[...Array(5)].map((_, i) => (
+                                  <span key={i} className={`text-xs ${i < Math.floor(interest.rating) ? 'text-yellow-500' : 'text-muted-foreground'}`}>★</span>
+                                ))}
+                              </div>
+                              <p className="text-xs text-muted-foreground">{interest.reviewCount} avaliações</p>
+                              {completedServices > 0 && (
+                                <p className="text-xs text-muted-foreground">{completedServices} serviços</p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <div className="flex items-center gap-1">
-                          {[...Array(5)].map((_, i) => (
-                            <span
-                              key={i}
-                              className={`text-xs ${
-                                i < Math.floor(interest.rating)
-                                  ? 'text-yellow-500'
-                                  : 'text-muted-foreground'
-                              }`}
-                            >
-                              ★
-                            </span>
+
+                      {/* Bio */}
+                      {bio && (
+                        <p className="text-xs text-muted-foreground line-clamp-2 mb-2">{bio}</p>
+                      )}
+
+                      {/* Specialties */}
+                      <p className="text-xs text-muted-foreground">{interest.specialties?.join(', ')}</p>
+
+                      {/* Portfolio */}
+                      {portfolio.length > 0 && (
+                        <div className="flex gap-2 mt-3 overflow-x-auto pb-1">
+                          {portfolio.map((url, i) => (
+                            <img key={i} src={url} alt={`trabalho ${i + 1}`} className="w-16 h-16 rounded-md object-cover shrink-0" />
                           ))}
                         </div>
+                      )}
+                    </div>
+
+                    {conversation ? (
+                      <div className="border-t border-border px-4 py-3 flex flex-wrap gap-2">
+                        <button
+                          onClick={() => navigate(`/chat/${conversation.id}`)}
+                          className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold text-primary border border-primary/30 rounded-lg py-2 hover:bg-primary/5 transition-colors"
+                        >
+                          <MessageCircle className="w-3.5 h-3.5" /> Conversar
+                        </button>
+                        <button
+                          onClick={() => navigate('/client/support', {
+                            state: buildSupportComposerState(
+                              buildRequestSupportDraft({
+                                audience: 'client',
+                                request,
+                                conversation,
+                                counterpartName: interest.providerName || conversation.providerName || '',
+                              })
+                            ),
+                          })}
+                          className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold text-foreground border border-border rounded-lg py-2 hover:bg-secondary/50 transition-colors"
+                        >
+                          <LifeBuoy className="w-3.5 h-3.5" /> Pedir ajuda
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="border-t border-border px-4 py-3">
                         <p className="text-xs text-muted-foreground">
-                          {interest.reviewCount} avaliações
+                          Quando a conversa estiver ativa, voce tambem podera abrir o ticket ja vinculado ao prestador.
                         </p>
                       </div>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      {interest.specialties?.join(', ')}
-                    </p>
-                    {conversation && (
-                      <p className="text-xs font-semibold text-primary mt-3">Conversar</p>
                     )}
-                  </button>
+                  </div>
                 );
               })}
             </div>
@@ -291,6 +357,32 @@ export default function ClientRequestDetail() {
             </p>
           </div>
         )}
+
+        <button
+          onClick={() => navigate('/client/support', {
+            state: buildSupportComposerState(
+              buildRequestSupportDraft({
+                audience: 'client',
+                request,
+                conversation: conversations.length === 1 ? conversations[0] : null,
+                counterpartName: conversations.length === 1 ? conversations[0].providerName || '' : '',
+              })
+            ),
+          })}
+          className="mt-6 w-full rounded-xl border border-border bg-card px-4 py-4 text-left transition-colors hover:border-primary/40"
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <LifeBuoy className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-foreground">Precisa de ajuda com este pedido?</p>
+              <p className="text-xs text-muted-foreground">
+                Abra uma solicitacao e envie evidencias para o suporte.
+              </p>
+            </div>
+          </div>
+        </button>
 
         {/* Action buttons */}
         {request.status !== 'completed' && request.status !== 'cancelled' && (

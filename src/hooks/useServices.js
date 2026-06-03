@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/api/apiClient';
-import { CATEGORIES, ICON_MAP } from '@/lib/categories';
+import { ICON_MAP } from '@/lib/categories';
 import { Wrench } from 'lucide-react';
 
 export function useServices() {
@@ -11,13 +11,11 @@ export function useServices() {
     retry: 1,
   });
 
-  const categories = data.length > 0
-    ? data.map(svc => ({
-        name: svc.name,
-        subcategories: svc.subcategories || [],
-        icon: ICON_MAP[svc.name] || Wrench,
-      }))
-    : CATEGORIES;
+  const categories = data.map(svc => ({
+    name: svc.name,
+    subcategories: svc.subcategories || [],
+    icon: ICON_MAP[svc.name] || Wrench,
+  }));
 
-  return { categories, isLoading: isLoading && data.length === 0 };
+  return { categories, isLoading };
 }

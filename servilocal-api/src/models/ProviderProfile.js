@@ -14,6 +14,7 @@ const providerProfileSchema = new mongoose.Schema({
   rating: { type: Number, default: 0 },
   reviewCount: { type: Number, default: 0 },
   profilePhoto: String,
+  portfolioPhotos: [String],
   hourlyRate: Number,
   available: { type: Boolean, default: true },
   lat: Number,

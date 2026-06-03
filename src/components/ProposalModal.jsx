@@ -1,5 +1,5 @@
 ﻿import { useEffect, useState } from 'react';
-import { X, Send, Loader } from 'lucide-react';
+import { X, Send, Loader2, MapPin, Clock, Zap } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '@/api/apiClient';
 
@@ -54,7 +54,7 @@ export default function ProposalModal({ request, onClose, onSent }) {
       await api.entities.ServiceRequestInterest.create({
         serviceRequestId: request.id,
         providerId: user.id,
-        providerName: user.full_name,
+        providerName: user.fullName || user.full_name,
         specialties: providerProfile?.specialties || [],
         city: providerProfile?.city || user.city || request.city,
         rating: providerProfile?.rating || 0,
@@ -76,7 +76,7 @@ export default function ProposalModal({ request, onClose, onSent }) {
       clientId: request.created_by_id,
       providerId: user.id,
       clientName,
-      providerName: user.full_name,
+      providerName: user.fullName || user.full_name,
       status: 'active',
       lastMessage: text,
       lastMessageTime: new Date().toISOString(),
@@ -86,8 +86,9 @@ export default function ProposalModal({ request, onClose, onSent }) {
     await api.entities.Message.create({
       conversationId: conversation.id,
       senderId: user.id,
-      senderName: user.full_name,
+      senderName: user.fullName || user.full_name,
       senderType: 'provider',
+      content: text,
       text,
       read: false,
     });
@@ -103,7 +104,9 @@ export default function ProposalModal({ request, onClose, onSent }) {
         userId: request.created_by_id,
         type: 'new_interest',
         title: 'Nova proposta recebida',
-        description: `${user.full_name} enviou uma proposta para seu pedido.`,
+        body: `${user.fullName || user.full_name} enviou uma proposta para seu pedido.`,
+        description: `${user.fullName || user.full_name} enviou uma proposta para seu pedido.`,
+        data: { relatedId: conversation.id },
         relatedId: conversation.id,
         read: false,
       });
@@ -114,70 +117,115 @@ export default function ProposalModal({ request, onClose, onSent }) {
     navigate(`/chat/${conversation.id}`);
   };
 
+  const WHEN_LABELS = {
+    today: 'Hoje', tomorrow: 'Amanhã', this_week: 'Esta semana',
+    next_30: 'Próximos 30 dias', scheduled: 'Com hora marcada',
+  };
+
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 flex items-end justify-center">
-      <div className="w-full max-w-lg bg-background rounded-t-3xl shadow-lg max-h-[85vh] overflow-y-auto">
-        <div className="sticky top-0 bg-background border-b border-border flex items-center justify-between px-6 py-4">
-          <h2 className="font-semibold text-foreground text-lg">Faça sua proposta</h2>
-          <button onClick={onClose} className="p-2 hover:bg-secondary rounded-lg transition-colors">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+
+      <div className="relative w-full sm:max-w-lg bg-background rounded-t-2xl sm:rounded-2xl shadow-xl max-h-[92vh] flex flex-col">
+        {/* Drag handle (mobile) */}
+        <div className="flex justify-center pt-3 pb-1 sm:hidden">
+          <div className="w-10 h-1 bg-border rounded-full" />
+        </div>
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
+          <div>
+            <h2 className="font-heading text-base font-bold text-foreground">Faça sua proposta</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">Responder rápido aumenta suas chances</p>
+          </div>
+          <button onClick={onClose} className="p-1.5 hover:bg-secondary rounded-lg transition-colors">
             <X className="w-5 h-5 text-foreground" />
           </button>
         </div>
 
-        <div className="p-6 space-y-5">
+        {/* Body */}
+        <div className="overflow-y-auto flex-1 px-5 py-4 space-y-4">
           {loading ? (
-            <div className="flex justify-center py-8">
-              <Loader className="w-6 h-6 animate-spin text-primary" />
+            <div className="flex justify-center py-10">
+              <Loader2 className="w-6 h-6 animate-spin text-primary" />
             </div>
           ) : (
             <>
-              <div className="bg-secondary/40 border border-border rounded-xl p-4">
-                <p className="text-xs text-muted-foreground mb-1">Pedido do cliente</p>
-                <p className="text-sm font-semibold text-foreground">{request.title}</p>
-                <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{request.description}</p>
+              {/* Service request card */}
+              <div className="bg-secondary/30 border border-border rounded-xl p-4 space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-primary/10 text-primary">
+                    {request.category || 'Serviço'}
+                  </span>
+                  {request.when && (
+                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <Clock className="w-3 h-3" />
+                      {WHEN_LABELS[request.when] || request.when}
+                    </span>
+                  )}
+                  {request.city && (
+                    <span className="flex items-center gap-1 text-xs text-muted-foreground ml-auto">
+                      <MapPin className="w-3 h-3" />
+                      {request.city}
+                    </span>
+                  )}
+                </div>
+                <p className="text-sm font-semibold text-foreground leading-snug">{request.title}</p>
+                {request.description && (
+                  <p className="text-xs text-muted-foreground line-clamp-3 leading-relaxed">{request.description}</p>
+                )}
               </div>
 
+              {/* Price */}
               <div>
-                <label className="block text-sm font-semibold text-foreground mb-2">Valor sugerido</label>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">R$</span>
+                <label className="block text-sm font-semibold text-foreground mb-1.5">
+                  Valor sugerido <span className="text-muted-foreground font-normal text-xs">(opcional)</span>
+                </label>
+                <div className="flex items-center border border-border rounded-xl bg-card overflow-hidden focus-within:ring-2 focus-within:ring-primary/50">
+                  <span className="px-3 py-3 text-sm font-semibold text-muted-foreground bg-secondary/40 border-r border-border select-none">R$</span>
                   <input
                     value={price}
                     onChange={(e) => setPrice(e.target.value)}
                     placeholder="Ex.: 120,00"
-                    className="flex-1 px-4 py-3 border border-border rounded-xl bg-card text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+                    className="flex-1 px-3 py-3 bg-transparent text-sm focus:outline-none"
                   />
                 </div>
+                <p className="text-xs text-muted-foreground mt-1">Você pode combinar o valor exato no chat.</p>
               </div>
 
+              {/* Message */}
               <div>
-                <label className="block text-sm font-semibold text-foreground mb-2">Mensagem</label>
+                <label className="block text-sm font-semibold text-foreground mb-1.5">Mensagem</label>
                 <textarea
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
-                  rows={5}
-                  className="w-full px-4 py-3 border border-border rounded-xl bg-card text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  rows={4}
+                  placeholder="Apresente-se brevemente e mostre por que você é a escolha certa..."
+                  className="w-full px-4 py-3 border border-border rounded-xl bg-card text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/50 leading-relaxed"
                 />
+                <p className="text-xs text-muted-foreground mt-1 text-right">{message.length} caracteres</p>
+              </div>
+
+              {/* Tip */}
+              <div className="flex items-start gap-2 px-3 py-2.5 bg-primary/5 border border-primary/15 rounded-lg">
+                <Zap className="w-3.5 h-3.5 text-primary mt-0.5 shrink-0" />
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Clientes escolhem prestadores com foto de perfil e bio preenchida. <span className="text-primary font-medium">Complete seu perfil</span> para se destacar.
+                </p>
               </div>
             </>
           )}
         </div>
 
-        <div className="sticky bottom-0 bg-background border-t border-border px-6 py-4 space-y-3">
+        {/* Footer */}
+        <div className="px-5 py-4 border-t border-border shrink-0">
           <button
             onClick={handleSend}
             disabled={loading || sending || !message.trim()}
-            className="w-full bg-primary text-primary-foreground py-3 rounded-xl font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="w-full bg-primary text-primary-foreground py-3.5 rounded-xl font-semibold text-sm hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
-            {sending ? <Loader className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+            {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
             {sending ? 'Enviando...' : 'Enviar proposta'}
-          </button>
-          <button
-            onClick={onClose}
-            disabled={sending}
-            className="w-full bg-card border border-border py-3 rounded-xl font-semibold text-foreground hover:bg-secondary/30 transition-colors disabled:opacity-50"
-          >
-            Cancelar
           </button>
         </div>
       </div>

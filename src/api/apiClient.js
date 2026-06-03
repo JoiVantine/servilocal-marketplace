@@ -79,6 +79,30 @@ const auth = {
   },
 };
 
+const support = {
+  list: (query = {}) => {
+    const params = new URLSearchParams(
+      Object.fromEntries(
+        Object.entries(query)
+          .filter(([, value]) => value != null && value !== '')
+          .map(([key, value]) => [key, String(value)])
+      )
+    );
+    const qs = params.toString();
+    return request('GET', `/api/support-tickets${qs ? `?${qs}` : ''}`);
+  },
+
+  get: (id) => request('GET', `/api/support-tickets/${id}`),
+
+  create: (data) => request('POST', '/api/support-tickets', data),
+
+  listEvents: (id) => request('GET', `/api/support-tickets/${id}/events`),
+
+  reply: (id, data) => request('POST', `/api/support-tickets/${id}/replies`, data),
+
+  update: (id, data) => request('PATCH', `/api/support-tickets/${id}`, data),
+};
+
 function createEntity(path) {
   return {
     filter: (query = {}, sort, limit) => {
@@ -110,6 +134,7 @@ function createEntity(path) {
 
 export const api = {
   auth,
+  support,
 
   uploadFile: async (file) => {
     const token = localStorage.getItem('token');
@@ -140,6 +165,10 @@ export const api = {
     ProviderReview: createEntity('/api/provider-reviews'),
     Notification: createEntity('/api/notifications'),
     Service: createEntity('/api/services'),
+  },
+
+  admin: {
+    stats: (city) => request('GET', `/api/admin/stats${city ? `?city=${encodeURIComponent(city)}` : ''}`),
   },
 
   functions: {

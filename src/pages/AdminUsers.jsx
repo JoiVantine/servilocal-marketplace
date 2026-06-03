@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/api/apiClient';
 import { Trash2, Pencil, X, Check, Search, User, MapPin, Phone, Shield, ChevronDown, ChevronUp, RefreshCw } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import AdminSectionNav from '@/components/AdminSectionNav';
 
 const ROLE_LABELS = { client: 'Cliente', provider: 'Prestador', both: 'Ambos' };
 const ROLE_COLORS = { client: 'bg-blue-100 text-blue-700', provider: 'bg-green-100 text-green-700', both: 'bg-purple-100 text-purple-700' };
@@ -87,16 +88,22 @@ export default function AdminUsers() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-4 border-b border-border bg-card">
-        <div className="flex items-center gap-2">
-          <Shield className="w-5 h-5 text-primary" />
-          <span className="font-bold text-foreground">Painel Admin — Usuários</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <button onClick={() => refetch()} className="p-2 rounded-lg border border-border hover:bg-secondary/50">
-            <RefreshCw className="w-4 h-4 text-muted-foreground" />
-          </button>
-          <Link to="/" className="px-3 py-1.5 text-sm border border-border rounded-lg hover:bg-secondary/50">← Início</Link>
+      <div className="border-b border-border bg-card">
+        <div className="mx-auto flex max-w-4xl flex-col gap-4 px-4 py-4">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Shield className="w-5 h-5 text-primary" />
+              <span className="font-bold text-foreground">Painel Admin — Usuarios</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button onClick={() => refetch()} className="p-2 rounded-lg border border-border hover:bg-secondary/50">
+                <RefreshCw className="w-4 h-4 text-muted-foreground" />
+              </button>
+              <Link to="/admin/dashboard" className="px-3 py-1.5 text-sm border border-border rounded-lg hover:bg-secondary/50">Dashboard</Link>
+              <Link to="/" className="px-3 py-1.5 text-sm border border-border rounded-lg hover:bg-secondary/50">← Inicio</Link>
+            </div>
+          </div>
+          <AdminSectionNav />
         </div>
       </div>
 

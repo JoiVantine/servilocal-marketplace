@@ -1,10 +1,11 @@
 ﻿import { useState, useEffect, useRef } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { api } from '@/api/apiClient';
-import { X, Camera } from 'lucide-react';
+import { X, Camera, CheckCircle } from 'lucide-react';
 
 export default function EditProfileModal({ user, onClose, onSaved }) {
   const galleryRef = useRef(null);
+  const [saved, setSaved] = useState(false);
 
   const [name, setName] = useState(user.fullName || user.full_name || '');
   const [phone, setPhone] = useState(user.phone || '');
@@ -71,7 +72,8 @@ export default function EditProfileModal({ user, onClose, onSaved }) {
     },
     onSuccess: (updates) => {
       onSaved?.(updates);
-      onClose();
+      setSaved(true);
+      setTimeout(onClose, 1200);
     },
   });
 
@@ -183,13 +185,23 @@ export default function EditProfileModal({ user, onClose, onSaved }) {
             />
           </div>
 
-          <button
-            onClick={() => saveMutation.mutate()}
-            disabled={!name.trim() || saveMutation.isPending}
-            className="w-full py-3.5 bg-primary text-primary-foreground rounded-xl font-semibold text-sm hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {saveMutation.isPending ? 'Salvando...' : 'Salvar alterações'}
-          </button>
+          {saveMutation.isError && (
+            <p className="text-sm text-red-500">{saveMutation.error?.message || 'Erro ao salvar. Tente novamente.'}</p>
+          )}
+
+          {saved ? (
+            <div className="w-full py-3.5 bg-green-500 text-white rounded-xl font-semibold text-sm flex items-center justify-center gap-2">
+              <CheckCircle className="w-4 h-4" /> Alterações salvas!
+            </div>
+          ) : (
+            <button
+              onClick={() => saveMutation.mutate()}
+              disabled={!name.trim() || saveMutation.isPending}
+              className="w-full py-3.5 bg-primary text-primary-foreground rounded-xl font-semibold text-sm hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {saveMutation.isPending ? 'Salvando...' : 'Salvar alterações'}
+            </button>
+          )}
         </div>
       </div>
     </div>

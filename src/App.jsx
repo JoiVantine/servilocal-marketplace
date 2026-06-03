@@ -21,6 +21,8 @@ import ClientOrders from './pages/ClientOrders';
 import DiagnosticsPage from './pages/DiagnosticsPage';
 import AdminUsers from './pages/AdminUsers';
 import AdminLogin from './pages/AdminLogin';
+import AdminSupportDesk from './pages/AdminSupportDesk';
+import AdminDashboard from './pages/AdminDashboard';
 import AdminRoute from './components/AdminRoute';
 import ProvidersMap from './pages/ProvidersMap';
 import ProviderRequestsMap from './pages/ProviderRequestsMap';
@@ -29,6 +31,8 @@ import ProviderServices from './pages/ProviderServices';
 import ChatPage from './pages/ChatPage';
 import PasswordSetup from './pages/PasswordSetup';
 import Login from './pages/Login';
+import SupportCenter from './pages/SupportCenter';
+import SupportTicketDetail from './pages/SupportTicketDetail';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -61,15 +65,21 @@ const AuthenticatedApp = () => {
       <Route path="/client/request/:requestId" element={<ClientRequestDetail />} />
       <Route path="/client/services" element={<CityServices />} />
       <Route path="/client/orders" element={<ClientOrders />} />
+      <Route path="/client/support" element={<SupportCenter audience="client" />} />
+      <Route path="/client/support/:ticketId" element={<SupportTicketDetail audience="client" />} />
       <Route path="/admin/login" element={<AdminLogin />} />
       <Route element={<AdminRoute />}>
         <Route path="/diagnostics" element={<DiagnosticsPage />} />
+        <Route path="/admin/dashboard" element={<AdminDashboard />} />
+        <Route path="/admin/support" element={<AdminSupportDesk />} />
         <Route path="/admin/users" element={<AdminUsers />} />
       </Route>
       <Route path="/client/map" element={<ProvidersMap />} />
       <Route path="/provider/map" element={<ProviderRequestsMap />} />
       <Route path="/provider/conversations" element={<ProviderConversations />} />
       <Route path="/provider/services" element={<ProviderServices />} />
+      <Route path="/provider/support" element={<SupportCenter audience="provider" />} />
+      <Route path="/provider/support/:ticketId" element={<SupportTicketDetail audience="provider" />} />
       <Route path="/chat/:conversationId" element={<ChatPage />} />
       <Route path="/setup-password" element={<PasswordSetup />} />
       <Route path="/login" element={<Login />} />
