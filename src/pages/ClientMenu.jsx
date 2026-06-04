@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '@/api/apiClient';
-import { User, MapPin, CreditCard, Bell, Headphones, Info, LogOut, ChevronRight, AlertCircle } from 'lucide-react';
+import { User, MapPin, CreditCard, Bell, Headphones, Info, LogOut, ChevronRight, AlertCircle, ArrowLeft } from 'lucide-react';
 import ClientBottomNav from '@/components/ClientBottomNav';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 
@@ -32,6 +32,22 @@ export default function ClientMenu() {
 
   return (
     <div className="min-h-screen bg-secondary/30 flex flex-col pb-20">
+      {/* Top header */}
+      <div className="bg-card border-b border-border sticky top-0 z-10">
+        <div className="max-w-md mx-auto w-full px-4 h-14 flex items-center justify-between">
+          <button onClick={() => navigate(-1)} className="p-2 -ml-2 rounded-xl hover:bg-secondary/50 transition-colors">
+            <ArrowLeft className="w-5 h-5 text-foreground" />
+          </button>
+          <span className="font-semibold text-foreground text-base">Menu</span>
+          <button
+            onClick={() => setConfirmLogout(true)}
+            className="p-2 -mr-2 rounded-xl hover:bg-secondary/50 transition-colors"
+          >
+            <LogOut className="w-5 h-5 text-red-500" />
+          </button>
+        </div>
+      </div>
+
       <div className="flex-1 flex flex-col max-w-md mx-auto w-full px-4 py-5 space-y-4">
         {/* Profile header */}
         <div className="bg-card border border-border rounded-2xl p-4 flex items-center gap-4">
@@ -45,12 +61,6 @@ export default function ClientMenu() {
           <div className="flex-1 min-w-0">
             <p className="font-bold text-foreground truncate">{fullName || '—'}</p>
             {city && <p className="text-xs text-muted-foreground mt-0.5">{city}</p>}
-            <button
-              onClick={() => navigate('/client/profile')}
-              className="mt-1 text-xs text-primary font-semibold hover:opacity-80"
-            >
-              Editar dados
-            </button>
           </div>
         </div>
 

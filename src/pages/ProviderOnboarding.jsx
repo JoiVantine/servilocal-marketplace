@@ -55,7 +55,6 @@ const normalize = (s) =>
 export default function ProviderOnboarding() {
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
-  const [saved, setSaved] = useState(false);
   const [user, setUser] = useState(null);
   const { categories } = useServices();
 
@@ -350,40 +349,8 @@ export default function ProviderOnboarding() {
         }
       }
     },
-    onSuccess: () => setSaved(true),
+    onSuccess: () => navigate('/provider'),
   });
-
-  // ── Tela de sucesso ────────────────────────────────────────────
-  if (saved) {
-    return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6">
-        <div className="max-w-sm w-full text-center space-y-6">
-          <div className="relative flex items-center justify-center">
-            <div className="absolute inset-0 flex items-center justify-center">
-              {['top-0 left-8', 'top-2 right-6', 'bottom-4 left-4', 'bottom-2 right-8', 'top-8 left-0', 'top-6 right-0'].map((pos, i) => (
-                <span key={i} className={`absolute w-2 h-2 rounded-full ${['bg-yellow-400','bg-blue-400','bg-green-400','bg-pink-400','bg-purple-400','bg-orange-400'][i % 6]} ${pos}`} />
-              ))}
-            </div>
-            <div className="w-24 h-24 rounded-full bg-primary flex items-center justify-center z-10 shadow-lg">
-              <CheckCircle2 className="w-12 h-12 text-white" />
-            </div>
-          </div>
-          <div>
-            <h2 className="font-heading text-2xl font-bold text-foreground">Cadastro concluído!</h2>
-            <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
-              Sua conta está em análise.<br />Em breve você poderá receber pedidos.
-            </p>
-          </div>
-          <button
-            onClick={() => navigate('/provider')}
-            className="w-full py-4 bg-primary text-primary-foreground rounded-xl font-semibold text-base hover:opacity-90 transition-opacity"
-          >
-            Ir para o app
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-background flex flex-col">

@@ -1,7 +1,7 @@
-import { useState, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '@/api/apiClient';
-import { ChevronLeft, Camera, Loader2, CheckCircle } from 'lucide-react';
+import { ChevronLeft, Loader2, CheckCircle, MapPin, Plus, X, Search } from 'lucide-react';
 import ProviderBottomNav from '@/components/ProviderBottomNav';
 import { useCurrentUser, useRefreshUser } from '@/hooks/useCurrentUser';
 
@@ -13,6 +13,9 @@ const formatPhone = (val) => {
   return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
 };
 
+const normalize = (s) =>
+  s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+
 export default function ProviderProfile() {
   const navigate = useNavigate();
   const fileRef = useRef(null);
@@ -21,8 +24,16 @@ export default function ProviderProfile() {
 
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
-  const [city, setCity] = useState('');
   const [initialized, setInitialized] = useState(false);
+
+  const [serviceAreas, setServiceAreas] = useState([]);
+  const [currentCity, setCurrentCity] = useState('');
+  const [currentAreaType, setCurrentAreaType] = useState('entire_city');
+  const [currentNeighborhoods, setCurrentNeighborhoods] = useState([]);
+  const [neighborhoodInput, setNeighborhoodInput] = useState('');
+  const [citySuggestions, setCitySuggestions] = useState([]);
+  const [showCitySuggestions, setShowCitySuggestions] = useState(false);
+  const ibgeCities = useRef([]);
 
   const [photoLoading, setPhotoLoading] = useState(false);
   const [photoError, setPhotoError] = useState(false);
@@ -30,12 +41,64 @@ export default function ProviderProfile() {
   const [saveError, setSaveError] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
+  useEffect(() => {
+    fetch('https://servicodados.ibge.gov.br/api/v1/localidades/municipios?orderBy=nome')
+      .then(r => r.json())
+      .then(data => {
+        ibgeCities.current = data.map(m => ({
+          nome: m.nome,
+          uf: m.microrregiao.mesorregiao.UF.sigla,
+        }));
+      })
+      .catch(() => {});
+  }, []);
+
   if (user && !initialized) {
     setName(user.fullName || user.full_name || '');
     setPhone(user.phone || '');
-    setCity(user.city || '');
     setInitialized(true);
+    api.entities.ProviderProfile.filter({ userId: user.id })
+      .then(pp => {
+        if (pp.length > 0 && pp[0].serviceAreas?.length) {
+          setServiceAreas(pp[0].serviceAreas);
+        }
+      })
+      .catch(() => {});
   }
+
+  const searchCities = (query) => {
+    setCurrentCity(query);
+    if (query.length < 3) { setCitySuggestions([]); setShowCitySuggestions(false); return; }
+    const q = normalize(query);
+    const results = ibgeCities.current
+      .filter(m => normalize(m.nome).includes(q))
+      .slice(0, 8);
+    setCitySuggestions(results);
+    setShowCitySuggestions(results.length > 0);
+  };
+
+  const selectCity = (city) => {
+    setCurrentCity(city.nome);
+    setCitySuggestions([]);
+    setShowCitySuggestions(false);
+  };
+
+  const step2CityValid =
+    currentCity.trim().length > 0 &&
+    (currentAreaType === 'entire_city' || currentNeighborhoods.length > 0);
+
+  const addCurrentCity = () => {
+    if (!step2CityValid) return;
+    setServiceAreas(prev => [...prev, {
+      city: currentCity.trim(),
+      type: currentAreaType,
+      neighborhoods: [...currentNeighborhoods],
+    }]);
+    setCurrentCity('');
+    setCurrentAreaType('entire_city');
+    setCurrentNeighborhoods([]);
+    setNeighborhoodInput('');
+  };
 
   const handlePhotoChange = async (e) => {
     const file = e.target.files[0];
@@ -58,12 +121,13 @@ export default function ProviderProfile() {
     setSaving(true);
     setSaveError(false);
     try {
-      await api.auth.updateMe({ full_name: name, name, phone, city });
+      const firstCity = serviceAreas[0]?.city || '';
+      await api.auth.updateMe({ full_name: name, name, phone, city: firstCity });
 
       const me = await api.auth.me();
       const provProfiles = await api.entities.ProviderProfile.filter({ userId: me.id });
       if (provProfiles.length > 0) {
-        await api.entities.ProviderProfile.update(provProfiles[0].id, { name, phone, city });
+        await api.entities.ProviderProfile.update(provProfiles[0].id, { name, phone, city: firstCity, serviceAreas });
       }
 
       refreshUser();
@@ -128,7 +192,7 @@ export default function ProviderProfile() {
           <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
         </div>
 
-        {/* Campos */}
+        {/* Campos básicos */}
         <div className="space-y-4">
           <div>
             <label className="block text-xs font-medium text-muted-foreground mb-1.5">Nome</label>
@@ -160,21 +224,160 @@ export default function ProviderProfile() {
               className="w-full px-4 py-3 border border-border rounded-xl bg-card text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
             />
           </div>
+        </div>
 
-          <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1.5">Cidade</label>
-            <input
-              type="text"
-              value={city}
-              onChange={e => setCity(e.target.value)}
-              placeholder="Ex.: São Paulo"
-              className="w-full px-4 py-3 border border-border rounded-xl bg-card text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
-            />
+        {/* Cidades atendidas */}
+        <div className="space-y-3">
+          <label className="block text-xs font-medium text-muted-foreground">Cidades atendidas</label>
+
+          {serviceAreas.length > 0 && (
+            <div className="space-y-2">
+              {serviceAreas.map((area, idx) => (
+                <div key={idx} className="p-3 bg-card border border-border rounded-xl">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+                        <MapPin className="w-3.5 h-3.5 text-primary shrink-0" />
+                        {area.city}
+                      </p>
+                      {area.type === 'entire_city' ? (
+                        <p className="text-xs text-muted-foreground mt-0.5 ml-5">Cidade inteira</p>
+                      ) : area.neighborhoods?.length > 0 ? (
+                        <p className="text-xs text-muted-foreground mt-1 ml-5">
+                          {area.neighborhoods.join(' · ')}
+                        </p>
+                      ) : null}
+                    </div>
+                    <button
+                      onClick={() => setServiceAreas(prev => prev.filter((_, i) => i !== idx))}
+                      className="p-1 hover:bg-secondary rounded-lg shrink-0"
+                    >
+                      <X className="w-4 h-4 text-muted-foreground" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Adicionar cidade */}
+          <div className="space-y-3 p-4 bg-card border border-border rounded-2xl">
+            <p className="text-xs font-semibold text-muted-foreground">
+              {serviceAreas.length === 0 ? 'Adicione uma cidade' : 'Adicionar outra cidade'}
+            </p>
+
+            <div className="relative">
+              <input
+                type="text"
+                value={currentCity}
+                onChange={e => searchCities(e.target.value)}
+                onFocus={() => currentCity.length >= 3 && setShowCitySuggestions(citySuggestions.length > 0)}
+                onBlur={() => setTimeout(() => setShowCitySuggestions(false), 150)}
+                placeholder="Digite ao menos 3 letras"
+                className="w-full pl-4 pr-10 py-3 border border-border rounded-xl text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/50"
+              />
+              <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+              {showCitySuggestions && citySuggestions.length > 0 && (
+                <div className="absolute z-20 w-full mt-1 bg-card border border-border rounded-xl shadow-lg overflow-hidden">
+                  {citySuggestions.map((city, i) => (
+                    <button
+                      key={i}
+                      onMouseDown={() => selectCity(city)}
+                      className="w-full flex items-center gap-2 px-4 py-3 text-sm hover:bg-secondary/50 transition-colors text-left border-b border-border last:border-b-0"
+                    >
+                      <MapPin className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                      <span className="flex-1 text-foreground">{city.nome}</span>
+                      <span className="text-xs text-muted-foreground">{city.uf}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {currentCity.trim() && (
+              <>
+                <div className="space-y-2">
+                  {[
+                    { value: 'entire_city', label: 'Atendo a cidade inteira' },
+                    { value: 'neighborhoods', label: 'Atendo somente alguns bairros' },
+                  ].map(opt => (
+                    <button
+                      key={opt.value}
+                      onClick={() => setCurrentAreaType(opt.value)}
+                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border text-sm font-medium text-left transition-colors ${
+                        currentAreaType === opt.value
+                          ? 'bg-primary/10 border-primary text-primary'
+                          : 'bg-background border-border text-foreground hover:bg-secondary/50'
+                      }`}
+                    >
+                      <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                        currentAreaType === opt.value ? 'border-primary' : 'border-border'
+                      }`}>
+                        {currentAreaType === opt.value && <div className="w-2 h-2 rounded-full bg-primary" />}
+                      </div>
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+
+                {currentAreaType === 'neighborhoods' && (
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={neighborhoodInput}
+                        onChange={e => setNeighborhoodInput(e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter' && neighborhoodInput.trim()) {
+                            setCurrentNeighborhoods(prev => [...prev, neighborhoodInput.trim()]);
+                            setNeighborhoodInput('');
+                          }
+                        }}
+                        placeholder="Nome do bairro"
+                        className="flex-1 px-4 py-2.5 border border-border rounded-xl text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/50"
+                      />
+                      <button
+                        onClick={() => {
+                          if (neighborhoodInput.trim()) {
+                            setCurrentNeighborhoods(prev => [...prev, neighborhoodInput.trim()]);
+                            setNeighborhoodInput('');
+                          }
+                        }}
+                        className="px-3 py-2.5 bg-primary text-primary-foreground rounded-xl"
+                      >
+                        <Plus className="w-4 h-4" />
+                      </button>
+                    </div>
+                    {currentNeighborhoods.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {currentNeighborhoods.map((n, i) => (
+                          <div key={i} className="flex items-center gap-1.5 px-3 py-1 bg-primary/10 text-primary rounded-full text-xs font-medium">
+                            {n}
+                            <button onClick={() => setCurrentNeighborhoods(prev => prev.filter((_, j) => j !== i))}>
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {step2CityValid && (
+                  <button
+                    onClick={addCurrentCity}
+                    className="w-full py-2.5 border border-primary text-primary rounded-xl text-sm font-semibold hover:bg-primary/5 flex items-center justify-center gap-2 transition-colors"
+                  >
+                    <Plus className="w-4 h-4" /> Adicionar
+                  </button>
+                )}
+              </>
+            )}
           </div>
         </div>
 
         {saveError && (
-          <p className="text-sm text-red-500 text-center -mt-2">Falha ao salvar. Tente novamente.</p>
+          <p className="text-sm text-red-500 text-center">Falha ao salvar. Tente novamente.</p>
         )}
 
         <button
