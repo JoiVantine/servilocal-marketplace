@@ -310,7 +310,7 @@ export default function ClientOnboarding() {
                   type="tel"
                   value={phone}
                   onChange={(e) => { setPhone(formatPhone(e.target.value)); setErrors((p) => ({ ...p, phone: undefined })); }}
-                  placeholder="(11) 98765-4321"
+                  placeholder="(DDD) 90000-0000"
                   className={`w-full px-4 py-3 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 ${errors.phone ? 'border-red-400' : 'border-border'}`}
                 />
                 {errors.phone

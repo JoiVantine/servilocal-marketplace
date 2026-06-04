@@ -11,10 +11,23 @@ const LOGO_URL = '/logo.png';
 
 const STEPS = [
   { id: 1, label: 'Dados' },
-  { id: 2, label: 'Atendimento' },
-  { id: 3, label: 'Serviços' },
-  { id: 4, label: 'Resumo' },
+  { id: 2, label: 'Verificação' },
+  { id: 3, label: 'Senha' },
+  { id: 4, label: 'Atendimento' },
+  { id: 5, label: 'Serviços' },
+  { id: 6, label: 'Resumo' },
 ];
+
+const SPECIAL_RE = /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?`~]/;
+
+function Rule({ ok, label }) {
+  return (
+    <div className={`flex items-center gap-2 text-xs ${ok ? 'text-green-600' : 'text-muted-foreground'}`}>
+      <CheckCircle2 className={`w-3.5 h-3.5 shrink-0 ${ok ? 'text-green-500' : 'text-border'}`} />
+      {label}
+    </div>
+  );
+}
 
 
 
@@ -24,13 +37,27 @@ export default function ProviderOnboarding() {
   const [user, setUser] = useState(null);
   const { categories } = useServices();
 
-  // Step 1 - Dados
+  // Step 0 - Dados
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
-  const [otpSent, setOtpSent] = useState(false);
   const [otpCode, setOtpCode] = useState('');
   const [otpLoading, setOtpLoading] = useState(false);
+
+  // Step 2 - Senha
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [showPass, setShowPass] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const hasMin8 = password.length >= 8;
+  const hasUpper = /[A-Z]/.test(password);
+  const hasNumber = /[0-9]/.test(password);
+  const hasSpecial = SPECIAL_RE.test(password);
+  const matches = password.length > 0 && password === confirm;
+  const rulesOk = hasMin8 && hasUpper && hasNumber && hasSpecial;
+  const passwordValid = rulesOk && matches;
+  const strengthScore = [hasMin8, hasUpper, hasNumber, hasSpecial].filter(Boolean).length;
+  const strengthColors = ['border-border', 'bg-red-500', 'bg-orange-400', 'bg-yellow-400', 'bg-green-500'];
 
   // Step 2 - Atendimento
   const [cityQuery, setCityQuery] = useState('');
@@ -53,16 +80,11 @@ export default function ProviderOnboarding() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const goServices = params.get('step') === 'services';
-    const goStep1 = params.get('step') === '1';
     api.auth.me().then(async (u) => {
       setUser(u);
       setName(u.fullName || u.full_name || '');
       setPhone(u.phone || '');
       setEmail(u.email || '');
-      if (goStep1) {
-        setStep(1);
-        return;
-      }
       if (goServices) {
         setSelectedCity(u.city || '');
         setCityQuery(u.city || '');
@@ -74,8 +96,11 @@ export default function ProviderOnboarding() {
           configs[svc.serviceName || svc.specialty] = svc;
         }
         setServiceConfigs(configs);
-        setStep(2);
+        setStep(4);
+        return;
       }
+      // Usuário já autenticado (ex: adicionando perfil de prestador) → pula para Atendimento
+      setStep(3);
     }).catch(() => {});
   }, []);
 
@@ -197,11 +222,9 @@ export default function ProviderOnboarding() {
   const cityIsValid = !!selectedCity || (cityQuery.trim().length > 2 && /^[a-záéíóúãõâêôç\s'\-0-9]+$/i.test(cityQuery.trim()));
 
   const canNext = [
-    user
-      ? true
-      : !otpSent
-      ? name.trim() && phone.trim() && email.trim()
-      : otpCode.trim().length === 6,
+    name.trim() && phone.trim() && email.trim(),
+    otpCode.trim().length === 6,
+    passwordValid,
     cityIsValid,
     true,
     true,
@@ -209,51 +232,60 @@ export default function ProviderOnboarding() {
 
   const handleNext = async () => {
     if (step === 0) {
-      // Já autenticado (ex: usuário voltando pra adicionar perfil de prestador)
-      if (user) {
-        setStep(1);
-        return;
-      }
-      if (!otpSent) {
-        if (!validateStep0()) return;
-        setOtpLoading(true);
-        try {
-          const { hasProfile } = await api.auth.checkProfile(email, 'provider');
-          if (hasProfile) {
-            navigate(`/login?role=provider&email=${encodeURIComponent(email)}`);
-            return;
-          }
-          await api.auth.sendOtp({ email, fullName: name, phone, role: 'provider' });
-          setOtpSent(true);
-        } catch (err) {
-          const msg = (err.message || '').toLowerCase();
-          if (msg.includes('already') || msg.includes('exist') || msg.includes('já') || msg.includes('cadastrado') || msg.includes('registered') || msg.includes('duplicate')) {
-            setFieldErrors({ email: 'Ops! E-mail já cadastrado. Tente fazer login.' });
-          } else {
-            setFieldErrors({ email: err.message });
-          }
-        } finally {
-          setOtpLoading(false);
-        }
-        return;
-      }
-      // Verificar OTP
+      if (!validateStep0()) return;
       setOtpLoading(true);
       try {
-        const res = await api.auth.verifyOtp({ email, otp: otpCode });
-        if (res.token) api.auth.setToken(res.token);
-        navigate(`/setup-password?email=${encodeURIComponent(email)}&next=${encodeURIComponent('/provider/onboarding?step=1')}`);
+        const { hasProfile } = await api.auth.checkProfile(email, 'provider');
+        if (hasProfile) {
+          navigate(`/login?role=provider&email=${encodeURIComponent(email)}`);
+          return;
+        }
+        await api.auth.sendOtp({ email, fullName: name, phone, role: 'provider' });
+        setStep(1);
       } catch (err) {
-        setFieldErrors({ otp: err.message });
+        const msg = (err.message || '').toLowerCase();
+        if (msg.includes('already') || msg.includes('exist') || msg.includes('já') || msg.includes('cadastrado') || msg.includes('registered') || msg.includes('duplicate')) {
+          setFieldErrors({ email: 'Ops! E-mail já cadastrado. Tente fazer login.' });
+        } else {
+          setFieldErrors({ email: err.message });
+        }
       } finally {
         setOtpLoading(false);
       }
       return;
     }
-    if (step === 1 && !selectedCity && cityQuery.trim()) {
+    if (step === 1) {
+      setOtpLoading(true);
+      try {
+        const res = await api.auth.verifyOtp({ email, otp: otpCode });
+        if (res?.token) api.auth.setToken(res.token);
+        setFieldErrors({});
+        setStep(2);
+      } catch (err) {
+        setFieldErrors({ otp: err.message || 'Código inválido ou expirado.' });
+      } finally {
+        setOtpLoading(false);
+      }
+      return;
+    }
+    if (step === 2) {
+      if (!passwordValid) { setFieldErrors({ password: 'Corrija os requisitos da senha antes de continuar.' }); return; }
+      setOtpLoading(true);
+      try {
+        await api.auth.setPassword(password);
+        setFieldErrors({});
+        setStep(3);
+      } catch (err) {
+        setFieldErrors({ password: err.message || 'Erro ao definir senha.' });
+      } finally {
+        setOtpLoading(false);
+      }
+      return;
+    }
+    if (step === 3 && !selectedCity && cityQuery.trim()) {
       setSelectedCity(cityQuery.trim());
     }
-    if (step < 3) setStep(step + 1);
+    if (step < 5) setStep(step + 1);
     else saveMutation.mutate();
   };
 
@@ -340,7 +372,7 @@ export default function ProviderOnboarding() {
                     setPhone(val.length > 0 ? formatted : '');
                     setFieldErrors(p => ({ ...p, phone: undefined }));
                   }}
-                  placeholder="(11) 98765-4321"
+                  placeholder="(DDD) 90000-0000"
                   className={`w-full pl-10 pr-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm bg-card ${fieldErrors.phone ? 'border-red-400' : 'border-border'}`}
                 />
               </div>
@@ -366,46 +398,113 @@ export default function ProviderOnboarding() {
                 : <p className="text-xs text-primary mt-1">Usado para acesso ao app e notificações.</p>}
             </div>
 
-            {otpSent && (
-              <div>
-                <div className="p-3 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2 mb-4">
-                  <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
-                  <p className="text-sm text-green-700 font-medium">Código enviado! Verifique seu WhatsApp.</p>
-                </div>
-                <label className="block text-sm font-medium text-foreground mb-1">Código de verificação <span className="text-red-500">*</span></label>
-                <p className="text-xs text-muted-foreground mb-2">Digite o código de 6 dígitos enviado para <strong>{email}</strong>.</p>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  maxLength={6}
-                  value={otpCode}
-                  onChange={e => { setOtpCode(e.target.value.replace(/\D/g, '')); setFieldErrors(p => ({ ...p, otp: undefined })); }}
-                  placeholder="000000"
-                  className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm bg-card text-center tracking-widest text-lg font-mono ${fieldErrors.otp ? 'border-red-400' : 'border-border'}`}
-                />
-                {fieldErrors.otp && <p className="text-xs text-red-500 mt-1">{fieldErrors.otp}</p>}
-                <button
-                  onClick={async () => {
-                    setOtpLoading(true);
-                    try {
-                      await api.auth.sendOtp({ email, fullName: name, phone, role: 'provider' });
-                    } catch (err) {
-                      setFieldErrors(p => ({ ...p, otp: err.message || 'Falha ao reenviar o código. Tente novamente.' }));
-                    } finally {
-                      setOtpLoading(false);
-                    }
-                  }}
-                  className="text-xs text-primary underline mt-2 block"
-                >
-                  Reenviar código
-                </button>
-              </div>
-            )}
           </div>
         )}
 
-        {/* Step 2: Atendimento */}
+        {/* Step 1: Verificação */}
         {step === 1 && (
+          <div className="space-y-6">
+            <div className="text-center mb-8">
+              <h2 className="font-heading text-2xl font-bold text-foreground">Verifique seu WhatsApp</h2>
+              <p className="text-sm text-muted-foreground mt-1">Digite o código de 6 dígitos enviado para <strong>{phone || email}</strong>.</p>
+            </div>
+
+            <div className="p-3 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
+              <p className="text-sm text-green-700 font-medium">Código enviado! Verifique seu WhatsApp.</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1.5">Código de verificação</label>
+              <input
+                type="text"
+                inputMode="numeric"
+                maxLength={6}
+                value={otpCode}
+                onChange={e => { setOtpCode(e.target.value.replace(/\D/g, '')); setFieldErrors(p => ({ ...p, otp: undefined })); }}
+                placeholder="000000"
+                className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm bg-card text-center tracking-widest text-lg font-mono ${fieldErrors.otp ? 'border-red-400' : 'border-border'}`}
+              />
+              {fieldErrors.otp && <p className="text-xs text-red-500 mt-1">{fieldErrors.otp}</p>}
+            </div>
+
+            <button
+              onClick={async () => {
+                setOtpLoading(true);
+                try { await api.auth.sendOtp({ email, fullName: name, phone, role: 'provider' }); setOtpCode(''); }
+                catch (err) { setFieldErrors(p => ({ ...p, otp: err.message || 'Falha ao reenviar o código.' })); }
+                finally { setOtpLoading(false); }
+              }}
+              className="text-sm text-primary underline block"
+            >
+              Reenviar código
+            </button>
+
+            <button onClick={() => setStep(0)} className="w-full py-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+              Voltar
+            </button>
+          </div>
+        )}
+
+        {/* Step 2: Senha */}
+        {step === 2 && (
+          <div className="space-y-5">
+            <div>
+              <h2 className="text-xl font-bold text-foreground">Crie sua senha</h2>
+              <p className="text-sm text-muted-foreground mt-1">Escolha uma senha segura para sua conta</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1.5">Nova senha</label>
+              <div className="relative">
+                <input
+                  type={showPass ? 'text' : 'password'}
+                  value={password}
+                  onChange={e => { setPassword(e.target.value); setFieldErrors(p => ({ ...p, password: undefined })); }}
+                  placeholder="••••••••"
+                  className="w-full px-4 py-3 pr-11 border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                />
+                <button type="button" onClick={() => setShowPass(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                  {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+              <div className="flex gap-1 mt-2">
+                {[0,1,2,3].map(i => (
+                  <div key={i} className={`h-1 flex-1 rounded-full transition-colors ${i < strengthScore ? strengthColors[strengthScore] : 'bg-border'}`} />
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1.5">Confirmar senha</label>
+              <div className="relative">
+                <input
+                  type={showConfirm ? 'text' : 'password'}
+                  value={confirm}
+                  onChange={e => setConfirm(e.target.value)}
+                  placeholder="••••••••"
+                  className={`w-full px-4 py-3 pr-11 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 ${confirm.length > 0 && !matches ? 'border-red-400' : 'border-border'}`}
+                />
+                <button type="button" onClick={() => setShowConfirm(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                  {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+              {confirm.length > 0 && !matches && <p className="text-xs text-red-500 mt-1">As senhas não coincidem</p>}
+            </div>
+
+            <div className="bg-secondary/50 rounded-xl p-4 space-y-2">
+              <Rule ok={hasMin8} label="Mínimo 8 caracteres" />
+              <Rule ok={hasUpper} label="Pelo menos uma letra maiúscula" />
+              <Rule ok={hasNumber} label="Pelo menos um número" />
+              <Rule ok={hasSpecial} label="Pelo menos um caractere especial" />
+            </div>
+
+            {fieldErrors.password && <p className="text-xs text-red-500 text-center">{fieldErrors.password}</p>}
+          </div>
+        )}
+
+        {/* Step 3: Atendimento */}
+        {step === 3 && (
           <div className="space-y-5">
             <div className="text-center mb-6">
               <h2 className="font-heading text-2xl font-bold text-foreground">Onde você quer atender?</h2>
@@ -471,8 +570,8 @@ export default function ProviderOnboarding() {
           </div>
         )}
 
-        {/* Step 3: Serviços */}
-        {step === 2 && (
+        {/* Step 4: Serviços */}
+        {step === 4 && (
           <div className="space-y-5">
             <div className="text-center mb-4">
               <h2 className="font-heading text-2xl font-bold text-foreground">Marque suas especialidades</h2>
@@ -560,8 +659,8 @@ export default function ProviderOnboarding() {
           </div>
         )}
 
-        {/* Step 4: Resumo */}
-        {step === 3 && (
+        {/* Step 5: Resumo */}
+        {step === 5 && (
           <div className="space-y-6">
             <div className="text-center mb-2">
               <h2 className="font-heading text-2xl font-bold text-foreground">Confirme suas especialidades</h2>
@@ -579,7 +678,7 @@ export default function ProviderOnboarding() {
                   <span className="text-sm">🏷️</span>
                   <span className="text-xs font-bold text-muted-foreground tracking-wider">SERVIÇOS</span>
                 </div>
-                <button onClick={() => setStep(2)} className="flex items-center gap-1 text-xs text-muted-foreground border border-border rounded-lg px-3 py-1.5 hover:bg-secondary/50">
+                <button onClick={() => setStep(4)} className="flex items-center gap-1 text-xs text-muted-foreground border border-border rounded-lg px-3 py-1.5 hover:bg-secondary/50">
                   <Pencil className="w-3 h-3" /> Editar
                 </button>
               </div>
@@ -613,7 +712,7 @@ export default function ProviderOnboarding() {
                   <MapPin className="w-3.5 h-3.5 text-muted-foreground" />
                   <span className="text-xs font-bold text-muted-foreground tracking-wider">ATENDIMENTO</span>
                 </div>
-                <button onClick={() => setStep(1)} className="flex items-center gap-1 text-xs text-muted-foreground border border-border rounded-lg px-3 py-1.5 hover:bg-secondary/50">
+                <button onClick={() => setStep(3)} className="flex items-center gap-1 text-xs text-muted-foreground border border-border rounded-lg px-3 py-1.5 hover:bg-secondary/50">
                   <Pencil className="w-3 h-3" /> Editar
                 </button>
               </div>
@@ -669,10 +768,11 @@ export default function ProviderOnboarding() {
             className="w-full py-4 bg-primary text-primary-foreground rounded-xl font-semibold text-base flex items-center justify-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {saveMutation.isPending || otpLoading ? 'Aguarde...' :
-              step === 3 ? 'Concluir cadastro' :
-              step === 0 && otpSent ? 'Verificar código' :
-              step === 0 && !user ? 'Enviar código' :
-              step === 2 && selectedServices.length === 0 ? 'Continuar sem escolher (receber tudo)' :
+              step === 5 ? 'Concluir cadastro' :
+              step === 0 ? 'Enviar código' :
+              step === 1 ? 'Verificar código' :
+              step === 2 ? 'Criar senha' :
+              step === 4 && selectedServices.length === 0 ? 'Continuar sem escolher (receber tudo)' :
               'Continuar'}
             <ChevronRight className="w-5 h-5" />
           </button>
@@ -681,12 +781,12 @@ export default function ProviderOnboarding() {
               {saveMutation.error?.message || 'Erro ao salvar. Verifique sua conexão e tente novamente.'}
             </p>
           )}
-          {step === 2 && !saveMutation.isError && (
+          {step === 4 && !saveMutation.isError && (
             <p className="text-xs text-muted-foreground text-center mt-2 flex items-center justify-center gap-1">
               <ShieldCheck className="w-3 h-3" /> Sem categorias marcadas você recebe pedidos de todos os tipos.
             </p>
           )}
-          {(step === 1 || step === 3) && (
+          {(step === 3 || step === 5) && (
             <p className="text-xs text-muted-foreground text-center mt-2 flex items-center justify-center gap-1">
               <ShieldCheck className="w-3 h-3" /> Você pode alterar depois, se quiser.
             </p>

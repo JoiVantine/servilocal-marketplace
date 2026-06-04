@@ -27,8 +27,15 @@ export default function ClientMenu() {
   };
 
   return (
-    <div className="min-h-screen bg-secondary/30 pb-20">
-      <div className="max-w-md mx-auto px-4 pt-6 space-y-3">
+    <div className="min-h-screen bg-secondary/30 flex flex-col pb-20">
+      {/* Header */}
+      <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-card">
+        <img src="/logo.png" alt="ServiLocal" className="w-6 h-6 object-contain" />
+        <span className="text-sm font-semibold text-foreground">Servi<span className="text-primary font-bold">Local</span></span>
+      </div>
+
+      <div className="flex-1 flex flex-col justify-center">
+      <div className="max-w-md mx-auto w-full px-4 py-6 space-y-3">
         {/* Main items */}
         <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
           {menuItems.map((item, i) => (
@@ -75,6 +82,9 @@ export default function ClientMenu() {
             <span className="text-sm font-medium text-red-500">Excluir conta</span>
           </button>
         </div>
+      </div>
+
+      </div>
       </div>
 
       <ClientBottomNav active="menu" />

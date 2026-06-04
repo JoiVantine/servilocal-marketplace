@@ -103,7 +103,7 @@ export default function Login() {
                   autoFocus
                   value={identifier}
                   onChange={e => setIdentifier(e.target.value)}
-                  placeholder="voce@exemplo.com ou (11) 98765-4321"
+                  placeholder="voce@exemplo.com ou (DDD) 90000-0000"
                   className="w-full pl-10 pr-4 py-2.5 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm bg-background"
                   required
                 />

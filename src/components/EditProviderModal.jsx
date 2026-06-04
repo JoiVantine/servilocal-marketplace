@@ -179,7 +179,7 @@ export default function EditProviderModal({ user, onClose, onSaved }) {
               type="tel"
               value={phone}
               onChange={(e) => setPhone(formatPhone(e.target.value))}
-              placeholder="(11) 98765-4321"
+              placeholder="(DDD) 90000-0000"
               className="w-full px-4 py-2.5 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm bg-card"
             />
           </div>
