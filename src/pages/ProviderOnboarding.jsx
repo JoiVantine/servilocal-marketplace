@@ -3,10 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '@/api/apiClient';
 import { useMutation } from '@tanstack/react-query';
 import {
-  ChevronRight, ChevronDown, Eye, EyeOff,
-  CheckCircle2, ShieldCheck,
+  ChevronRight, Eye, EyeOff,
+  CheckCircle2,
   Zap, Star, Shield, Wrench,
-  MapPin, Plus, X, MoreHorizontal,
+  MapPin, Plus, X, MoreHorizontal, Search,
 } from 'lucide-react';
 import { useServices } from '@/hooks/useServices';
 
@@ -29,7 +29,6 @@ const MAIN_CAT_NAMES = [
   'Serviços Domésticos',
 ];
 
-const EXPERIENCE_OPTIONS = ['Menos de 1 ano', '1 a 2 anos', '3 a 4 anos', '5 anos ou mais'];
 const SPECIAL_RE = /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?`~]/;
 
 const SOBRE_ITEMS = [
@@ -97,13 +96,15 @@ export default function ProviderOnboarding() {
   const [currentAreaType, setCurrentAreaType] = useState('entire_city');
   const [currentNeighborhoods, setCurrentNeighborhoods] = useState([]);
   const [neighborhoodInput, setNeighborhoodInput] = useState('');
+  const [citySuggestions, setCitySuggestions] = useState([]);
+  const [citySearching, setCitySearching] = useState(false);
+  const [showCitySuggestions, setShowCitySuggestions] = useState(false);
+  const citySearchTimeout = useRef(null);
 
   // ── Step 4: Profissional ───────────────────────────────────────
   const [mainCategory, setMainCategory] = useState('');
   const [selectedServices, setSelectedServices] = useState([]);
   const [servicePricing, setServicePricing] = useState({});
-  const [experience, setExperience] = useState('');
-  const [about, setAbout] = useState('');
   const [showOthersModal, setShowOthersModal] = useState(false);
 
   const [fieldErrors, setFieldErrors] = useState({});
@@ -143,6 +144,37 @@ export default function ProviderOnboarding() {
   };
 
   useEffect(() => () => { if (countdownRef.current) clearInterval(countdownRef.current); }, []);
+
+  const searchCities = (query) => {
+    setCurrentCity(query);
+    setShowCitySuggestions(true);
+    if (citySearchTimeout.current) clearTimeout(citySearchTimeout.current);
+    if (!query.trim() || query.length < 2) { setCitySuggestions([]); return; }
+    citySearchTimeout.current = setTimeout(async () => {
+      setCitySearching(true);
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=br&featureType=city&addressdetails=1&limit=7`,
+          { headers: { 'Accept-Language': 'pt-BR', 'User-Agent': 'ServiLocal/1.0' } }
+        );
+        const data = await res.json();
+        const names = [...new Set(
+          data.map(r => r.address?.city || r.address?.town || r.address?.village || r.name).filter(Boolean)
+        )].slice(0, 6);
+        setCitySuggestions(names);
+      } catch {
+        setCitySuggestions([]);
+      } finally {
+        setCitySearching(false);
+      }
+    }, 400);
+  };
+
+  const selectCity = (name) => {
+    setCurrentCity(name);
+    setCitySuggestions([]);
+    setShowCitySuggestions(false);
+  };
 
   const mainCategoryData = categories.find(c => c.name === mainCategory);
   const subcategories    = mainCategoryData?.subcategories || [];
@@ -298,8 +330,6 @@ export default function ProviderOnboarding() {
         name, phone,
         city: firstCity,
         specialties: selectedServices,
-        description: about,
-        experience,
         mainCategory,
         serviceAreas,
         servicePricing,
@@ -626,13 +656,38 @@ export default function ProviderOnboarding() {
                 {serviceAreas.length === 0 ? 'Cidade que você atende' : 'Adicionar outra cidade'}
               </p>
 
-              <input
-                type="text"
-                value={currentCity}
-                onChange={e => setCurrentCity(e.target.value)}
-                placeholder="Ex.: São Paulo"
-                className="w-full px-4 py-3 border border-border rounded-xl text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/50"
-              />
+              <div className="relative">
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={currentCity}
+                    onChange={e => searchCities(e.target.value)}
+                    onFocus={() => currentCity.length >= 2 && setShowCitySuggestions(true)}
+                    onBlur={() => setTimeout(() => setShowCitySuggestions(false), 150)}
+                    placeholder="Digite o nome da cidade"
+                    className="w-full pl-4 pr-10 py-3 border border-border rounded-xl text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  />
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                    {citySearching
+                      ? <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                      : <Search className="w-4 h-4 text-muted-foreground" />}
+                  </div>
+                </div>
+                {showCitySuggestions && citySuggestions.length > 0 && (
+                  <div className="absolute z-20 w-full mt-1 bg-card border border-border rounded-xl shadow-lg overflow-hidden">
+                    {citySuggestions.map((name, i) => (
+                      <button
+                        key={i}
+                        onMouseDown={() => selectCity(name)}
+                        className="w-full flex items-center gap-2 px-4 py-3 text-sm text-foreground hover:bg-secondary/50 transition-colors text-left border-b border-border last:border-b-0"
+                      >
+                        <MapPin className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                        {name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
 
               {currentCity.trim() && (
                 <>
@@ -835,38 +890,6 @@ export default function ProviderOnboarding() {
               </div>
             )}
 
-            {/* Experiência */}
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-1">Tempo de experiência</label>
-              <div className="relative">
-                <select
-                  value={experience}
-                  onChange={e => setExperience(e.target.value)}
-                  className="w-full px-4 py-3 border border-border rounded-xl text-sm bg-card focus:outline-none focus:ring-2 focus:ring-primary/50 appearance-none"
-                >
-                  <option value="">Selecione</option>
-                  {EXPERIENCE_OPTIONS.map(opt => (
-                    <option key={opt} value={opt}>{opt}</option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-              </div>
-            </div>
-
-            {/* Sobre você */}
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-1">
-                Sobre você{' '}
-                <span className="text-muted-foreground text-xs font-normal">(opcional)</span>
-              </label>
-              <textarea
-                value={about}
-                onChange={e => setAbout(e.target.value)}
-                placeholder="Sou eletricista com 5 anos de experiência em instalações residenciais."
-                rows={3}
-                className="w-full px-4 py-3 border border-border rounded-xl text-sm bg-card focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
-              />
-            </div>
           </div>
         )}
       </div>
@@ -898,15 +921,22 @@ export default function ProviderOnboarding() {
 
       {/* ── Modal: Outras categorias ─────────────────────────────── */}
       {showOthersModal && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-end justify-center p-0">
-          <div className="bg-card rounded-t-2xl w-full max-w-md max-h-[70vh] flex flex-col shadow-xl">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+        <div
+          className="fixed inset-0 bg-black/50 z-50 flex items-end"
+          onClick={() => setShowOthersModal(false)}
+        >
+          <div
+            className="bg-card rounded-t-2xl w-full flex flex-col shadow-xl"
+            style={{ maxHeight: '75dvh' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
               <h3 className="font-semibold text-foreground">Outras categorias</h3>
               <button onClick={() => setShowOthersModal(false)} className="p-1.5 hover:bg-secondary rounded-lg">
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="overflow-y-auto p-4 space-y-2">
+            <div className="overflow-y-auto flex-1 p-4 space-y-2">
               {categories.map(cat => {
                 const Icon = cat.icon;
                 const isActive = mainCategory === cat.name;

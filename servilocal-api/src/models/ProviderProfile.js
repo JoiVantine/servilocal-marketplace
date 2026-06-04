@@ -27,7 +27,11 @@ const providerProfileSchema = new mongoose.Schema({
   experience: String,
   mainCategory: String,
   verificationStatus: { type: String, default: 'pending' },
-  serviceAreas: [{ city: String, type: String, neighborhoods: [String] }],
+  serviceAreas: [{
+    city: String,
+    type: { type: String },
+    neighborhoods: [String],
+  }],
   servicePricing: { type: mongoose.Schema.Types.Mixed, default: {} },
 }, { timestamps: true });
 
