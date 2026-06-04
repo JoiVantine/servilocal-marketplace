@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '@/api/apiClient';
 import {
   Pencil, Star, Inbox, MapPin, Clock,
-  ChevronRight, LifeBuoy, Navigation,
+  ChevronRight, LifeBuoy, Navigation, CalendarDays,
 } from 'lucide-react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import EditProviderModal from '@/components/EditProviderModal';
@@ -48,7 +48,8 @@ function progressColor(ps) {
 export default function ProviderHome() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const initialTab = searchParams.get('tab') === 'active' ? 'active' : 'available';
+  const tabParam = searchParams.get('tab');
+  const initialTab = tabParam === 'active' ? 'active' : tabParam === 'agenda' ? 'agenda' : 'available';
   const [activeTab, setActiveTab] = useState(initialTab);
   const [user, setUser] = useState(null);
   const [providerSpecialties, setProviderSpecialties] = useState([]);
@@ -212,6 +213,7 @@ export default function ProviderHome() {
           {[
             { id: 'available', label: 'Disponíveis', count: visibleRequests.length },
             { id: 'active', label: 'Em andamento', count: activeOrders.length },
+            { id: 'agenda', label: 'Agenda', count: agreedRequests.filter(r => r.status !== 'completed' && r.scheduledAt).length },
             { id: 'history', label: 'Histórico', count: completed },
           ].map(tab => (
             <button
@@ -306,6 +308,72 @@ export default function ProviderHome() {
             )}
           </>
         )}
+
+        {/* ── Agenda ──────────────────────────────────────────────────────── */}
+        {activeTab === 'agenda' && (() => {
+          const scheduled = agreedRequests
+            .filter(r => r.status !== 'completed' && r.scheduledAt)
+            .sort((a, b) => new Date(a.scheduledAt) - new Date(b.scheduledAt));
+          const noDate = agreedRequests.filter(r => r.status !== 'completed' && !r.scheduledAt);
+          const allAgenda = [...scheduled, ...noDate];
+          if (allAgenda.length === 0) return (
+            <div className="flex flex-col items-center py-10 gap-3 text-center">
+              <CalendarDays className="w-12 h-12 text-muted-foreground/40" />
+              <p className="font-semibold text-foreground">Nenhum serviço agendado</p>
+              <p className="text-sm text-muted-foreground">Pedidos confirmados com data aparecerão aqui.</p>
+            </div>
+          );
+          let lastDate = null;
+          return (
+            <div className="space-y-2">
+              {allAgenda.map(req => {
+                const dateLabel = req.scheduledAt
+                  ? new Date(req.scheduledAt).toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })
+                  : 'Sem data definida';
+                const showHeader = dateLabel !== lastDate;
+                lastDate = dateLabel;
+                const timeLabel = req.scheduledAt
+                  ? new Date(req.scheduledAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+                  : null;
+                return (
+                  <div key={req.id}>
+                    {showHeader && (
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider pt-3 pb-1 capitalize">
+                        {dateLabel}
+                      </p>
+                    )}
+                    <button
+                      onClick={() => navigate(`/provider/request/${req.id}/progress`)}
+                      className="w-full bg-card border border-border rounded-2xl p-4 text-left hover:border-primary/40 transition-colors shadow-sm"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <p className="font-semibold text-foreground text-sm">{req.title || req.category}</p>
+                          {(req.address || req.city) && (
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                              <MapPin className="w-3.5 h-3.5 shrink-0" />
+                              <span>{req.address ? `${req.address}, ` : ''}{req.city}</span>
+                            </div>
+                          )}
+                          {req.agreedPrice && (
+                            <p className="text-sm font-bold text-primary mt-1">
+                              R$ {parseFloat(req.agreedPrice).toFixed(2).replace('.', ',')}
+                            </p>
+                          )}
+                        </div>
+                        {timeLabel && (
+                          <span className="shrink-0 text-xs font-bold bg-primary/10 text-primary px-2.5 py-1 rounded-xl">
+                            {timeLabel}
+                          </span>
+                        )}
+                      </div>
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })()}
 
         {/* ── Disponíveis ─────────────────────────────────────────────────── */}
         {activeTab === 'available' && (

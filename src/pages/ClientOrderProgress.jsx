@@ -49,6 +49,13 @@ export default function ClientOrderProgress() {
   });
   const conversation = conversations[0];
 
+  const { data: providerProfiles = [] } = useQuery({
+    queryKey: ['provider-profile-phone', request?.confirmedProviderId],
+    queryFn: () => api.entities.ProviderProfile.filter({ userId: request.confirmedProviderId }),
+    enabled: !!request?.confirmedProviderId,
+  });
+  const providerPhone = providerProfiles[0]?.phone?.replace(/\D/g, '');
+
   const photo = request?.confirmedProviderPhoto;
 
   return (
@@ -102,8 +109,9 @@ export default function ClientOrderProgress() {
                 <MessageCircle className="w-4 h-4" /> Chat
               </button>
               <button
-                onClick={() => conversation && navigate(`/chat/${conversation.id}`)}
-                className="flex-1 flex items-center justify-center gap-2 py-2.5 border border-border rounded-xl text-sm font-medium text-foreground hover:bg-secondary/50 transition-colors"
+                onClick={() => providerPhone && (window.location.href = `tel:+55${providerPhone}`)}
+                disabled={!providerPhone}
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 border border-border rounded-xl text-sm font-medium text-foreground hover:bg-secondary/50 transition-colors disabled:opacity-40"
               >
                 <Phone className="w-4 h-4" /> Ligar
               </button>

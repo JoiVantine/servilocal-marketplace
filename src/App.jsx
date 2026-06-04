@@ -48,6 +48,7 @@ import ClientOrderProgress from './pages/ClientOrderProgress';
 import ClientOrderRating from './pages/ClientOrderRating';
 import ProviderRequestDetail from './pages/ProviderRequestDetail';
 import ProviderOrderProgress from './pages/ProviderOrderProgress';
+import ProviderEarnings from './pages/ProviderEarnings';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -107,6 +108,7 @@ const AuthenticatedApp = () => {
       <Route path="/provider/map" element={<ProviderRequestsMap />} />
       <Route path="/provider/request/:requestId" element={<ProviderRequestDetail />} />
       <Route path="/provider/request/:requestId/progress" element={<ProviderOrderProgress />} />
+      <Route path="/provider/earnings" element={<ProviderEarnings />} />
       <Route path="/provider/conversations" element={<ProviderConversations />} />
       <Route path="/provider/services" element={<ProviderServices />} />
       <Route path="/provider/support" element={<SupportCenter audience="provider" />} />

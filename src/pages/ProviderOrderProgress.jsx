@@ -247,7 +247,7 @@ export default function ProviderOrderProgress() {
               </div>
 
               <button
-                onClick={() => navigate('/provider')}
+                onClick={() => navigate('/provider/earnings')}
                 className="w-full py-4 bg-primary text-primary-foreground rounded-xl font-semibold text-base hover:opacity-90 transition-opacity"
               >
                 Ver meus ganhos

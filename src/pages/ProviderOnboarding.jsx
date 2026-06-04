@@ -296,6 +296,7 @@ export default function ProviderOnboarding() {
       const existingProfiles = await api.entities.ProviderProfile.filter({ userId: me.id });
       const profileData = {
         name,
+        phone,
         city,
         specialties: selectedServices,
         description: about,
