@@ -126,7 +126,11 @@ export default function ClientOrders() {
   return (
     <div className="min-h-screen bg-background pb-20">
       {/* Header */}
-      <div className="px-4 pt-6 pb-4 bg-background border-b border-border">
+      <div className="px-4 pt-4 pb-4 bg-card border-b border-border">
+        <div className="flex items-center gap-2 mb-3">
+          <img src="/logo.png" alt="ServiLocal" className="w-6 h-6 object-contain" />
+          <span className="text-sm font-semibold text-foreground">Servi<span className="text-primary font-bold">Local</span></span>
+        </div>
         <div className="flex items-start justify-between gap-3">
           <div>
             <h1 className="font-heading text-2xl font-bold text-foreground">Meus pedidos</h1>

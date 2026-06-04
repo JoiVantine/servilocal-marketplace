@@ -94,11 +94,17 @@ export default function ClientHome() {
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-card">
           <div className="flex items-center gap-2">
-            <img src={LOGO_URL} alt="ServiLocal" className="w-6 h-6" />
+            <img src={LOGO_URL} alt="ServiLocal" className="w-6 h-6 object-contain" />
             <span className="text-sm font-semibold text-foreground">
               Servi<span className="text-primary font-bold">Local</span>
             </span>
           </div>
+          <button
+            onClick={() => api.auth.logout('/')}
+            className="px-3 py-1.5 text-sm font-medium text-foreground border border-border rounded-lg hover:bg-secondary/50 transition-colors"
+          >
+            Sair
+          </button>
         </div>
 
         {/* Scrollable content */}

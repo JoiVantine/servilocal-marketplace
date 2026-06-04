@@ -154,7 +154,10 @@ export default function ProviderRequestsMap() {
         <button onClick={() => navigate(-1)} className="p-1.5 hover:bg-secondary rounded-lg">
           <ArrowLeft className="w-5 h-5" />
         </button>
-        <h1 className="font-semibold text-foreground text-sm flex-1">Pedidos no mapa</h1>
+        <div className="flex items-center gap-2 flex-1">
+          <img src="/logo.png" alt="ServiLocal" className="w-5 h-5 object-contain" />
+          <h1 className="font-semibold text-foreground text-sm">Pedidos no mapa</h1>
+        </div>
         <button
           onClick={() => setShowFilters(!showFilters)}
           className={`p-1.5 rounded-lg border transition-colors ${showFilters ? 'bg-primary text-primary-foreground border-primary' : 'border-border'}`}

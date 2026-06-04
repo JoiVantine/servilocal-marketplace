@@ -49,9 +49,12 @@ export default function ProviderConversations() {
         <button onClick={() => navigate('/provider')} className="p-2 hover:bg-secondary rounded-lg">
           <ArrowLeft className="w-5 h-5" />
         </button>
-        <div>
-          <h1 className="font-heading text-xl font-bold text-foreground">Conversas</h1>
-          <p className="text-xs text-muted-foreground">Ultimas mensagens dos clientes</p>
+        <div className="flex items-center gap-2 flex-1">
+          <img src="/logo.png" alt="ServiLocal" className="w-6 h-6 object-contain" />
+          <div>
+            <h1 className="font-heading text-xl font-bold text-foreground">Conversas</h1>
+            <p className="text-xs text-muted-foreground">Últimas mensagens dos clientes</p>
+          </div>
         </div>
       </div>
 
