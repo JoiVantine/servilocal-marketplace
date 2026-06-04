@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '@/api/apiClient';
-import { Check, Eye, EyeOff, CheckCircle2, Circle, ShieldCheck } from 'lucide-react';
+import { Check, Eye, EyeOff, CheckCircle2, Circle, ShieldCheck, Mail } from 'lucide-react';
 
 const STEPS = [
   { id: 1, label: 'Dados' },
@@ -22,14 +22,6 @@ function Rule({ ok, label }) {
   );
 }
 
-function formatPhone(val) {
-  const digits = val.replace(/\D/g, '').slice(0, 11);
-  if (digits.length === 0) return '';
-  if (digits.length <= 2) return `(${digits}`;
-  if (digits.length <= 7) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
-  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
-}
-
 export default function ClientOnboarding() {
   const navigate = useNavigate();
 
@@ -40,7 +32,6 @@ export default function ClientOnboarding() {
 
   // Step 0 — Dados
   const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
 
   // Step 1 — Verificação
@@ -137,14 +128,12 @@ export default function ClientOnboarding() {
   const handleStep0 = async () => {
     const errs = {};
     if (!name.trim() || name.trim().length < 3) errs.name = 'Digite seu nome completo (mínimo 3 caracteres)';
-    const digits = phone.replace(/\D/g, '');
-    if (digits.length < 10 || digits.length > 11) errs.phone = 'Digite um celular válido com DDD';
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errs.email = 'Digite um e-mail válido';
     if (Object.keys(errs).length > 0) { setErrors(errs); return; }
     if (editMode) { setErrors({}); setEditMode(false); setStep(4); return; }
     setLoading(true);
     try {
-      await api.auth.sendOtp({ email, fullName: name, phone: phone.replace(/\D/g, ''), role: 'client' });
+      await api.auth.sendOtp({ email, fullName: name, role: 'client' });
       setErrors({});
       setStep(1);
     } catch (err) {
@@ -172,7 +161,7 @@ export default function ClientOnboarding() {
   const handleResendOtp = async () => {
     setLoading(true);
     try {
-      await api.auth.sendOtp({ email, fullName: name, phone: phone.replace(/\D/g, ''), role: 'client' });
+      await api.auth.sendOtp({ email, fullName: name, role: 'client' });
       setOtp('');
       setErrors({});
       setStep(1); // re-triggers countdown useEffect
@@ -304,33 +293,22 @@ export default function ClientOnboarding() {
 
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1.5">
-                  WhatsApp <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => { setPhone(formatPhone(e.target.value)); setErrors((p) => ({ ...p, phone: undefined })); }}
-                  placeholder="(DDD) 90000-0000"
-                  className={`w-full px-4 py-3 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 ${errors.phone ? 'border-red-400' : 'border-border'}`}
-                />
-                {errors.phone
-                  ? <p className="text-xs text-red-500 mt-1">{errors.phone}</p>
-                  : <p className="text-xs text-muted-foreground mt-1">O código de verificação será enviado por aqui</p>
-                }
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1.5">
                   E-mail <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => { setEmail(e.target.value); setErrors((p) => ({ ...p, email: undefined })); }}
-                  placeholder="seu@email.com"
-                  className={`w-full px-4 py-3 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 ${errors.email ? 'border-red-400' : 'border-border'}`}
-                />
-                {errors.email && <p className="text-xs text-red-500 mt-1">{errors.email}</p>}
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => { setEmail(e.target.value); setErrors((p) => ({ ...p, email: undefined })); }}
+                    placeholder="seu@email.com"
+                    className={`w-full pl-10 pr-4 py-3 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 ${errors.email ? 'border-red-400' : 'border-border'}`}
+                  />
+                </div>
+                {errors.email
+                  ? <p className="text-xs text-red-500 mt-1">{errors.email}</p>
+                  : <p className="text-xs text-muted-foreground mt-1">O código de verificação será enviado por aqui</p>
+                }
               </div>
 
               {errors.submit && <p className="text-xs text-red-500 text-center">{errors.submit}</p>}
@@ -340,7 +318,7 @@ export default function ClientOnboarding() {
                 disabled={loading}
                 className="w-full py-3.5 bg-primary text-primary-foreground rounded-xl font-semibold hover:opacity-90 disabled:opacity-50 transition-opacity"
               >
-                {loading ? 'Salvando...' : editMode ? 'Salvar alterações' : 'Enviar código pelo WhatsApp'}
+                {loading ? 'Enviando...' : editMode ? 'Salvar alterações' : 'Enviar código por e-mail'}
               </button>
 
               {editMode && (
@@ -360,7 +338,7 @@ export default function ClientOnboarding() {
               <div>
                 <h2 className="text-xl font-bold text-foreground">Verificar código</h2>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Enviamos um código de 6 dígitos para o WhatsApp <span className="font-medium text-foreground">{phone}</span>
+                  Enviamos um código de 6 dígitos para <span className="font-medium text-foreground">{email}</span>
                 </p>
               </div>
 
@@ -660,10 +638,6 @@ export default function ClientOnboarding() {
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-muted-foreground w-16 shrink-0">Nome</span>
                     <span className="text-sm text-foreground font-medium">{name}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground w-16 shrink-0">WhatsApp</span>
-                    <span className="text-sm text-foreground">{phone}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-muted-foreground w-16 shrink-0">E-mail</span>
