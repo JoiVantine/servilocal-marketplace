@@ -179,39 +179,66 @@ export default function ClientRequestDetail({ viewerMode = 'client' }) {
       <div className="max-w-lg mx-auto px-4 py-6">
         {/* Status state */}
         {(() => {
-          let icon = <Search className="w-12 h-12 text-muted-foreground opacity-40" />;
-          let title = 'Aguardando um prestador';
-          let desc = `Seu pedido está visível para prestadores de ${request.city}. Avisamos aqui assim que alguém aceitar.`;
-
           if (request.status === 'cancelled') {
-            icon = <XCircle className="w-12 h-12 text-red-400 opacity-70" />;
-            title = 'Pedido cancelado';
-            desc = 'Este pedido foi cancelado e não está mais visível para prestadores.';
-          } else if (request.status === 'completed') {
-            icon = <CheckCircle className="w-12 h-12 text-green-500 opacity-80" />;
-            title = 'Pedido concluído';
-            desc = 'Este pedido foi concluído com sucesso.';
-          } else if (interests.length > 0) {
-            icon = <Search className="w-12 h-12 text-primary opacity-60" />;
-            title = `${interests.length} prestador${interests.length !== 1 ? 'es' : ''} interessado${interests.length !== 1 ? 's' : ''}`;
-            desc = 'Veja os perfis abaixo e inicie uma conversa com quem preferir.';
+            return (
+              <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-200 rounded-xl mb-6">
+                <XCircle className="w-5 h-5 text-red-500 shrink-0" />
+                <div>
+                  <p className="text-sm font-semibold text-red-700">Pedido cancelado</p>
+                  <p className="text-xs text-red-500 mt-0.5">Este pedido não está mais visível para prestadores.</p>
+                </div>
+              </div>
+            );
           }
-
+          if (request.status === 'completed') {
+            return (
+              <div className="flex items-center gap-3 p-4 bg-green-50 border border-green-200 rounded-xl mb-6">
+                <CheckCircle className="w-5 h-5 text-green-600 shrink-0" />
+                <div>
+                  <p className="text-sm font-semibold text-green-700">Pedido concluído</p>
+                  <p className="text-xs text-green-600 mt-0.5">Obrigado por usar o ServiLocal!</p>
+                </div>
+              </div>
+            );
+          }
+          if (interests.length > 0) {
+            return (
+              <div className="flex items-center gap-3 p-4 bg-primary/5 border border-primary/20 rounded-xl mb-6">
+                <Search className="w-5 h-5 text-primary shrink-0" />
+                <div>
+                  <p className="text-sm font-semibold text-foreground">
+                    {interests.length} profissional{interests.length !== 1 ? 'is' : ''} interessado{interests.length !== 1 ? 's' : ''}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Veja os perfis abaixo e inicie uma conversa.</p>
+                </div>
+              </div>
+            );
+          }
           return (
-            <div className="text-center mb-8">
-              <div className="flex justify-center mb-4">{icon}</div>
-              <h2 className="font-heading text-2xl font-bold text-foreground mb-2">{title}</h2>
-              <p className="text-muted-foreground text-sm">
-                Enviado {formatRelativeTime(request.created_date)}
-              </p>
-              <p className="text-muted-foreground text-xs mt-3">{desc}</p>
+            <div className="flex items-center gap-3 p-4 bg-secondary/50 border border-border rounded-xl mb-6">
+              <Search className="w-5 h-5 text-muted-foreground shrink-0" />
+              <div>
+                <p className="text-sm font-semibold text-foreground">Estamos verificando seu pedido</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Enviado {formatRelativeTime(request.created_date)}</p>
+              </div>
             </div>
           );
         })()}
 
         {/* Request Summary */}
         <div className="bg-card border border-border rounded-lg p-5 mb-6">
-          <h3 className="font-semibold text-foreground mb-4">Resumo do pedido</h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold text-foreground">Resumo do pedido</h3>
+            {request.status === 'open' && (
+              <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-green-100 text-green-700">Aberto</span>
+            )}
+            {request.status === 'cancelled' && (
+              <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-red-100 text-red-700">Cancelado</span>
+            )}
+            {request.status === 'completed' && (
+              <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-blue-100 text-blue-700">Concluído</span>
+            )}
+          </div>
 
           <div className="space-y-4">
             <div>
@@ -221,25 +248,36 @@ export default function ClientRequestDetail({ viewerMode = 'client' }) {
 
             <div>
               <p className="text-xs text-muted-foreground mb-1">Descrição</p>
-              <p className="text-sm text-foreground line-clamp-3">
-                {request.description}
-              </p>
+              <p className="text-sm text-foreground">{request.description || '—'}</p>
             </div>
+
+            {request.scheduledAt && (
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">Data desejada</p>
+                <p className="text-sm text-foreground">
+                  {new Date(request.scheduledAt).toLocaleString('pt-BR', {
+                    day: '2-digit', month: '2-digit', year: 'numeric',
+                    hour: '2-digit', minute: '2-digit',
+                  })}
+                </p>
+              </div>
+            )}
 
             <div>
               <p className="text-xs text-muted-foreground mb-1">Endereço</p>
               <p className="text-sm text-foreground">{requestAddress}</p>
             </div>
 
-            <div className="flex items-center gap-2 pt-2">
-              <span
-                className={`text-xs px-3 py-1 rounded-full font-medium ${
-                  URGENCY_COLORS[request.urgency]
-                }`}
-              >
-                {URGENCY_LABELS[request.urgency]}
-              </span>
-            </div>
+            {request.photos?.length > 0 && (
+              <div>
+                <p className="text-xs text-muted-foreground mb-2">Fotos</p>
+                <div className="flex gap-2 flex-wrap">
+                  {request.photos.map((url, i) => (
+                    <img key={i} src={url} alt="" className="w-20 h-20 rounded-lg object-cover border border-border" />
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -386,17 +424,17 @@ export default function ClientRequestDetail({ viewerMode = 'client' }) {
 
         {/* Action buttons */}
         {!isAdminView && request.status !== 'completed' && request.status !== 'cancelled' && (
-          <div className="flex gap-3 mt-6">
+          <div className="flex flex-col gap-3 mt-6">
             <button
               onClick={() => setShowEdit(true)}
-              className="flex-1 px-4 py-3 text-muted-foreground border border-border rounded-lg hover:bg-secondary/50 transition-colors font-medium"
+              className="w-full px-4 py-3.5 text-foreground border border-border rounded-xl hover:bg-secondary/50 transition-colors font-medium"
             >
-              Editar
+              Editar pedido
             </button>
             <button
               onClick={() => setShowCancelModal(true)}
               disabled={cancelMutation.isPending}
-              className="flex-1 px-4 py-3 bg-red-100/20 text-red-600 border border-red-200 rounded-lg hover:bg-red-100/30 transition-colors font-medium disabled:opacity-50"
+              className="w-full px-4 py-3.5 text-red-600 border border-red-200 rounded-xl hover:bg-red-50 transition-colors font-medium disabled:opacity-50"
             >
               {cancelMutation.isPending ? 'Cancelando...' : 'Cancelar pedido'}
             </button>

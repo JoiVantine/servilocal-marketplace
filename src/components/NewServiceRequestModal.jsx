@@ -1,31 +1,25 @@
-﻿import { useState } from 'react';
+﻿import { useState, useRef } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { api } from '@/api/apiClient';
 import { useNavigate } from 'react-router-dom';
-import { X, Send, Calendar, CheckCircle } from 'lucide-react';
-
-const WHEN_OPTIONS = [
-  { id: 'today', label: 'Hoje' },
-  { id: 'tomorrow', label: 'Amanhã' },
-  { id: 'this_week', label: 'Esta semana' },
-  { id: 'next_30', label: 'Nos próximos 30 dias' },
-  { id: 'scheduled', label: 'Com hora marcada', icon: Calendar },
-];
+import { X, CheckCircle, Camera, Loader2 } from 'lucide-react';
 
 export default function NewServiceRequestModal({ category, request, onClose, onUpdated }) {
   const navigate = useNavigate();
+  const fileRef = useRef(null);
   const isEdit = !!request;
   const [title, setTitle] = useState(request?.title ?? category?.label ?? '');
   const [description, setDescription] = useState(request?.description ?? '');
-  const [when, setWhen] = useState(request?.when ?? '');
   const [scheduledAt, setScheduledAt] = useState(request?.scheduledAt ?? '');
+  const [photos, setPhotos] = useState(request?.photos ?? []);
+  const [photoLoading, setPhotoLoading] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 
   const hasChanged = isEdit && (
     title !== (request?.title ?? '') ||
     description !== (request?.description ?? '') ||
-    when !== (request?.when ?? '') ||
-    scheduledAt !== (request?.scheduledAt ?? '')
+    scheduledAt !== (request?.scheduledAt ?? '') ||
+    photos.join(',') !== (request?.photos ?? []).join(',')
   );
 
   const createMutation = useMutation({
@@ -43,13 +37,29 @@ export default function NewServiceRequestModal({ category, request, onClose, onU
 
   const mutation = isEdit ? updateMutation : createMutation;
 
+  const handlePhotoAdd = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setPhotoLoading(true);
+    try {
+      const url = await api.uploadFile(file);
+      setPhotos(prev => [...prev, url]);
+    } catch {
+      // upload failed silently
+    } finally {
+      setPhotoLoading(false);
+      e.target.value = '';
+    }
+  };
+
   const handleSubmit = async () => {
     if (isEdit) {
       mutation.mutate({
         title,
         description,
-        when,
-        scheduledAt: when === 'scheduled' && scheduledAt ? scheduledAt : undefined,
+        when: scheduledAt ? 'scheduled' : '',
+        scheduledAt: scheduledAt || undefined,
+        photos,
       });
       return;
     }
@@ -65,8 +75,9 @@ export default function NewServiceRequestModal({ category, request, onClose, onU
       neighborhood: profile?.neighborhood || '',
       address: profile?.address || '',
       clientPhone: user.phone || '',
-      when,
-      scheduledAt: when === 'scheduled' && scheduledAt ? scheduledAt : undefined,
+      when: scheduledAt ? 'scheduled' : '',
+      scheduledAt: scheduledAt || undefined,
+      photos,
       urgency: 'medium',
       status: 'open',
     });
@@ -130,63 +141,58 @@ export default function NewServiceRequestModal({ category, request, onClose, onU
             </div>
           </div>
 
-          {/* Info */}
-          <p className="text-xs text-muted-foreground px-1">
-            📍 O atendimento será no seu endereço cadastrado.
-          </p>
+          {/* Photos */}
+          <div>
+            <label className="block text-sm font-semibold text-foreground mb-2">Fotos (opcional)</label>
+            <div className="flex gap-2 flex-wrap">
+              {photos.map((url, i) => (
+                <div key={i} className="relative">
+                  <img src={url} alt="" className="w-16 h-16 rounded-lg object-cover border border-border" />
+                  <button
+                    onClick={() => setPhotos(prev => prev.filter((_, j) => j !== i))}
+                    className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ))}
+              {photos.length < 5 && (
+                <button
+                  onClick={() => fileRef.current?.click()}
+                  disabled={photoLoading}
+                  className="w-16 h-16 rounded-lg border-2 border-dashed border-border bg-secondary/20 flex items-center justify-center hover:border-primary/50 transition-colors disabled:opacity-50"
+                >
+                  {photoLoading
+                    ? <Loader2 className="w-4 h-4 text-muted-foreground animate-spin" />
+                    : <Camera className="w-4 h-4 text-muted-foreground" />
+                  }
+                </button>
+              )}
+            </div>
+            <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoAdd} />
+          </div>
 
           {/* When */}
           <div>
-            <label className="block text-sm font-semibold text-foreground mb-2">Quando você precisa?</label>
-            <div className="grid grid-cols-2 gap-2">
-              {WHEN_OPTIONS.map((option) => (
-                <button
-                  key={option.id}
-                  onClick={() => {
-                    setWhen(option.id === when ? '' : option.id);
-                    if (option.id !== 'scheduled') setScheduledAt('');
-                  }}
-                  className={`py-2 px-3 rounded-lg border text-sm font-medium transition-colors flex items-center justify-center gap-1.5 ${
-                    when === option.id
-                      ? 'bg-primary text-primary-foreground border-primary'
-                      : 'bg-card border-border text-foreground hover:bg-secondary/30'
-                  } ${option.id === 'scheduled' ? 'col-span-2' : ''}`}
-                >
-                  {option.icon && <option.icon className="w-3.5 h-3.5" />}
-                  {option.label}
-                </button>
-              ))}
-            </div>
-
-            {when === 'scheduled' && (
-              <div className="mt-3">
-                <label className="block text-xs font-medium text-foreground mb-1.5">
-                  Escolha a data e horário
-                </label>
-                <input
-                  type="datetime-local"
-                  value={scheduledAt}
-                  min={minDateTimeStr}
-                  onChange={(e) => setScheduledAt(e.target.value)}
-                  className="w-full px-4 py-2.5 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm bg-card"
-                />
-              </div>
-            )}
+            <label className="block text-sm font-semibold text-foreground mb-2">
+              Quando você precisa? <span className="text-muted-foreground font-normal text-xs">(opcional)</span>
+            </label>
+            <input
+              type="datetime-local"
+              value={scheduledAt}
+              min={minDateTimeStr}
+              onChange={(e) => setScheduledAt(e.target.value)}
+              className="w-full px-4 py-2.5 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm bg-card"
+            />
           </div>
 
           {/* Submit */}
           <button
             onClick={handleSubmit}
-            disabled={
-              !title.trim() ||
-              (when === 'scheduled' && !scheduledAt) ||
-              mutation.isPending ||
-              (isEdit && !hasChanged)
-            }
+            disabled={!title.trim() || mutation.isPending || (isEdit && !hasChanged)}
             className="w-full flex items-center justify-center gap-2 py-3.5 bg-primary text-primary-foreground rounded-xl font-semibold text-sm hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isEdit ? 'Salvar alterações' : 'Publicar solicitação'}
-            <Send className="w-4 h-4" />
+            {isEdit ? 'Salvar alterações' : 'Publicar pedido'}
           </button>
         </div>
       </div>
