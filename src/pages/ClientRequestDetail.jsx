@@ -2,7 +2,7 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/api/apiClient';
-import { ChevronLeft, Search, Clock, Home, CheckCircle, XCircle, LifeBuoy, MessageCircle } from 'lucide-react';
+import { ChevronLeft, Search, Home, CheckCircle, XCircle, LifeBuoy, MessageCircle } from 'lucide-react';
 import NewServiceRequestModal from '../components/NewServiceRequestModal';
 import { buildRequestSupportDraft, buildSupportComposerState } from '@/lib/support';
 
@@ -355,15 +355,6 @@ export default function ClientRequestDetail({ viewerMode = 'client' }) {
           </div>
         )}
 
-        {/* No interests yet */}
-        {interests.length === 0 && (
-          <div className="bg-secondary/50 border border-border rounded-lg p-4 text-center">
-            <Clock className="w-8 h-8 text-muted-foreground mx-auto mb-2 opacity-50" />
-            <p className="text-sm text-muted-foreground">
-              Ainda nenhum profissional se interessou. Fique atento!
-            </p>
-          </div>
-        )}
 
         {!isAdminView && (
           <button

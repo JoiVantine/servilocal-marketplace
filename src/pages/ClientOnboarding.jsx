@@ -34,6 +34,7 @@ export default function ClientOnboarding() {
   const navigate = useNavigate();
 
   const [step, setStep] = useState(0);
+  const [editMode, setEditMode] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
 
@@ -140,6 +141,7 @@ export default function ClientOnboarding() {
     if (digits.length < 10 || digits.length > 11) errs.phone = 'Digite um celular válido com DDD';
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errs.email = 'Digite um e-mail válido';
     if (Object.keys(errs).length > 0) { setErrors(errs); return; }
+    if (editMode) { setErrors({}); setEditMode(false); setStep(4); return; }
     setLoading(true);
     try {
       await api.auth.sendOtp({ email, fullName: name, phone: phone.replace(/\D/g, ''), role: 'client' });
@@ -204,6 +206,7 @@ export default function ClientOnboarding() {
     if (!cidade.trim()) errs.cidade = 'Informe a cidade';
     if (Object.keys(errs).length > 0) { setErrors(errs); return; }
     setErrors({});
+    setEditMode(false);
     setStep(4);
   };
 
@@ -337,8 +340,17 @@ export default function ClientOnboarding() {
                 disabled={loading}
                 className="w-full py-3.5 bg-primary text-primary-foreground rounded-xl font-semibold hover:opacity-90 disabled:opacity-50 transition-opacity"
               >
-                {loading ? 'Enviando...' : 'Enviar código pelo WhatsApp'}
+                {loading ? 'Salvando...' : editMode ? 'Salvar alterações' : 'Enviar código pelo WhatsApp'}
               </button>
+
+              {editMode && (
+                <button
+                  onClick={() => { setEditMode(false); setStep(4); }}
+                  className="w-full py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Cancelar
+                </button>
+              )}
             </div>
           )}
 
@@ -622,10 +634,10 @@ export default function ClientOnboarding() {
               </button>
 
               <button
-                onClick={() => setStep(2)}
+                onClick={() => editMode ? (setEditMode(false), setStep(4)) : setStep(2)}
                 className="w-full py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
-                Voltar
+                {editMode ? 'Cancelar' : 'Voltar'}
               </button>
             </div>
           )}
@@ -642,7 +654,7 @@ export default function ClientOnboarding() {
               <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <p className="text-xs font-semibold text-muted-foreground tracking-widest">DADOS PESSOAIS</p>
-                  <button onClick={() => setStep(0)} className="text-xs text-primary font-medium">Editar</button>
+                  <button onClick={() => { setEditMode(true); setStep(0); }} className="text-xs text-primary font-medium">Editar</button>
                 </div>
                 <div className="space-y-1.5">
                   <div className="flex items-center gap-2">
@@ -664,7 +676,7 @@ export default function ClientOnboarding() {
               <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <p className="text-xs font-semibold text-muted-foreground tracking-widest">ENDEREÇO</p>
-                  <button onClick={() => setStep(3)} className="text-xs text-primary font-medium">Editar</button>
+                  <button onClick={() => { setEditMode(true); setStep(3); }} className="text-xs text-primary font-medium">Editar</button>
                 </div>
                 <div className="space-y-0.5">
                   <p className="text-sm text-foreground font-medium">
