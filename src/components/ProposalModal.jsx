@@ -7,6 +7,7 @@ export default function ProposalModal({ request, onClose, onSent }) {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [price, setPrice] = useState('');
+  const [arrivalTime, setArrivalTime] = useState('');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
@@ -55,10 +56,13 @@ export default function ProposalModal({ request, onClose, onSent }) {
         serviceRequestId: request.id,
         providerId: user.id,
         providerName: user.fullName || user.full_name,
+        providerPhoto: providerProfile?.profilePhoto || null,
         specialties: providerProfile?.specialties || [],
         city: providerProfile?.city || user.city || request.city,
         rating: providerProfile?.rating || 0,
         reviewCount: providerProfile?.reviewCount || 0,
+        price: price || null,
+        arrivalTime: arrivalTime || null,
         status: 'in_conversation',
       });
       await api.entities.ServiceRequest.update(request.id, {
@@ -176,22 +180,35 @@ export default function ProposalModal({ request, onClose, onSent }) {
                 )}
               </div>
 
-              {/* Price */}
-              <div>
-                <label className="block text-sm font-semibold text-foreground mb-1.5">
-                  Valor sugerido <span className="text-muted-foreground font-normal text-xs">(opcional)</span>
-                </label>
-                <div className="flex items-center border border-border rounded-xl bg-card overflow-hidden focus-within:ring-2 focus-within:ring-primary/50">
-                  <span className="px-3 py-3 text-sm font-semibold text-muted-foreground bg-secondary/40 border-r border-border select-none">R$</span>
+              {/* Price + Arrival */}
+              <div className="flex gap-3">
+                <div className="flex-1">
+                  <label className="block text-sm font-semibold text-foreground mb-1.5">
+                    Valor <span className="text-muted-foreground font-normal text-xs">(opcional)</span>
+                  </label>
+                  <div className="flex items-center border border-border rounded-xl bg-card overflow-hidden focus-within:ring-2 focus-within:ring-primary/50">
+                    <span className="px-3 py-3 text-sm font-semibold text-muted-foreground bg-secondary/40 border-r border-border select-none">R$</span>
+                    <input
+                      value={price}
+                      onChange={(e) => setPrice(e.target.value)}
+                      placeholder="120,00"
+                      className="flex-1 px-3 py-3 bg-transparent text-sm focus:outline-none"
+                    />
+                  </div>
+                </div>
+                <div className="flex-1">
+                  <label className="block text-sm font-semibold text-foreground mb-1.5">
+                    Chega até <span className="text-muted-foreground font-normal text-xs">(opcional)</span>
+                  </label>
                   <input
-                    value={price}
-                    onChange={(e) => setPrice(e.target.value)}
-                    placeholder="Ex.: 120,00"
-                    className="flex-1 px-3 py-3 bg-transparent text-sm focus:outline-none"
+                    type="time"
+                    value={arrivalTime}
+                    onChange={(e) => setArrivalTime(e.target.value)}
+                    className="w-full px-3 py-3 border border-border rounded-xl bg-card text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
                   />
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">Você pode combinar o valor exato no chat.</p>
               </div>
+              <p className="text-xs text-muted-foreground -mt-2">Você pode combinar os detalhes no chat.</p>
 
               {/* Message */}
               <div>

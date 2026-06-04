@@ -187,7 +187,11 @@ export default function ClientOrders() {
               <div key={req.id} className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
                 {/* Card row */}
                 <button
-                  onClick={() => navigate(`/client/request/${req.id}`)}
+                  onClick={() => {
+                    if (req.status === 'in_conversation') return navigate(`/client/request/${req.id}/proposals`);
+                    if (req.status === 'agreed') return navigate(`/client/request/${req.id}/progress`);
+                    navigate(`/client/request/${req.id}`);
+                  }}
                   className="w-full flex items-center gap-3 p-4 hover:bg-secondary/20 transition-colors text-left"
                 >
                   <div className={`w-12 h-12 rounded-xl ${catStyle.bg} flex items-center justify-center shrink-0`}>
@@ -237,7 +241,11 @@ export default function ClientOrders() {
                       <span className="text-xs text-muted-foreground truncate">{config.nextStep}</span>
                     </div>
                     <button
-                      onClick={() => navigate(`/client/request/${req.id}`)}
+                      onClick={() => {
+                        if (req.status === 'in_conversation') return navigate(`/client/request/${req.id}/proposals`);
+                        if (req.status === 'agreed') return navigate(`/client/request/${req.id}/progress`);
+                        navigate(`/client/request/${req.id}`);
+                      }}
                       className="shrink-0 ml-3 px-3 py-1.5 border border-primary/30 text-xs text-primary font-semibold rounded-lg hover:bg-primary/5 transition-colors"
                     >
                       {config.actionLabel}

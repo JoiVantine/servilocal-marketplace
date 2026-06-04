@@ -40,6 +40,10 @@ import ClientAddress from './pages/ClientAddress';
 import ClientEditAddress from './pages/ClientEditAddress';
 import ClientHelp from './pages/ClientHelp';
 import ClientAbout from './pages/ClientAbout';
+import ClientProposals from './pages/ClientProposals';
+import ClientConfirmProvider from './pages/ClientConfirmProvider';
+import ClientOrderProgress from './pages/ClientOrderProgress';
+import ClientOrderRating from './pages/ClientOrderRating';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -70,6 +74,10 @@ const AuthenticatedApp = () => {
       <Route path="/provider/onboarding" element={<ProviderOnboarding />} />
       <Route path="/client/new-request" element={<NewServiceRequest />} />
       <Route path="/client/request/:requestId" element={<ClientRequestDetail />} />
+      <Route path="/client/request/:requestId/proposals" element={<ClientProposals />} />
+      <Route path="/client/request/:requestId/confirm/:interestId" element={<ClientConfirmProvider />} />
+      <Route path="/client/request/:requestId/progress" element={<ClientOrderProgress />} />
+      <Route path="/client/request/:requestId/rate" element={<ClientOrderRating />} />
       <Route path="/client/services" element={<CityServices />} />
       <Route path="/client/orders" element={<ClientOrders />} />
       <Route path="/client/support" element={<SupportCenter audience="client" />} />
