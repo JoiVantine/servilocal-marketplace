@@ -58,6 +58,7 @@ export default function ClientOnboarding() {
   const [cep, setCep] = useState('');
   const [rua, setRua] = useState('');
   const [numero, setNumero] = useState('');
+  const [semNumero, setSemNumero] = useState(false);
   const [complemento, setComplemento] = useState('');
   const [bairro, setBairro] = useState('');
   const [cidade, setCidade] = useState('');
@@ -198,7 +199,7 @@ export default function ClientOnboarding() {
   const handleStep3 = () => {
     const errs = {};
     if (!rua.trim()) errs.rua = 'Informe o logradouro';
-    if (!numero.trim()) errs.numero = 'Informe o número';
+    if (!semNumero && !numero.trim()) errs.numero = 'Informe o número ou marque "Sem número"';
     if (!bairro.trim()) errs.bairro = 'Informe o bairro';
     if (!cidade.trim()) errs.cidade = 'Informe a cidade';
     if (Object.keys(errs).length > 0) { setErrors(errs); return; }
@@ -216,7 +217,7 @@ export default function ClientOnboarding() {
       const profileData = {
         userId: user.id,
         neighborhood: bairro,
-        address: [rua, numero].filter(Boolean).join(', '),
+        address: [rua, semNumero ? 'S/N' : numero].filter(Boolean).join(', '),
         cep: cep.replace(/\D/g, ''),
         role: 'client',
         onboardingCompleted: true,
@@ -246,7 +247,7 @@ export default function ClientOnboarding() {
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        <div className="max-w-md mx-auto px-4 py-6">
+        <div className="w-full max-w-sm sm:max-w-md mx-auto px-4 py-6">
 
           {/* Progress indicator */}
           <div className="flex items-start justify-between mb-8">
@@ -352,7 +353,7 @@ export default function ClientOnboarding() {
               </div>
 
               <div>
-                <div className="flex gap-2 justify-between">
+                <div className="flex gap-2 justify-center">
                   {Array.from({ length: 6 }, (_, i) => (
                     <input
                       key={i}
@@ -364,7 +365,7 @@ export default function ClientOnboarding() {
                       onChange={(e) => handleOtpChange(e, i)}
                       onKeyDown={(e) => handleOtpKeyDown(e, i)}
                       onPaste={i === 0 ? handleOtpPaste : undefined}
-                      className={`flex-1 h-14 text-center border-2 rounded-xl text-2xl font-bold font-mono focus:outline-none focus:ring-2 focus:ring-primary/30 transition-colors ${
+                      className={`w-11 h-14 shrink-0 text-center border-2 rounded-xl text-2xl font-bold font-mono focus:outline-none focus:ring-2 focus:ring-primary/30 transition-colors ${
                         errors.otp ? 'border-red-400' : otp[i] ? 'border-primary bg-primary/5' : 'border-border'
                       }`}
                     />
@@ -530,30 +531,47 @@ export default function ClientOnboarding() {
                 {errors.rua && <p className="text-xs text-red-500 mt-1">{errors.rua}</p>}
               </div>
 
-              <div className="flex gap-3">
-                <div className="flex-1">
-                  <label className="block text-sm font-medium text-foreground mb-1.5">
-                    Número <span className="text-red-500">*</span>
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-sm font-medium text-foreground">
+                    Número {!semNumero && <span className="text-red-500">*</span>}
                   </label>
-                  <input
-                    type="text"
-                    value={numero}
-                    onChange={(e) => { setNumero(e.target.value); setErrors((p) => ({ ...p, numero: undefined })); }}
-                    placeholder="123"
-                    className={`w-full px-4 py-3 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 ${errors.numero ? 'border-red-400' : 'border-border'}`}
-                  />
-                  {errors.numero && <p className="text-xs text-red-500 mt-1">{errors.numero}</p>}
+                  <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={semNumero}
+                      onChange={(e) => {
+                        setSemNumero(e.target.checked);
+                        if (e.target.checked) {
+                          setNumero('');
+                          setErrors((p) => ({ ...p, numero: undefined }));
+                        }
+                      }}
+                      className="w-4 h-4 rounded accent-primary"
+                    />
+                    <span className="text-xs text-muted-foreground">Sem número</span>
+                  </label>
                 </div>
-                <div className="flex-1">
-                  <label className="block text-sm font-medium text-foreground mb-1.5">Complemento</label>
-                  <input
-                    type="text"
-                    value={complemento}
-                    onChange={(e) => setComplemento(e.target.value)}
-                    placeholder="Apto, Bloco..."
-                    className="w-full px-4 py-3 border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                  />
-                </div>
+                <input
+                  type="text"
+                  value={semNumero ? 'S/N' : numero}
+                  onChange={(e) => { setNumero(e.target.value); setErrors((p) => ({ ...p, numero: undefined })); }}
+                  placeholder="123"
+                  disabled={semNumero}
+                  className={`w-full px-4 py-3 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:bg-secondary/50 disabled:text-muted-foreground disabled:cursor-not-allowed ${errors.numero ? 'border-red-400' : 'border-border'}`}
+                />
+                {errors.numero && <p className="text-xs text-red-500 mt-1">{errors.numero}</p>}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1.5">Complemento</label>
+                <input
+                  type="text"
+                  value={complemento}
+                  onChange={(e) => setComplemento(e.target.value)}
+                  placeholder="Apto, Bloco..."
+                  className="w-full px-4 py-3 border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                />
               </div>
 
               <div>
@@ -650,7 +668,7 @@ export default function ClientOnboarding() {
                 </div>
                 <div className="space-y-0.5">
                   <p className="text-sm text-foreground font-medium">
-                    {rua}{numero ? `, ${numero}` : ''}
+                    {rua}{semNumero ? ', S/N' : numero ? `, ${numero}` : ''}
                   </p>
                   {complemento && <p className="text-sm text-muted-foreground">{complemento}</p>}
                   <p className="text-sm text-muted-foreground">{bairro}</p>
