@@ -1,33 +1,70 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/api/apiClient';
-import { Home, List, CalendarDays, Pencil, MessageCircle, CheckCircle, Star, Inbox, Zap, MapPin, Clock, Briefcase, Phone, LifeBuoy, ChevronRight } from 'lucide-react';
-import { useNavigate, Link } from 'react-router-dom';
-import ProposalModal from '@/components/ProposalModal';
+import {
+  Pencil, Star, Inbox, MapPin, Clock,
+  ChevronRight, LifeBuoy, Navigation,
+} from 'lucide-react';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import EditProviderModal from '@/components/EditProviderModal';
+import ProviderBottomNav from '@/components/ProviderBottomNav';
 
-const LOGO_URL = "/logo.png";
+const LOGO_URL = '/logo.png';
+
+function timeAgo(iso) {
+  if (!iso) return '';
+  const diff = Math.floor((Date.now() - new Date(iso)) / 60000);
+  if (diff < 1) return 'agora';
+  if (diff < 60) return `${diff} min atrás`;
+  const h = Math.floor(diff / 60);
+  if (h < 24) return `${h}h atrás`;
+  return formatDate(iso);
+}
+
+function formatDate(iso) {
+  if (!iso) return '';
+  return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+}
+
+function progressLabel(ps) {
+  if (!ps) return 'Confirmado';
+  const map = {
+    on_the_way: 'A caminho',
+    arrived: 'Chegou ao local',
+    in_progress: 'Em execução',
+    provider_done: 'Aguardando confirmação',
+    completed: 'Concluído',
+  };
+  return map[ps] || ps;
+}
+
+function progressColor(ps) {
+  if (!ps) return 'bg-blue-100 text-blue-700';
+  if (ps === 'completed') return 'bg-green-100 text-green-700';
+  if (ps === 'provider_done') return 'bg-yellow-100 text-yellow-700';
+  return 'bg-primary/10 text-primary';
+}
 
 export default function ProviderHome() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const initialTab = searchParams.get('tab') === 'active' ? 'active' : 'available';
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [user, setUser] = useState(null);
   const [providerSpecialties, setProviderSpecialties] = useState([]);
   const [hasProviderServices, setHasProviderServices] = useState(null);
-  const [activeTab, setActiveTab] = useState('available');
   const [accepting, setAccepting] = useState(true);
   const [userProfileId, setUserProfileId] = useState(null);
-  const [proposalRequest, setProposalRequest] = useState(null);
   const [showEditProfile, setShowEditProfile] = useState(false);
+  const [dismissed, setDismissed] = useState(new Set());
 
   useEffect(() => {
     api.auth.me().then(async (u) => {
       setUser(u);
-      // ProviderProfile is created only after completing provider onboarding — use it as the gate
       const provProfiles = await api.entities.ProviderProfile.filter({ created_by_id: u.id });
       if (provProfiles.length === 0) { navigate('/provider/onboarding'); return; }
       setProviderSpecialties(provProfiles[0].specialties || []);
 
-      // UserProfile controls the "recebendo pedidos" toggle and active status
       const userProfiles = await api.entities.UserProfile.filter({ userId: u.id });
       const up = userProfiles.find(p => p.role === 'provider') || userProfiles[0];
       if (up) {
@@ -56,18 +93,21 @@ export default function ProviderHome() {
       return api.entities.ServiceRequest.filter(query, '-created_date', 50);
     },
     enabled: !!user,
+    refetchInterval: 30000,
   });
 
-  // Filter by specialties match (if provider has specialties set)
+  const { data: agreedRequests = [] } = useQuery({
+    queryKey: ['provider-agreed', user?.id],
+    queryFn: () => api.entities.ServiceRequest.filter({ confirmedProviderId: user.id }),
+    enabled: !!user?.id,
+    refetchInterval: 15000,
+  });
+
   const requests = providerSpecialties.length > 0
     ? rawRequests.filter(r => !r.subcategory || providerSpecialties.includes(r.subcategory))
     : rawRequests;
 
-  const { data: conversations = [] } = useQuery({
-    queryKey: ['provider-conversations', user?.id],
-    queryFn: () => api.entities.Conversation.filter({ providerId: user.id }),
-    enabled: !!user?.id,
-  });
+  const visibleRequests = requests.filter(r => !dismissed.has(r.id));
 
   const { data: reviews = [] } = useQuery({
     queryKey: ['provider-reviews', user?.id],
@@ -75,15 +115,14 @@ export default function ProviderHome() {
     enabled: !!user?.id,
   });
 
-  const completed = conversations.filter(c => c.status === 'completed').length;
   const avgRating = reviews.length
     ? (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1)
     : null;
 
-  const inConversation = conversations.filter(c => c.status === 'active').length;
+  const completed = agreedRequests.filter(r => r.status === 'completed').length;
+  const activeOrders = agreedRequests.filter(r => r.status === 'agreed');
 
   const handleLogout = () => api.auth.logout('/');
-
   const firstName = (user?.fullName || user?.full_name)?.split(' ')[0] || '';
 
   return (
@@ -92,39 +131,39 @@ export default function ProviderHome() {
       <div className="flex items-center justify-between px-4 py-4 border-b border-border bg-card">
         <div className="flex items-center gap-2">
           <img src={LOGO_URL} alt="ServiLocal" className="w-6 h-6 object-contain" />
-          <span className="text-sm font-semibold text-foreground">Servi<span className="font-bold">Local</span></span>
+          <span className="text-sm font-semibold text-foreground">Servi<span className="font-bold text-primary">Local</span></span>
         </div>
         <button
           onClick={handleLogout}
-          className="px-3 py-1.5 text-sm font-medium text-foreground border border-border rounded-lg hover:bg-secondary/50 transition-colors flex items-center gap-1"
+          className="px-3 py-1.5 text-sm font-medium text-foreground border border-border rounded-lg hover:bg-secondary/50 transition-colors"
         >
-          Logout
+          Sair
         </button>
       </div>
 
       <div className="max-w-lg mx-auto px-4 py-5 space-y-5">
         {/* Greeting */}
-        <div>
-          <p className="text-sm text-muted-foreground">Olá,</p>
-          <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm text-muted-foreground">Olá,</p>
             <h1 className="font-heading text-3xl font-bold text-foreground">{firstName || '...'}</h1>
-            <button
-              onClick={() => setShowEditProfile(true)}
-              className="p-1.5 rounded-lg hover:bg-secondary/50 transition-colors"
-            >
-              <Pencil className="w-4 h-4 text-muted-foreground" />
-            </button>
           </div>
+          <button
+            onClick={() => setShowEditProfile(true)}
+            className="p-2 rounded-xl hover:bg-secondary/50 transition-colors border border-border"
+          >
+            <Pencil className="w-4 h-4 text-muted-foreground" />
+          </button>
         </div>
 
-        {/* Toggle */}
+        {/* Toggle recebendo pedidos */}
         <div className="flex items-center justify-between bg-card border border-border rounded-2xl px-4 py-3">
           <div className="flex items-center gap-2">
             <div className={`w-2 h-2 rounded-full ${accepting ? 'bg-green-500' : 'bg-muted-foreground'}`} />
             <div>
               <p className="text-sm font-semibold text-foreground">Recebendo pedidos</p>
               <p className="text-xs text-muted-foreground">
-                {accepting ? 'Você está visível para novos clientes.' : 'Você está invisível para novos clientes.'}
+                {accepting ? 'Você está visível para novos clientes.' : 'Você está invisível.'}
               </p>
             </div>
           </div>
@@ -132,34 +171,48 @@ export default function ProviderHome() {
             onClick={handleToggleAccepting}
             className={`relative w-12 h-6 rounded-full transition-colors ${accepting ? 'bg-primary' : 'bg-border'}`}
           >
-            <span
-              className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${accepting ? 'translate-x-6' : 'translate-x-0'}`}
-            />
+            <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${accepting ? 'translate-x-6' : 'translate-x-0'}`} />
           </button>
         </div>
 
+        {/* Stats */}
+        <div className="grid grid-cols-3 gap-3">
+          <div className="bg-card border border-border rounded-xl p-3 text-center">
+            <p className="text-2xl font-bold text-foreground">{activeOrders.length}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Em andamento</p>
+          </div>
+          <div className="bg-card border border-border rounded-xl p-3 text-center">
+            <p className="text-2xl font-bold text-foreground">{completed}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Concluídos</p>
+          </div>
+          <div className="bg-card border border-border rounded-xl p-3 text-center">
+            <p className="text-2xl font-bold text-foreground">{avgRating ?? '—'}</p>
+            <p className="text-xs text-muted-foreground mt-0.5 flex items-center justify-center gap-0.5">
+              <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" /> Avaliação
+            </p>
+          </div>
+        </div>
+
+        {/* Suporte */}
         <Link
           to="/provider/support"
-          className="flex items-center justify-between rounded-2xl border border-border bg-card px-4 py-4 transition-colors hover:border-primary/40"
+          className="flex items-center justify-between rounded-2xl border border-border bg-card px-4 py-3 hover:border-primary/40 transition-colors"
         >
           <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/10 text-primary">
-              <LifeBuoy className="h-5 w-5" />
+            <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center">
+              <LifeBuoy className="w-4 h-4 text-primary" />
             </div>
-            <div>
-              <p className="text-sm font-semibold text-foreground">Ajuda e suporte</p>
-              <p className="text-xs text-muted-foreground">Abra um chamado e acompanhe as respostas da equipe.</p>
-            </div>
+            <p className="text-sm font-semibold text-foreground">Ajuda e suporte</p>
           </div>
-          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          <ChevronRight className="w-4 h-4 text-muted-foreground" />
         </Link>
 
         {/* Tabs */}
         <div className="flex gap-2">
           {[
-            { id: 'available', label: 'Disponíveis', count: requests.length },
-            { id: 'conversation', label: 'Em conversa', count: inConversation },
-            { id: 'completed', label: 'Concluídos', count: completed },
+            { id: 'available', label: 'Disponíveis', count: visibleRequests.length },
+            { id: 'active', label: 'Em andamento', count: activeOrders.length },
+            { id: 'history', label: 'Histórico', count: completed },
           ].map(tab => (
             <button
               key={tab.id}
@@ -176,125 +229,192 @@ export default function ProviderHome() {
           ))}
         </div>
 
-        {/* Seus Números */}
-        <div>
-          <p className="text-xs font-bold text-muted-foreground tracking-wider mb-3">SEUS NÚMEROS</p>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="bg-card border border-border rounded-xl p-4">
-              <div className="flex items-center gap-1 mb-1">
-                <MessageCircle className="w-3.5 h-3.5 text-muted-foreground" />
-                <p className="text-xs text-muted-foreground font-medium">CONVERSAS</p>
+        {/* ── Em andamento ────────────────────────────────────────────────── */}
+        {activeTab === 'active' && (
+          <>
+            {activeOrders.length === 0 ? (
+              <div className="flex flex-col items-center py-10 gap-3 text-center">
+                <Navigation className="w-12 h-12 text-muted-foreground/40" />
+                <p className="font-semibold text-foreground">Nenhum pedido em andamento</p>
+                <p className="text-sm text-muted-foreground">Pedidos confirmados aparecerão aqui.</p>
               </div>
-              <p className="text-2xl font-bold text-foreground">{conversations.length}</p>
-            </div>
-            <div className="bg-card border border-border rounded-xl p-4">
-              <div className="flex items-center gap-1 mb-1">
-                <CheckCircle className="w-3.5 h-3.5 text-muted-foreground" />
-                <p className="text-xs text-muted-foreground font-medium">CONCLUÍDOS</p>
-              </div>
-              <p className="text-2xl font-bold text-foreground">{completed}</p>
-            </div>
-            <div className="bg-card border border-border rounded-xl p-4">
-              <div className="flex items-center gap-1 mb-1">
-                <Star className="w-3.5 h-3.5 text-muted-foreground" />
-                <p className="text-xs text-muted-foreground font-medium">AVALIAÇÃO MÉDIA</p>
-              </div>
-              {avgRating ? (
-                <p className="text-2xl font-bold text-foreground">{avgRating}</p>
-              ) : (
-                <p className="text-sm text-primary font-medium mt-1">Sem avaliações</p>
-              )}
-            </div>
-            <div className="bg-card border border-border rounded-xl p-4">
-              <div className="flex items-center gap-1 mb-1">
-                <Star className="w-3.5 h-3.5 text-muted-foreground" />
-                <p className="text-xs text-muted-foreground font-medium">TOTAL AVALIAÇÕES</p>
-              </div>
-              <p className="text-2xl font-bold text-foreground">{reviews.length}</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Requests or empty state */}
-        {isLoading ? (
-          <div className="flex justify-center py-8">
-            <div className="w-6 h-6 border-4 border-border border-t-primary rounded-full animate-spin" />
-          </div>
-        ) : requests.length === 0 || !accepting ? (
-          <div className="flex flex-col items-center py-10 gap-3 text-center">
-            <Inbox className="w-14 h-14 text-muted-foreground/40" />
-            <p className="font-semibold text-foreground text-base">Nenhum pedido disponível</p>
-            {hasProviderServices === false ? (
-              <>
-                <p className="text-sm text-muted-foreground leading-relaxed max-w-xs">
-                  Você ainda não cadastrou categorias ou serviços.{' '}
-                  <button
-                    onClick={() => navigate('/provider/onboarding?step=services')}
-                    className="text-primary underline"
-                  >
-                    Complete seu perfil
-                  </button>{' '}
-                  para começar a receber pedidos compatíveis.
-                </p>
-                <button
-                  onClick={() => navigate('/provider/onboarding?step=services')}
-                  className="mt-2 px-6 py-2.5 border border-border rounded-full text-sm font-medium text-foreground hover:bg-secondary/50 transition-colors"
-                >
-                  Completar perfil
-                </button>
-              </>
             ) : (
-              <p className="text-sm text-muted-foreground leading-relaxed max-w-xs">
-                Ainda não há pedidos na sua área compatíveis com seus serviços. Volte mais tarde.
-              </p>
-            )}
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {requests.map(request => (
-              <div key={request.id} className="bg-card border border-border rounded-xl p-4">
-                <div className="flex items-start justify-between gap-3 mb-2">
-                  <h3 className="font-semibold text-foreground text-sm">{request.title}</h3>
-                  {request.urgency === 'urgent' && (
-                    <span className="text-xs font-medium px-2 py-0.5 rounded bg-red-50 text-red-600">Urgente</span>
-                  )}
-                </div>
-                <p className="text-xs text-muted-foreground line-clamp-2 mb-3">{request.description}</p>
-                <div className="flex items-center gap-4 text-xs text-muted-foreground mb-3">
-                  <div className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" />{request.city}</div>
-                  <div className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" />{Math.floor((Date.now() - new Date(request.created_date)) / 60000)} min atrás</div>
-                </div>
-                <div className="flex gap-2">
+              <div className="space-y-3">
+                {activeOrders.map(req => (
                   <button
-                    onClick={() => setProposalRequest(request)}
-                    className="flex-1 flex items-center justify-center gap-2 bg-primary text-primary-foreground rounded-lg py-2 text-sm font-medium hover:opacity-90"
+                    key={req.id}
+                    onClick={() => navigate(`/provider/request/${req.id}/progress`)}
+                    className="w-full bg-card border border-border rounded-2xl p-4 text-left hover:border-primary/40 transition-colors shadow-sm"
                   >
-                    <Zap className="w-4 h-4" /> Tenho interesse
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <p className="font-semibold text-foreground text-sm">{req.title || req.category}</p>
+                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full shrink-0 ${progressColor(req.progressStatus)}`}>
+                        {progressLabel(req.progressStatus)}
+                      </span>
+                    </div>
+                    {(req.address || req.city) && (
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground mb-3">
+                        <MapPin className="w-3.5 h-3.5 shrink-0" />
+                        <span>{req.address ? `${req.address}, ` : ''}{req.city}</span>
+                      </div>
+                    )}
+                    {req.agreedPrice && (
+                      <p className="text-sm font-bold text-primary">
+                        R$ {parseFloat(req.agreedPrice).toFixed(2).replace('.', ',')}
+                      </p>
+                    )}
+                    <div className="mt-3 flex items-center gap-1 text-xs text-primary font-medium">
+                      <span>Acompanhar pedido</span>
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </div>
                   </button>
-                  {request.clientPhone && (
-                    <a
-                      href={`https://wa.me/55${String(request.clientPhone).replace(/\D/g, '').replace(/^55/, '')}?text=${encodeURIComponent(`Olá! Vi seu pedido "${request.title}" no ServiLocal e tenho interesse em atendê-lo.`)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center justify-center gap-1.5 px-3 py-2 border border-green-500 text-green-600 rounded-lg text-sm font-medium hover:bg-green-50 transition-colors"
-                    >
-                      <Phone className="w-4 h-4" /> WhatsApp
-                    </a>
-                  )}
-                </div>
+                ))}
               </div>
-            ))}
-          </div>
+            )}
+          </>
+        )}
+
+        {/* ── Histórico ────────────────────────────────────────────────────── */}
+        {activeTab === 'history' && (
+          <>
+            {completed === 0 ? (
+              <div className="flex flex-col items-center py-10 gap-3 text-center">
+                <Star className="w-12 h-12 text-muted-foreground/40" />
+                <p className="font-semibold text-foreground">Nenhum serviço concluído ainda</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {agreedRequests
+                  .filter(r => r.status === 'completed')
+                  .map(req => (
+                    <div key={req.id} className="bg-card border border-border rounded-2xl p-4 shadow-sm">
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <p className="font-semibold text-foreground text-sm">{req.title || req.category}</p>
+                        <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-green-100 text-green-700 shrink-0">
+                          Concluído
+                        </span>
+                      </div>
+                      {req.agreedPrice && (
+                        <p className="text-sm font-bold text-primary">
+                          R$ {parseFloat(req.agreedPrice).toFixed(2).replace('.', ',')}
+                        </p>
+                      )}
+                      <p className="text-xs text-muted-foreground mt-1">{formatDate(req.created_date)}</p>
+                    </div>
+                  ))}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ── Disponíveis ─────────────────────────────────────────────────── */}
+        {activeTab === 'available' && (
+          <>
+            {isLoading ? (
+              <div className="flex justify-center py-8">
+                <div className="w-6 h-6 border-4 border-border border-t-primary rounded-full animate-spin" />
+              </div>
+            ) : visibleRequests.length === 0 || !accepting ? (
+              <div className="flex flex-col items-center py-10 gap-3 text-center">
+                <Inbox className="w-14 h-14 text-muted-foreground/40" />
+                <p className="font-semibold text-foreground text-base">Nenhum pedido disponível</p>
+                {hasProviderServices === false ? (
+                  <>
+                    <p className="text-sm text-muted-foreground leading-relaxed max-w-xs">
+                      Você ainda não cadastrou serviços.{' '}
+                      <button
+                        onClick={() => navigate('/provider/onboarding?step=services')}
+                        className="text-primary underline"
+                      >
+                        Complete seu perfil
+                      </button>{' '}
+                      para receber pedidos.
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-sm text-muted-foreground leading-relaxed max-w-xs">
+                    Ainda não há pedidos compatíveis na sua área. Volte mais tarde.
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {visibleRequests.map(request => (
+                  <div key={request.id} className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
+                    {/* New badge */}
+                    <div className="px-4 pt-3 pb-0 flex items-center gap-2">
+                      <p className="text-sm font-bold text-foreground">Novo pedido disponível!</p>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary text-primary-foreground">
+                        Novo
+                      </span>
+                    </div>
+
+                    <div className="p-4 space-y-3">
+                      {/* Service */}
+                      <div>
+                        <p className="text-xs text-muted-foreground">Serviço</p>
+                        <p className="text-sm font-semibold text-foreground mt-0.5">
+                          {request.title || request.category}
+                        </p>
+                      </div>
+
+                      {/* Location */}
+                      {(request.address || request.city) && (
+                        <div className="flex items-start gap-1.5 text-xs text-muted-foreground">
+                          <MapPin className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                          <span>
+                            {request.address ? `${request.address}, ` : ''}
+                            {request.city}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Time */}
+                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <Clock className="w-3.5 h-3.5 shrink-0" />
+                        <span>{timeAgo(request.created_date)}</span>
+                      </div>
+
+                      {/* Price */}
+                      {(request.price || request.suggestedPrice) && (
+                        <div>
+                          <p className="text-xs text-muted-foreground">Preço proposto pelo cliente</p>
+                          <p className="text-base font-bold text-primary mt-0.5">
+                            R$ {parseFloat(request.price || request.suggestedPrice).toFixed(2).replace('.', ',')}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Actions */}
+                      <div className="flex gap-2 pt-1">
+                        <button
+                          onClick={() => navigate(`/provider/request/${request.id}`)}
+                          className="flex-1 py-2.5 border border-border rounded-xl text-sm font-medium text-foreground hover:bg-secondary/50 transition-colors"
+                        >
+                          Ver detalhes
+                        </button>
+                        <button
+                          onClick={() => navigate(`/provider/request/${request.id}`)}
+                          className="flex-1 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity"
+                        >
+                          Aceitar pedido
+                        </button>
+                      </div>
+
+                      <button
+                        onClick={() => setDismissed(prev => new Set([...prev, request.id]))}
+                        className="w-full text-xs text-muted-foreground hover:text-foreground transition-colors text-center py-1"
+                      >
+                        Recusar
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
         )}
       </div>
-
-      {proposalRequest && (
-        <ProposalModal
-          request={proposalRequest}
-          onClose={() => setProposalRequest(null)}
-          onSent={() => setProposalRequest(null)}
-        />
-      )}
 
       {showEditProfile && user && (
         <EditProviderModal
@@ -312,23 +432,7 @@ export default function ProviderHome() {
         />
       )}
 
-      {/* Bottom Nav */}
-      <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border">
-        <div className="flex items-center justify-around max-w-lg mx-auto">
-          <button className="flex-1 flex flex-col items-center gap-1 py-3 text-primary font-medium">
-            <Home className="w-5 h-5" />
-            <span className="text-xs">Início</span>
-          </button>
-          <Link to="/provider/services" className="flex-1 flex flex-col items-center gap-1 py-3 text-muted-foreground hover:text-foreground">
-            <Briefcase className="w-5 h-5" />
-            <span className="text-xs">Meus serviços</span>
-          </Link>
-          <Link to="/provider/conversations" className="flex-1 flex flex-col items-center gap-1 py-3 text-muted-foreground hover:text-foreground">
-            <MessageCircle className="w-5 h-5" />
-            <span className="text-xs">Conversas</span>
-          </Link>
-        </div>
-      </div>
+      <ProviderBottomNav active="home" />
     </div>
   );
 }

@@ -1,13 +1,14 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/api/apiClient';
 import { ChevronLeft, MessageCircle, Phone, CheckCircle2, Circle } from 'lucide-react';
 
 const STEPS = [
-  { key: 'on_the_way', label: 'A caminho' },
-  { key: 'arrived',    label: 'Chegou ao local' },
-  { key: 'in_progress', label: 'Em execução' },
-  { key: 'completed',  label: 'Concluído' },
+  { key: 'on_the_way',    label: 'A caminho' },
+  { key: 'arrived',       label: 'Chegou ao local' },
+  { key: 'in_progress',   label: 'Em execução' },
+  { key: 'provider_done', label: 'Aguardando confirmação' },
+  { key: 'completed',     label: 'Concluído' },
 ];
 
 const STEP_ORDER = STEPS.map(s => s.key);
@@ -22,6 +23,15 @@ function isDone(progressStatus, stepKey) {
 export default function ClientOrderProgress() {
   const { requestId } = useParams();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
+  const confirmMutation = useMutation({
+    mutationFn: () => api.entities.ServiceRequest.update(requestId, {
+      progressStatus: 'completed',
+      status: 'completed',
+    }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['request', requestId] }),
+  });
 
   const { data: request, isLoading } = useQuery({
     queryKey: ['request', requestId],
@@ -144,6 +154,21 @@ export default function ClientOrderProgress() {
               Ver detalhes
             </button>
           </div>
+
+          {/* Confirm completion (provider marked done, waiting client) */}
+          {request?.progressStatus === 'provider_done' && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-2xl p-4 text-center">
+              <p className="text-sm font-semibold text-foreground mb-1">O profissional finalizou o serviço!</p>
+              <p className="text-xs text-muted-foreground mb-3">Confirme que o serviço foi concluído para liberar o pagamento.</p>
+              <button
+                onClick={() => confirmMutation.mutate()}
+                disabled={confirmMutation.isPending}
+                className="w-full py-3 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
+              >
+                {confirmMutation.isPending ? 'Confirmando...' : 'Confirmar conclusão'}
+              </button>
+            </div>
+          )}
 
           {/* Rate if completed */}
           {request?.progressStatus === 'completed' && (
