@@ -22,6 +22,7 @@ import DiagnosticsPage from './pages/DiagnosticsPage';
 import AdminUsers from './pages/AdminUsers';
 import AdminLogin from './pages/AdminLogin';
 import AdminSupportDesk from './pages/AdminSupportDesk';
+import AdminTicketDetail from './pages/AdminTicketDetail';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminRoute from './components/AdminRoute';
 import ProvidersMap from './pages/ProvidersMap';
@@ -84,6 +85,7 @@ const AuthenticatedApp = () => {
         <Route path="/diagnostics" element={<DiagnosticsPage />} />
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
         <Route path="/admin/support" element={<AdminSupportDesk />} />
+        <Route path="/admin/support/:ticketId" element={<AdminTicketDetail />} />
         <Route path="/admin/request/:requestId" element={<ClientRequestDetail viewerMode="admin" />} />
         <Route path="/admin/users" element={<AdminUsers />} />
       </Route>
