@@ -1,272 +1,223 @@
-﻿import { useState, useEffect, useRef, useCallback } from 'react';
-import { useMutation } from '@tanstack/react-query';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { api } from '@/api/apiClient';
-import { Check, Upload, MapPin, Phone, Camera, Image, X, Mail, ShieldCheck } from 'lucide-react';
-import AddressFormWithMap from '../components/AddressFormWithMap';
+import { Check, Eye, EyeOff, CheckCircle2, Circle, ShieldCheck } from 'lucide-react';
 
 const STEPS = [
-  { id: 1, label: 'Foto e Perfil' },
-  { id: 2, label: 'Localização' },
-  { id: 3, label: 'Resumo' },
+  { id: 1, label: 'Dados' },
+  { id: 2, label: 'Verificação' },
+  { id: 3, label: 'Senha' },
+  { id: 4, label: 'Endereço' },
+  { id: 5, label: 'Resumo' },
 ];
+
+const SPECIAL_RE = /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?`~]/;
+
+function Rule({ ok, label }) {
+  return (
+    <div className={`flex items-center gap-2 text-xs ${ok ? 'text-green-600' : 'text-muted-foreground'}`}>
+      {ok ? <CheckCircle2 className="w-3.5 h-3.5 shrink-0" /> : <Circle className="w-3.5 h-3.5 shrink-0" />}
+      {label}
+    </div>
+  );
+}
+
+function formatPhone(val) {
+  const digits = val.replace(/\D/g, '').slice(0, 11);
+  if (digits.length === 0) return '';
+  if (digits.length <= 2) return `(${digits}`;
+  if (digits.length <= 7) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+}
 
 export default function ClientOnboarding() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const [currentStep, setCurrentStep] = useState(0);
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
 
-  const [formData, setFormData] = useState({
-    photo: null,
-    photoPreview: null,
-    name: '',
-    email: '',
-    address: null,
-    city: '',
-    phone: '',
-  });
-  const [showPhotoModal, setShowPhotoModal] = useState(false);
-  const [locationLoading, setLocationLoading] = useState(false);
-  const [showAddressForm, setShowAddressForm] = useState(false);
-  const [fieldErrors, setFieldErrors] = useState({});
-  const [otpSent, setOtpSent] = useState(false);
-  const [otpCode, setOtpCode] = useState('');
-  const [otpLoading, setOtpLoading] = useState(false);
-  const [validateAddress, setValidateAddress] = useState(false);
-  const [submitError, setSubmitError] = useState(null);
+  const [step, setStep] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState({});
 
-  const validateStep0 = () => {
-    const errors = {};
-    if (!formData.name.trim() || formData.name.trim().length < 3)
-      errors.name = 'Digite seu nome completo (mínimo 3 caracteres)';
-    if (!formData.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email))
-      errors.email = 'Digite um e-mail válido';
-    const digits = formData.phone.replace(/\D/g, '');
-    if (digits.length < 10 || digits.length > 11)
-      errors.phone = 'Digite um celular válido com DDD (10 ou 11 dígitos)';
-    setFieldErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
-  const cameraInputRef = useRef(null);
-  const galleryInputRef = useRef(null);
+  // Step 0 — Dados
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
+
+  // Step 1 — Verificação
+  const [otp, setOtp] = useState('');
+  const [otpCountdown, setOtpCountdown] = useState(60);
+  const [canResend, setCanResend] = useState(false);
   const otpRefs = useRef([]);
 
-  // Load current user
+  // Step 2 — Senha
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [showPass, setShowPass] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+
+  // Step 3 — Endereço
+  const [cep, setCep] = useState('');
+  const [rua, setRua] = useState('');
+  const [numero, setNumero] = useState('');
+  const [complemento, setComplemento] = useState('');
+  const [bairro, setBairro] = useState('');
+  const [cidade, setCidade] = useState('');
+  const [uf, setUf] = useState('');
+  const [cepLoading, setCepLoading] = useState(false);
+
+  // Password rules
+  const hasMin8 = password.length >= 8;
+  const hasUpper = /[A-Z]/.test(password);
+  const hasNumber = /[0-9]/.test(password);
+  const hasSpecial = SPECIAL_RE.test(password);
+  const matches = password.length > 0 && password === confirm;
+  const rulesOk = hasMin8 && hasUpper && hasNumber && hasSpecial;
+  const passwordValid = rulesOk && matches;
+
+  const strengthScore = [hasMin8, hasUpper, hasNumber, hasSpecial].filter(Boolean).length;
+  const strengthColors = ['border-border', 'bg-red-500', 'bg-orange-400', 'bg-yellow-400', 'bg-green-500'];
+
+  // OTP countdown
   useEffect(() => {
-    const loadUser = async () => {
-      try {
-        const me = await api.auth.me();
-        setUser(me);
-        setFormData((prev) => ({
-          ...prev,
-          city: me.city || '',
-          name: me.fullName || '',
-          email: me.email || '',
-          phone: me.phone || '',
-        }));
-        if (searchParams.get('step') === '1') setCurrentStep(1);
-      } catch (error) {
-        // app público: visitante pode preencher o formulário
-      } finally {
-        setLoading(false);
+    if (step !== 1) return;
+    setOtpCountdown(60);
+    setCanResend(false);
+    const interval = setInterval(() => {
+      setOtpCountdown((c) => {
+        if (c <= 1) { clearInterval(interval); setCanResend(true); return 0; }
+        return c - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [step]);
+
+  // CEP lookup
+  const lookupCep = async (raw) => {
+    const digits = raw.replace(/\D/g, '');
+    if (digits.length !== 8) return;
+    setCepLoading(true);
+    try {
+      const res = await fetch(`https://viacep.com.br/ws/${digits}/json/`);
+      const data = await res.json();
+      if (!data.erro) {
+        setRua(data.logradouro || '');
+        setBairro(data.bairro || '');
+        setCidade(data.localidade || '');
+        setUf(data.uf || '');
       }
-    };
-    loadUser();
-  }, []);
-
-  const updateMutation = useMutation({
-    mutationFn: (data) => api.auth.updateMe(data),
-  });
-
-  const uploadMutation = useMutation({
-    mutationFn: (file) => api.uploadFile(file),
-  });
-
-  const handlePhotoSelect = async (e) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setFormData((prev) => ({
-        ...prev,
-        photo: file,
-        photoPreview: URL.createObjectURL(file),
-      }));
-      setShowPhotoModal(false);
+    } catch { /* silent */ } finally {
+      setCepLoading(false);
     }
   };
 
-  const handleCameraClick = () => {
-    cameraInputRef.current?.click();
-  };
-
-  const handleGalleryClick = () => {
-    galleryInputRef.current?.click();
-  };
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
-
-  const handleOtpBoxChange = (e, idx) => {
+  // OTP input handlers
+  const handleOtpChange = (e, idx) => {
     const val = e.target.value.replace(/\D/g, '').slice(-1);
-    const chars = Array.from({ length: 6 }, (_, i) => otpCode[i] || '');
+    const chars = Array.from({ length: 6 }, (_, i) => otp[i] || '');
     chars[idx] = val;
-    setOtpCode(chars.join(''));
-    setFieldErrors(p => ({ ...p, otp: undefined }));
+    setOtp(chars.join(''));
+    setErrors((p) => ({ ...p, otp: undefined }));
     if (val && idx < 5) otpRefs.current[idx + 1]?.focus();
   };
 
-  const handleOtpBoxKeyDown = (e, idx) => {
-    if (e.key === 'Backspace' && !otpCode[idx] && idx > 0) {
-      otpRefs.current[idx - 1]?.focus();
-    }
+  const handleOtpKeyDown = (e, idx) => {
+    if (e.key === 'Backspace' && !otp[idx] && idx > 0) otpRefs.current[idx - 1]?.focus();
   };
 
   const handleOtpPaste = (e) => {
     e.preventDefault();
     const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
-    setOtpCode(pasted);
-    setFieldErrors(p => ({ ...p, otp: undefined }));
+    setOtp(pasted);
+    setErrors((p) => ({ ...p, otp: undefined }));
     setTimeout(() => otpRefs.current[Math.min(pasted.length, 5)]?.focus(), 0);
   };
 
-  const handleStep0Submit = async () => {
-    // Já autenticado — só atualizar e avançar
-    if (user) {
-      const updates = { full_name: formData.name, email: formData.email };
-      if (formData.photo) {
-        try {
-          const photoUrl = await uploadMutation.mutateAsync(formData.photo);
-          if (photoUrl) updates.photo = photoUrl;
-        } catch {
-          setFieldErrors(prev => ({ ...prev, photo: 'Erro ao enviar foto. Tente novamente.' }));
-          return;
-        }
-      }
-      await updateMutation.mutateAsync(updates);
-      setCurrentStep(s => s + 1);
-      return;
-    }
-
-    // Enviar OTP
-    if (!otpSent) {
-      if (!validateStep0()) return;
-      setOtpLoading(true);
-      try {
-        await api.auth.sendOtp({ email: formData.email, fullName: formData.name, phone: formData.phone, role: 'client' });
-        setOtpSent(true);
-      } catch (err) {
-        setFieldErrors(p => ({ ...p, email: err.message }));
-      } finally {
-        setOtpLoading(false);
-      }
-      return;
-    }
-
-    // Verificar OTP
-    setOtpLoading(true);
+  // Step handlers
+  const handleStep0 = async () => {
+    const errs = {};
+    if (!name.trim() || name.trim().length < 3) errs.name = 'Digite seu nome completo (mínimo 3 caracteres)';
+    const digits = phone.replace(/\D/g, '');
+    if (digits.length < 10 || digits.length > 11) errs.phone = 'Digite um celular válido com DDD';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errs.email = 'Digite um e-mail válido';
+    if (Object.keys(errs).length > 0) { setErrors(errs); return; }
+    setLoading(true);
     try {
-      const res = await api.auth.verifyOtp({ email: formData.email, otp: otpCode });
-      if (res?.token) api.auth.setToken(res.token);
-      if (formData.photo) {
-        try {
-          const photoUrl = await api.uploadFile(formData.photo);
-          if (photoUrl) await api.auth.updateMe({ photo: photoUrl });
-        } catch { /* best effort */ }
-      }
-      navigate(`/setup-password?email=${encodeURIComponent(formData.email)}&next=${encodeURIComponent('/client/onboarding?step=1')}`);
+      await api.auth.sendOtp({ email, fullName: name, phone: phone.replace(/\D/g, ''), role: 'client' });
+      setErrors({});
+      setStep(1);
     } catch (err) {
-      setFieldErrors(p => ({ ...p, otp: err.message }));
+      setErrors({ submit: err.message || 'Erro ao enviar código. Tente novamente.' });
     } finally {
-      setOtpLoading(false);
+      setLoading(false);
     }
   };
 
-  const handleStep1Submit = async () => {
-    if (!isAddressComplete) {
-      setValidateAddress(true);
-      return;
-    }
-    if (user) {
-      await updateMutation.mutateAsync({
-        city: formData.address?.cidade || formData.city,
-      });
-    }
-    setCurrentStep(s => s + 1);
-  };
-
-  const handleAddressChange = useCallback((addressData) => {
-    setFormData((prev) => ({
-      ...prev,
-      address: addressData,
-      city: addressData?.cidade || prev.city,
-    }));
-  }, []);
-
-  const isAddressComplete =
-    formData.address?.endereco &&
-    formData.address?.cidade &&
-    formData.address?.numero?.trim() &&
-    (!formData.address?.sn || formData.address?.complemento?.trim());
-
-  // Auto-detect location when step 1 is reached
-  useEffect(() => {
-    if (currentStep === 1 && !formData.address && navigator.geolocation) {
-      setLocationLoading(true);
-      navigator.geolocation.getCurrentPosition(
-        async (position) => {
-          const { latitude, longitude } = position.coords;
-          try {
-            const response = await fetch(
-              `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`,
-              { headers: { 'Accept-Language': 'pt-BR' } }
-            );
-            const data = await response.json();
-            const addr = data.address || {};
-            const addressData = {
-              coords: { lat: latitude, lng: longitude },
-              endereco: addr.road || addr.street || addr.path || '',
-              numero: addr.house_number || '',
-              bairro: addr.suburb || addr.neighborhood || addr.village || '',
-              cidade: addr.city || addr.town || addr.municipality || '',
-              estado: addr.state || '',
-              cep: addr.postcode || '',
-            };
-            handleAddressChange(addressData);
-            if (!addressData.cidade) setShowAddressForm(true);
-          } catch (error) {
-            console.error('Erro ao obter endereço:', error);
-            setShowAddressForm(true);
-          } finally {
-            setLocationLoading(false);
-          }
-        },
-        () => { setLocationLoading(false); setShowAddressForm(true); },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-      );
-    }
-  }, [currentStep, handleAddressChange]);
-
-  const handleStep2Submit = async () => {
-    if (!user) {
-      navigate('/');
-      return;
-    }
-    setSubmitError(null);
+  const handleStep1 = async () => {
+    if (otp.length < 6) { setErrors({ otp: 'Digite os 6 dígitos do código' }); return; }
+    setLoading(true);
     try {
-      await updateMutation.mutateAsync({ phone: formData.phone });
+      const res = await api.auth.verifyOtp({ email, otp });
+      if (res?.token) api.auth.setToken(res.token);
+      setErrors({});
+      setStep(2);
+    } catch (err) {
+      setErrors({ otp: err.message || 'Código inválido ou expirado.' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    setLoading(true);
+    try {
+      await api.auth.sendOtp({ email, fullName: name, phone: phone.replace(/\D/g, ''), role: 'client' });
+      setOtp('');
+      setErrors({});
+      setStep(1); // re-triggers countdown useEffect
+    } catch { /* silent */ } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleStep2 = async () => {
+    if (!passwordValid) {
+      setErrors({ password: 'Corrija os requisitos da senha antes de continuar.' });
+      return;
+    }
+    setLoading(true);
+    try {
+      await api.auth.setPassword(password);
+      setErrors({});
+      setStep(3);
+    } catch (err) {
+      setErrors({ password: err.message || 'Erro ao definir senha. Tente novamente.' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleStep3 = () => {
+    const errs = {};
+    if (!rua.trim()) errs.rua = 'Informe o logradouro';
+    if (!numero.trim()) errs.numero = 'Informe o número';
+    if (!bairro.trim()) errs.bairro = 'Informe o bairro';
+    if (!cidade.trim()) errs.cidade = 'Informe a cidade';
+    if (Object.keys(errs).length > 0) { setErrors(errs); return; }
+    setErrors({});
+    setStep(4);
+  };
+
+  const handleFinish = async () => {
+    setLoading(true);
+    try {
+      const user = await api.auth.me();
+      const cityState = uf ? `${cidade} - ${uf}` : cidade;
+      await api.auth.updateMe({ city: cityState });
       const existing = await api.entities.UserProfile.filter({ userId: user.id });
       const profileData = {
         userId: user.id,
-        neighborhood: formData.address?.bairro || '',
-        address: formData.address
-          ? `${formData.address.endereco || ''} ${formData.address.numero || ''}, ${formData.address.bairro || ''} - ${formData.address.cidade || ''}`
-          : '',
+        neighborhood: bairro,
+        address: [rua, numero].filter(Boolean).join(', '),
+        cep: cep.replace(/\D/g, ''),
         role: 'client',
         onboardingCompleted: true,
         firstAccess: false,
@@ -278,361 +229,456 @@ export default function ClientOnboarding() {
       }
       navigate('/client');
     } catch (err) {
-      setSubmitError(err.message || 'Erro ao finalizar cadastro. Tente novamente.');
+      setErrors({ submit: err.message || 'Erro ao finalizar cadastro. Tente novamente.' });
+    } finally {
+      setLoading(false);
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin"></div>
-      </div>
-    );
-  }
-
-
-
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
-      <div className="border-b border-border bg-card">
-        <div className="max-w-lg mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <img src="/logo.png" alt="ServiLocal" className="w-6 h-6" />
-            <span className="text-sm font-semibold text-foreground">ServiLocal</span>
-          </div>
-          <div className="w-9" />
-        </div>
+      <div className="border-b border-border bg-card px-4 py-3 flex items-center gap-2">
+        <img src="/logo.png" alt="ServiLocal" className="w-6 h-6" />
+        <span className="text-sm font-semibold text-foreground">
+          Servi<span className="text-primary font-bold">Local</span>
+        </span>
       </div>
 
-      <div className="max-w-lg mx-auto px-4 py-6">
-        {/* Progress */}
-        <div className="flex items-center gap-2 mb-2">
-          {STEPS.map((step, idx) => (
-            <div key={step.id} className="flex items-center gap-2">
-              <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium ${
-                  idx <= currentStep
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-secondary text-muted-foreground'
-                }`}
-              >
-                {idx < currentStep || currentStep === STEPS.length - 1 ? (
-                  <Check className="w-4 h-4" />
-                ) : (
-                  step.id
-                )}
-              </div>
-              <span className="text-sm font-medium text-foreground">{step.label}</span>
-              {idx < STEPS.length - 1 && (
-                <div className="w-8 h-0.5 bg-border mx-2" />
-              )}
-            </div>
-          ))}
-        </div>
-        <div className="flex items-center gap-3 mb-8">
-          <div className="flex-1 h-1.5 bg-secondary rounded-full overflow-hidden">
-            <div
-              className="h-full bg-primary rounded-full transition-all duration-500"
-              style={{ width: `${((currentStep + 1) / STEPS.length) * 100}%` }}
-            />
-          </div>
-          <span className="text-xs text-muted-foreground whitespace-nowrap">Passo {currentStep + 1} de {STEPS.length}</span>
-        </div>
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-md mx-auto px-4 py-6">
 
-        {/* Step 0: Foto e Perfil */}
-        {currentStep === 0 && (
-          <div className="space-y-5">
-            <div>
-              <h2 className="font-heading text-xl font-bold text-foreground mb-1">
-                Crie seu perfil
-              </h2>
-            </div>
-
-            {/* Photo Upload — secondary, optional */}
-            <div className="space-y-1">
-              <p className="text-xs text-muted-foreground">Foto de perfil <span className="opacity-60">(opcional)</span></p>
-              <div className="flex items-center gap-3">
-                {formData.photoPreview ? (
-                  <img
-                    src={formData.photoPreview}
-                    alt="Preview"
-                    className="w-16 h-16 rounded-full object-cover border-2 border-primary shrink-0"
+          {/* Progress indicator */}
+          <div className="flex items-start justify-between mb-8">
+            {STEPS.map((s, idx) => (
+              <div key={s.id} className="flex flex-col items-center relative" style={{ flex: 1 }}>
+                {/* connecting line before */}
+                {idx > 0 && (
+                  <div
+                    className={`absolute top-4 right-1/2 w-full h-0.5 -translate-y-1/2 ${idx <= step ? 'bg-primary' : 'bg-border'}`}
                   />
-                ) : (
-                  <div className="w-16 h-16 rounded-full bg-secondary border-2 border-border flex items-center justify-center shrink-0">
-                    <Upload className="w-5 h-5 text-muted-foreground" />
-                  </div>
                 )}
-                <div>
-                  <button
-                    onClick={() => galleryInputRef.current?.click()}
-                    className="text-xs text-muted-foreground underline hover:text-foreground transition-colors"
-                  >
-                    {formData.photoPreview ? 'Mudar foto' : 'Adicionar foto'}
-                  </button>
-                  <p className="text-xs text-muted-foreground/60 mt-0.5">JPG ou PNG, máx 5MB</p>
+                <div
+                  className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold z-10 relative ${
+                    idx < step
+                      ? 'bg-primary text-primary-foreground'
+                      : idx === step
+                      ? 'bg-primary text-primary-foreground ring-4 ring-primary/20'
+                      : 'bg-secondary text-muted-foreground'
+                  }`}
+                >
+                  {idx < step ? <Check className="w-4 h-4" /> : s.id}
                 </div>
-                <input
-                  ref={galleryInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handlePhotoSelect}
-                  className="hidden"
-                />
+                <span className={`text-[10px] mt-1 font-medium ${idx === step ? 'text-primary' : 'text-muted-foreground'}`}>
+                  {s.label}
+                </span>
               </div>
-              {fieldErrors.photo && (
-                <p className="text-xs text-red-500">{fieldErrors.photo}</p>
-              )}
-            </div>
+            ))}
+          </div>
 
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">
-                Nome completo <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                name="name"
-                value={formData.name}
-                onChange={handleInputChange}
-                placeholder="Digite seu nome completo"
-                className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm ${fieldErrors.name ? 'border-red-400' : 'border-border'}`}
-              />
-              {fieldErrors.name && <p className="text-xs text-red-500 mt-1">{fieldErrors.name}</p>}
-            </div>
+          {/* Step 0 — Dados */}
+          {step === 0 && (
+            <div className="space-y-5">
+              <div>
+                <h2 className="text-xl font-bold text-foreground">Crie sua conta</h2>
+                <p className="text-sm text-muted-foreground mt-1">Preencha seus dados para começar</p>
+              </div>
 
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">
-                Email <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleInputChange}
-                placeholder="seu@email.com"
-                className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm ${fieldErrors.email ? 'border-red-400' : 'border-border'}`}
-              />
-              {fieldErrors.email && <p className="text-xs text-red-500 mt-1">{fieldErrors.email}</p>}
-            </div>
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1.5">
+                  Nome completo <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => { setName(e.target.value); setErrors((p) => ({ ...p, name: undefined })); }}
+                  placeholder="Seu nome completo"
+                  className={`w-full px-4 py-3 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 ${errors.name ? 'border-red-400' : 'border-border'}`}
+                />
+                {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name}</p>}
+              </div>
 
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-2">
-                WhatsApp/Telefone <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="tel"
-                name="phone"
-                value={formData.phone}
-                onChange={(e) => {
-                  const val = e.target.value.replace(/\D/g, '').slice(0, 11);
-                  const formatted = val.length <= 2 ? `(${val}` : val.length <= 7 ? `(${val.slice(0, 2)}) ${val.slice(2)}` : `(${val.slice(0, 2)}) ${val.slice(2, 7)}-${val.slice(7)}`;
-                  handleInputChange({ target: { name: 'phone', value: val.length > 0 ? formatted : '' } });
-                }}
-                placeholder="(11) 98765-4321"
-                className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm ${fieldErrors.phone ? 'border-red-400' : 'border-border'}`}
-              />
-              {fieldErrors.phone
-                ? <p className="text-xs text-red-500 mt-1">{fieldErrors.phone}</p>
-                : <p className="text-xs text-muted-foreground mt-1">Com DDD (11 ou outro código)</p>
-              }
-            </div>
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1.5">
+                  WhatsApp <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => { setPhone(formatPhone(e.target.value)); setErrors((p) => ({ ...p, phone: undefined })); }}
+                  placeholder="(11) 98765-4321"
+                  className={`w-full px-4 py-3 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 ${errors.phone ? 'border-red-400' : 'border-border'}`}
+                />
+                {errors.phone
+                  ? <p className="text-xs text-red-500 mt-1">{errors.phone}</p>
+                  : <p className="text-xs text-muted-foreground mt-1">O código de verificação será enviado por aqui</p>
+                }
+              </div>
 
-            {otpSent && (
-              <div className="space-y-3 pt-1">
-                <div className="p-3 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2">
-                  <Check className="w-4 h-4 text-green-600 shrink-0" />
-                  <p className="text-sm text-green-700 font-medium">Código enviado! Verifique seu WhatsApp.</p>
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1.5">
+                  E-mail <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => { setEmail(e.target.value); setErrors((p) => ({ ...p, email: undefined })); }}
+                  placeholder="seu@email.com"
+                  className={`w-full px-4 py-3 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 ${errors.email ? 'border-red-400' : 'border-border'}`}
+                />
+                {errors.email && <p className="text-xs text-red-500 mt-1">{errors.email}</p>}
+              </div>
+
+              {errors.submit && <p className="text-xs text-red-500 text-center">{errors.submit}</p>}
+
+              <button
+                onClick={handleStep0}
+                disabled={loading}
+                className="w-full py-3.5 bg-primary text-primary-foreground rounded-xl font-semibold hover:opacity-90 disabled:opacity-50 transition-opacity"
+              >
+                {loading ? 'Enviando...' : 'Enviar código pelo WhatsApp'}
+              </button>
+            </div>
+          )}
+
+          {/* Step 1 — Verificação */}
+          {step === 1 && (
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-xl font-bold text-foreground">Verificar código</h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Enviamos um código de 6 dígitos para o WhatsApp <span className="font-medium text-foreground">{phone}</span>
+                </p>
+              </div>
+
+              <div>
+                <div className="flex gap-2 justify-between">
+                  {Array.from({ length: 6 }, (_, i) => (
+                    <input
+                      key={i}
+                      ref={(el) => (otpRefs.current[i] = el)}
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={1}
+                      value={otp[i] || ''}
+                      onChange={(e) => handleOtpChange(e, i)}
+                      onKeyDown={(e) => handleOtpKeyDown(e, i)}
+                      onPaste={i === 0 ? handleOtpPaste : undefined}
+                      className={`flex-1 h-14 text-center border-2 rounded-xl text-2xl font-bold font-mono focus:outline-none focus:ring-2 focus:ring-primary/30 transition-colors ${
+                        errors.otp ? 'border-red-400' : otp[i] ? 'border-primary bg-primary/5' : 'border-border'
+                      }`}
+                    />
+                  ))}
                 </div>
+                {errors.otp && <p className="text-xs text-red-500 mt-2 text-center">{errors.otp}</p>}
+              </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-3">
-                    Código de verificação <span className="text-red-500">*</span>
-                  </label>
-                  <div className="flex gap-2 justify-center">
-                    {Array.from({ length: 6 }, (_, i) => (
-                      <input
-                        key={i}
-                        ref={el => otpRefs.current[i] = el}
-                        type="text"
-                        inputMode="numeric"
-                        maxLength={1}
-                        value={otpCode[i] || ''}
-                        onChange={e => handleOtpBoxChange(e, i)}
-                        onKeyDown={e => handleOtpBoxKeyDown(e, i)}
-                        onPaste={i === 0 ? handleOtpPaste : undefined}
-                        className={`w-11 h-12 text-center border-2 rounded-lg text-xl font-mono font-bold focus:outline-none focus:ring-2 focus:ring-primary/50 transition-colors ${
-                          fieldErrors.otp ? 'border-red-400' : otpCode[i] ? 'border-primary bg-primary/5' : 'border-border'
-                        }`}
-                      />
-                    ))}
-                  </div>
-                  {fieldErrors.otp && <p className="text-xs text-red-500 mt-2 text-center">{fieldErrors.otp}</p>}
-                </div>
-
-                <div className="text-center pt-1">
-                  <p className="text-xs text-muted-foreground">Não recebeu?</p>
+              <div className="text-center space-y-1">
+                {canResend ? (
                   <button
-                    onClick={async () => {
-                      setOtpLoading(true);
-                      try { await api.auth.sendOtp({ email: formData.email, fullName: formData.name, phone: formData.phone, role: 'client' }); } catch {}
-                      setOtpLoading(false);
-                    }}
-                    className="text-xs text-primary underline mt-0.5"
+                    onClick={handleResendOtp}
+                    disabled={loading}
+                    className="text-sm text-primary font-medium underline disabled:opacity-50"
                   >
                     Reenviar código
                   </button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Step 1: Localização */}
-        {currentStep === 1 && (
-          <div className="space-y-6">
-            {locationLoading && (
-              <div className="flex flex-col items-center justify-center py-8 gap-3 bg-secondary/30 rounded-lg">
-                <div className="w-6 h-6 border-3 border-slate-200 border-t-primary rounded-full animate-spin"></div>
-                <p className="text-muted-foreground text-sm">Detectando sua localização...</p>
-              </div>
-            )}
-
-            {!locationLoading && formData.address?.cidade && !showAddressForm && (
-              <div className="space-y-4">
-                <div className="p-4 bg-secondary/50 rounded-lg">
-                  <p className="text-xs text-muted-foreground mb-1">Localização detectada</p>
-                  <p className="font-medium text-foreground">
-                    {formData.address.endereco} {formData.address.numero && `, ${formData.address.numero}`}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {formData.address.bairro} - {formData.address.cidade}, {formData.address.estado}
-                  </p>
-                </div>
-                <button
-                  onClick={() => setShowAddressForm(true)}
-                  className="w-full px-4 py-3 border border-border rounded-lg text-sm font-medium text-foreground hover:bg-secondary/50 transition-colors"
-                >
-                  Informar endereço correto
-                </button>
-              </div>
-            )}
-
-            {showAddressForm && (
-              <AddressFormWithMap
-                onAddressChange={handleAddressChange}
-                initialData={formData.address}
-                validateNow={validateAddress}
-              />
-            )}
-          </div>
-        )}
-
-        {/* Step 2: Resumo */}
-        {currentStep === 2 && (
-          <div className="space-y-6">
-            <div className="text-center">
-              {formData.photoPreview ? (
-                <img src={formData.photoPreview} alt="foto" className="w-20 h-20 rounded-full object-cover mx-auto mb-3 border-2 border-primary shadow" />
-              ) : (
-                <div className="w-20 h-20 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-2xl mx-auto mb-3 shadow">
-                  {formData.name?.[0]?.toUpperCase() || '?'}
-                </div>
-              )}
-              <h2 className="font-heading text-xl font-bold text-foreground mb-1">Tudo pronto!</h2>
-              <p className="text-muted-foreground text-sm">Seu perfil foi configurado com sucesso.</p>
-            </div>
-
-            {/* Perfil */}
-            <div className="space-y-2">
-              <p className="text-xs font-bold text-muted-foreground tracking-wider flex items-center gap-1.5">
-                <ShieldCheck className="w-3.5 h-3.5" /> PERFIL
-              </p>
-              <div className="p-4 bg-card border border-border rounded-xl">
-                <p className="font-medium text-foreground">{formData.name}</p>
-              </div>
-            </div>
-
-            {/* Contato */}
-            <div className="space-y-2">
-              <p className="text-xs font-bold text-muted-foreground tracking-wider flex items-center gap-1.5">
-                <Mail className="w-3.5 h-3.5" /> CONTATO
-              </p>
-              <div className="p-4 bg-card border border-border rounded-xl space-y-1.5">
-                <p className="text-sm text-foreground">{formData.email}</p>
-                <p className="text-sm text-foreground">{formData.phone}</p>
-              </div>
-            </div>
-
-            {/* Endereço */}
-            <div className="space-y-2">
-              <p className="text-xs font-bold text-muted-foreground tracking-wider flex items-center gap-1.5">
-                <MapPin className="w-3.5 h-3.5" /> ENDEREÇO
-              </p>
-              <div className="p-4 bg-card border border-border rounded-xl space-y-0.5">
-                {formData.address ? (
-                  <>
-                    <p className="text-sm text-foreground">
-                      {formData.address.endereco}{formData.address.numero ? `, ${formData.address.numero}` : ''}
-                    </p>
-                    {formData.address.complemento && (
-                      <p className="text-sm text-muted-foreground">{formData.address.complemento}</p>
-                    )}
-                    {formData.address.bairro && (
-                      <p className="text-sm text-muted-foreground">{formData.address.bairro}</p>
-                    )}
-                    <p className="text-sm text-muted-foreground">
-                      {formData.address.cidade}{formData.address.estado ? ` - ${formData.address.estado}` : ''}
-                    </p>
-                  </>
                 ) : (
-                  <p className="text-sm text-foreground">{formData.city}</p>
+                  <p className="text-sm text-muted-foreground">
+                    Reenviar em <span className="font-medium text-foreground">{otpCountdown}s</span>
+                  </p>
                 )}
               </div>
+
+              <button
+                onClick={handleStep1}
+                disabled={loading || otp.length < 6}
+                className="w-full py-3.5 bg-primary text-primary-foreground rounded-xl font-semibold hover:opacity-90 disabled:opacity-50 transition-opacity"
+              >
+                {loading ? 'Verificando...' : 'Verificar código'}
+              </button>
+
+              <button
+                onClick={() => setStep(0)}
+                className="w-full py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Voltar
+              </button>
             </div>
-          </div>
-        )}
-
-        {/* Buttons */}
-        {submitError && (
-          <p className="text-xs text-red-500 text-center mt-6">{submitError}</p>
-        )}
-        <div className="flex gap-3 mt-3">
-          {currentStep > 0 && (
-            <button
-              onClick={() => setCurrentStep(currentStep - 1)}
-              className="flex-1 px-4 py-3 border border-border rounded-lg font-medium text-foreground hover:bg-secondary/50 transition-colors"
-            >
-              Voltar
-            </button>
           )}
-          <button
-            onClick={
-              currentStep === 0
-                ? handleStep0Submit
-                : currentStep === 1
-                ? handleStep1Submit
-                : handleStep2Submit
-            }
-            disabled={
-              (currentStep === 0 && otpSent && otpCode.length < 6) ||
-              (currentStep === 1 && !isAddressComplete) ||
-              updateMutation.isPending ||
-              uploadMutation.isPending ||
-              otpLoading
-            }
-            className="flex-1 px-4 py-3 bg-primary text-primary-foreground rounded-lg font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {otpLoading ? 'Aguarde...' :
-              currentStep === STEPS.length - 1 ? 'Começar' :
-              currentStep === 0 && !user && otpSent ? 'Verificar código' :
-              currentStep === 0 && !user ? 'Enviar código' :
-              'Próximo'}
-          </button>
+
+          {/* Step 2 — Senha */}
+          {step === 2 && (
+            <div className="space-y-5">
+              <div>
+                <h2 className="text-xl font-bold text-foreground">Crie sua senha</h2>
+                <p className="text-sm text-muted-foreground mt-1">Escolha uma senha segura para sua conta</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1.5">Nova senha</label>
+                <div className="relative">
+                  <input
+                    type={showPass ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => { setPassword(e.target.value); setErrors((p) => ({ ...p, password: undefined })); }}
+                    placeholder="••••••••"
+                    className="w-full px-4 py-3 pr-11 border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPass((v) => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                  >
+                    {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+
+                {/* Strength bar */}
+                <div className="flex gap-1 mt-2">
+                  {[0, 1, 2, 3].map((i) => (
+                    <div
+                      key={i}
+                      className={`h-1 flex-1 rounded-full transition-colors ${
+                        i < strengthScore ? strengthColors[strengthScore] : 'bg-border'
+                      }`}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1.5">Confirmar senha</label>
+                <div className="relative">
+                  <input
+                    type={showConfirm ? 'text' : 'password'}
+                    value={confirm}
+                    onChange={(e) => setConfirm(e.target.value)}
+                    placeholder="••••••••"
+                    className={`w-full px-4 py-3 pr-11 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 ${
+                      confirm.length > 0 && !matches ? 'border-red-400' : 'border-border'
+                    }`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirm((v) => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                  >
+                    {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                {confirm.length > 0 && !matches && (
+                  <p className="text-xs text-red-500 mt-1">As senhas não coincidem</p>
+                )}
+              </div>
+
+              {/* Rules checklist */}
+              <div className="bg-secondary/50 rounded-xl p-4 space-y-2">
+                <Rule ok={hasMin8} label="Mínimo 8 caracteres" />
+                <Rule ok={hasUpper} label="Pelo menos uma letra maiúscula" />
+                <Rule ok={hasNumber} label="Pelo menos um número" />
+                <Rule ok={hasSpecial} label="Pelo menos um caractere especial" />
+              </div>
+
+              {errors.password && <p className="text-xs text-red-500 text-center">{errors.password}</p>}
+
+              <button
+                onClick={handleStep2}
+                disabled={loading || !passwordValid}
+                className="w-full py-3.5 bg-primary text-primary-foreground rounded-xl font-semibold hover:opacity-90 disabled:opacity-50 transition-opacity"
+              >
+                {loading ? 'Salvando...' : 'Continuar'}
+              </button>
+            </div>
+          )}
+
+          {/* Step 3 — Endereço */}
+          {step === 3 && (
+            <div className="space-y-4">
+              <div>
+                <h2 className="text-xl font-bold text-foreground">Seu endereço</h2>
+                <p className="text-sm text-muted-foreground mt-1">Usamos para conectar você a profissionais próximos</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1.5">CEP</label>
+                <input
+                  type="text"
+                  value={cep}
+                  onChange={(e) => {
+                    const raw = e.target.value.replace(/\D/g, '').slice(0, 8);
+                    const formatted = raw.length > 5 ? `${raw.slice(0, 5)}-${raw.slice(5)}` : raw;
+                    setCep(formatted);
+                    if (raw.length === 8) lookupCep(raw);
+                  }}
+                  placeholder="00000-000"
+                  className="w-full px-4 py-3 border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                />
+                {cepLoading && <p className="text-xs text-muted-foreground mt-1">Buscando CEP...</p>}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1.5">
+                  Rua / Logradouro <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={rua}
+                  onChange={(e) => { setRua(e.target.value); setErrors((p) => ({ ...p, rua: undefined })); }}
+                  placeholder="Rua, Avenida, Travessa..."
+                  className={`w-full px-4 py-3 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 ${errors.rua ? 'border-red-400' : 'border-border'}`}
+                />
+                {errors.rua && <p className="text-xs text-red-500 mt-1">{errors.rua}</p>}
+              </div>
+
+              <div className="flex gap-3">
+                <div className="flex-1">
+                  <label className="block text-sm font-medium text-foreground mb-1.5">
+                    Número <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={numero}
+                    onChange={(e) => { setNumero(e.target.value); setErrors((p) => ({ ...p, numero: undefined })); }}
+                    placeholder="123"
+                    className={`w-full px-4 py-3 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 ${errors.numero ? 'border-red-400' : 'border-border'}`}
+                  />
+                  {errors.numero && <p className="text-xs text-red-500 mt-1">{errors.numero}</p>}
+                </div>
+                <div className="flex-1">
+                  <label className="block text-sm font-medium text-foreground mb-1.5">Complemento</label>
+                  <input
+                    type="text"
+                    value={complemento}
+                    onChange={(e) => setComplemento(e.target.value)}
+                    placeholder="Apto, Bloco..."
+                    className="w-full px-4 py-3 border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1.5">
+                  Bairro <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={bairro}
+                  onChange={(e) => { setBairro(e.target.value); setErrors((p) => ({ ...p, bairro: undefined })); }}
+                  placeholder="Seu bairro"
+                  className={`w-full px-4 py-3 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 ${errors.bairro ? 'border-red-400' : 'border-border'}`}
+                />
+                {errors.bairro && <p className="text-xs text-red-500 mt-1">{errors.bairro}</p>}
+              </div>
+
+              <div className="flex gap-3">
+                <div className="flex-1">
+                  <label className="block text-sm font-medium text-foreground mb-1.5">
+                    Cidade <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={cidade}
+                    onChange={(e) => { setCidade(e.target.value); setErrors((p) => ({ ...p, cidade: undefined })); }}
+                    placeholder="Sua cidade"
+                    className={`w-full px-4 py-3 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 ${errors.cidade ? 'border-red-400' : 'border-border'}`}
+                  />
+                  {errors.cidade && <p className="text-xs text-red-500 mt-1">{errors.cidade}</p>}
+                </div>
+                <div className="w-20">
+                  <label className="block text-sm font-medium text-foreground mb-1.5">UF</label>
+                  <input
+                    type="text"
+                    value={uf}
+                    onChange={(e) => setUf(e.target.value.toUpperCase().slice(0, 2))}
+                    placeholder="SP"
+                    className="w-full px-4 py-3 border border-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 text-center"
+                  />
+                </div>
+              </div>
+
+              <button
+                onClick={handleStep3}
+                className="w-full py-3.5 bg-primary text-primary-foreground rounded-xl font-semibold hover:opacity-90 transition-opacity mt-2"
+              >
+                Continuar
+              </button>
+
+              <button
+                onClick={() => setStep(2)}
+                className="w-full py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Voltar
+              </button>
+            </div>
+          )}
+
+          {/* Step 4 — Resumo */}
+          {step === 4 && (
+            <div className="space-y-5">
+              <div>
+                <h2 className="text-xl font-bold text-foreground">Confirme seus dados</h2>
+                <p className="text-sm text-muted-foreground mt-1">Revise as informações antes de finalizar</p>
+              </div>
+
+              {/* Dados pessoais */}
+              <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-semibold text-muted-foreground tracking-widest">DADOS PESSOAIS</p>
+                  <button onClick={() => setStep(0)} className="text-xs text-primary font-medium">Editar</button>
+                </div>
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground w-16 shrink-0">Nome</span>
+                    <span className="text-sm text-foreground font-medium">{name}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground w-16 shrink-0">WhatsApp</span>
+                    <span className="text-sm text-foreground">{phone}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground w-16 shrink-0">E-mail</span>
+                    <span className="text-sm text-foreground">{email}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Endereço */}
+              <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-semibold text-muted-foreground tracking-widest">ENDEREÇO</p>
+                  <button onClick={() => setStep(3)} className="text-xs text-primary font-medium">Editar</button>
+                </div>
+                <div className="space-y-0.5">
+                  <p className="text-sm text-foreground font-medium">
+                    {rua}{numero ? `, ${numero}` : ''}
+                  </p>
+                  {complemento && <p className="text-sm text-muted-foreground">{complemento}</p>}
+                  <p className="text-sm text-muted-foreground">{bairro}</p>
+                  <p className="text-sm text-muted-foreground">{cidade}{uf ? ` - ${uf}` : ''}</p>
+                  {cep && <p className="text-xs text-muted-foreground">CEP {cep}</p>}
+                </div>
+              </div>
+
+              {errors.submit && <p className="text-xs text-red-500 text-center">{errors.submit}</p>}
+
+              <button
+                onClick={handleFinish}
+                disabled={loading}
+                className="w-full py-3.5 bg-primary text-primary-foreground rounded-xl font-semibold hover:opacity-90 disabled:opacity-50 transition-opacity"
+              >
+                {loading ? 'Finalizando...' : 'Finalizar cadastro'}
+              </button>
+
+              {/* Security footer */}
+              <div className="flex items-center justify-center gap-2 py-2">
+                <ShieldCheck className="w-4 h-4 text-muted-foreground" />
+                <p className="text-xs text-muted-foreground">Seus dados são protegidos e nunca compartilhados</p>
+              </div>
+            </div>
+          )}
+
         </div>
-
       </div>
-
     </div>
   );
 }
