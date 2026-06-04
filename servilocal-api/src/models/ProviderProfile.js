@@ -23,6 +23,12 @@ const providerProfileSchema = new mongoose.Schema({
   endereco: String,
   numero: String,
   estado: String,
+  phone: String,
+  experience: String,
+  mainCategory: String,
+  verificationStatus: { type: String, default: 'pending' },
+  serviceAreas: [{ city: String, type: String, neighborhoods: [String] }],
+  servicePricing: { type: mongoose.Schema.Types.Mixed, default: {} },
 }, { timestamps: true });
 
 providerProfileSchema.set('toJSON', {

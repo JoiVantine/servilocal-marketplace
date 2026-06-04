@@ -1,12 +1,12 @@
 import { Link } from 'react-router-dom';
-import { Home, ClipboardList, CalendarDays, User } from 'lucide-react';
+import { Home, ClipboardList, CalendarDays, Menu } from 'lucide-react';
 
 export default function ProviderBottomNav({ active }) {
   const items = [
     { id: 'home', icon: Home, label: 'Início', to: '/provider' },
     { id: 'orders', icon: ClipboardList, label: 'Pedidos', to: '/provider?tab=active' },
     { id: 'agenda', icon: CalendarDays, label: 'Agenda', to: '/provider?tab=agenda' },
-    { id: 'profile', icon: User, label: 'Perfil', to: '/provider/services' },
+    { id: 'menu', icon: Menu, label: 'Menu', to: '/provider/menu' },
   ];
 
   return (

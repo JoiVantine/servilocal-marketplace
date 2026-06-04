@@ -3,13 +3,11 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '@/api/apiClient';
 import {
   Pencil, Star, Inbox, MapPin, Clock,
-  ChevronRight, LifeBuoy, Navigation, CalendarDays,
+  ChevronRight, LifeBuoy, Navigation, CalendarDays, LogOut,
 } from 'lucide-react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import EditProviderModal from '@/components/EditProviderModal';
 import ProviderBottomNav from '@/components/ProviderBottomNav';
-
-const LOGO_URL = '/logo.png';
 
 function timeAgo(iso) {
   if (!iso) return '';
@@ -128,20 +126,6 @@ export default function ProviderHome() {
 
   return (
     <div className="min-h-screen bg-background pb-24">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-4 border-b border-border bg-card">
-        <div className="flex items-center gap-2">
-          <img src={LOGO_URL} alt="ServiLocal" className="w-6 h-6 object-contain" />
-          <span className="text-sm font-semibold text-foreground">Servi<span className="font-bold text-primary">Local</span></span>
-        </div>
-        <button
-          onClick={handleLogout}
-          className="px-3 py-1.5 text-sm font-medium text-foreground border border-border rounded-lg hover:bg-secondary/50 transition-colors"
-        >
-          Sair
-        </button>
-      </div>
-
       <div className="max-w-lg mx-auto px-4 py-5 space-y-5">
         {/* Greeting */}
         <div className="flex items-center justify-between">
@@ -149,12 +133,21 @@ export default function ProviderHome() {
             <p className="text-sm text-muted-foreground">Olá,</p>
             <h1 className="font-heading text-3xl font-bold text-foreground">{firstName || '...'}</h1>
           </div>
-          <button
-            onClick={() => setShowEditProfile(true)}
-            className="p-2 rounded-xl hover:bg-secondary/50 transition-colors border border-border"
-          >
-            <Pencil className="w-4 h-4 text-muted-foreground" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowEditProfile(true)}
+              className="p-2 rounded-xl hover:bg-secondary/50 transition-colors border border-border"
+            >
+              <Pencil className="w-4 h-4 text-muted-foreground" />
+            </button>
+            <button
+              onClick={handleLogout}
+              className="p-2 rounded-xl hover:bg-secondary/50 transition-colors border border-border"
+              title="Sair"
+            >
+              <LogOut className="w-4 h-4 text-muted-foreground" />
+            </button>
+          </div>
         </div>
 
         {/* Toggle recebendo pedidos */}

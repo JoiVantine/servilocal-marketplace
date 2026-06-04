@@ -78,7 +78,7 @@ router.post('/send-otp', otpLimiter, async (req, res) => {
 
     const phoneToUse = phone || user.phone;
     if (phoneToUse) {
-      await sendWhatsApp(phoneToUse, `Seu código ServiLocal: *${otp}*\n\nEste código expira em 10 minutos.`);
+      await sendWhatsApp(phoneToUse, `Seu código ServiLocal:\n\n${otp}\n\nEste código expira em 10 minutos.`);
     } else {
       await sendMail(email, 'account_token', { email, fullName: user.fullName, otp, role: user.role }, {
         subject: 'Seu código ServiLocal',
@@ -147,7 +147,7 @@ router.post('/resend-otp', requireAuth, async (req, res) => {
     user.otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
     await user.save();
     if (user.phone) {
-      await sendWhatsApp(user.phone, `Seu novo código ServiLocal: *${otp}*\n\nEste código expira em 10 minutos.`);
+      await sendWhatsApp(user.phone, `Seu novo código ServiLocal:\n\n${otp}\n\nEste código expira em 10 minutos.`);
     } else {
       await sendMail(user.email, 'account_resend_otp', { fullName: user.fullName || '', otp }, {
         subject: 'Seu novo código ServiLocal',

@@ -53,6 +53,8 @@ import ClientOrderRating from './pages/ClientOrderRating';
 import ProviderRequestDetail from './pages/ProviderRequestDetail';
 import ProviderOrderProgress from './pages/ProviderOrderProgress';
 import ProviderEarnings from './pages/ProviderEarnings';
+import ProviderMenu from './pages/ProviderMenu';
+import ProviderProfile from './pages/ProviderProfile';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -121,6 +123,9 @@ const AuthenticatedApp = () => {
       <Route path="/provider/services" element={<ProviderServices />} />
       <Route path="/provider/support" element={<SupportCenter audience="provider" />} />
       <Route path="/provider/support/:ticketId" element={<SupportTicketDetail audience="provider" />} />
+      <Route path="/provider/menu" element={<ProviderMenu />} />
+      <Route path="/provider/profile" element={<ProviderProfile />} />
+      <Route path="/provider/notifications" element={<ClientNotifications />} />
       <Route path="/chat/:conversationId" element={<ChatPage />} />
       <Route path="/setup-password" element={<PasswordSetup />} />
       <Route path="/login" element={<Login />} />

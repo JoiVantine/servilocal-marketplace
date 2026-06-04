@@ -4,8 +4,9 @@ import { api } from '@/api/apiClient';
 import { useMutation } from '@tanstack/react-query';
 import {
   ChevronRight, ChevronDown, Eye, EyeOff,
-  CheckCircle2, ShieldCheck, Camera,
-  Zap, Star, Shield, Wrench, FileText,
+  CheckCircle2, ShieldCheck,
+  Zap, Star, Shield, Wrench,
+  MapPin, Plus, X, MoreHorizontal,
 } from 'lucide-react';
 import { useServices } from '@/hooks/useServices';
 
@@ -15,25 +16,26 @@ const STEPS = [
   { id: 1, label: 'Início' },
   { id: 2, label: 'Conta' },
   { id: 3, label: 'Código' },
-  { id: 4, label: 'Pessoal' },
-  { id: 5, label: 'Selfie' },
-  { id: 6, label: 'Profissional' },
-  { id: 7, label: 'Docs' },
+  { id: 4, label: 'Atendimento' },
+  { id: 5, label: 'Profissional' },
 ];
 
-const EXPERIENCE_OPTIONS = [
-  'Menos de 1 ano',
-  '1 a 2 anos',
-  '3 a 4 anos',
-  '5 anos ou mais',
+const MAIN_CAT_NAMES = [
+  'Construção e Reformas',
+  'Elétrica',
+  'Hidráulica',
+  'Pintura',
+  'Limpeza',
+  'Serviços Domésticos',
 ];
 
+const EXPERIENCE_OPTIONS = ['Menos de 1 ano', '1 a 2 anos', '3 a 4 anos', '5 anos ou mais'];
 const SPECIAL_RE = /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?`~]/;
 
 const SOBRE_ITEMS = [
-  { icon: Zap, text: 'Receba pedidos na sua região' },
+  { icon: Zap,    text: 'Receba pedidos na sua região' },
   { icon: Wrench, text: 'Escolha os serviços que deseja realizar' },
-  { icon: Star, text: 'Atenda, seja avaliado e aumente seus ganhos' },
+  { icon: Star,   text: 'Atenda, seja avaliado e aumente seus ganhos' },
   { icon: Shield, text: 'Receba com segurança pelo app' },
 ];
 
@@ -47,60 +49,15 @@ function Rule({ ok, label }) {
 }
 
 const formatPhone = (val) => {
-  const digits = val.replace(/\D/g, '').slice(0, 11);
-  if (!digits.length) return '';
-  if (digits.length <= 2) return `(${digits}`;
-  if (digits.length <= 7) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
-  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
-};
-
-const formatCpf = (val) => {
   const d = val.replace(/\D/g, '').slice(0, 11);
-  if (d.length <= 3) return d;
-  if (d.length <= 6) return `${d.slice(0, 3)}.${d.slice(3)}`;
-  if (d.length <= 9) return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6)}`;
-  return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`;
+  if (!d.length) return '';
+  if (d.length <= 2) return `(${d}`;
+  if (d.length <= 7) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
+  return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
 };
 
-const formatCep = (val) => {
-  const d = val.replace(/\D/g, '').slice(0, 8);
-  if (d.length <= 5) return d;
-  return `${d.slice(0, 5)}-${d.slice(5)}`;
-};
-
-function DocRow({ label, sublabel, inputRef, fileUrl, fileName, loading, onUpload, accept, optional }) {
-  const isPdf = fileName?.toLowerCase().endsWith('.pdf');
-  const done = !!fileUrl;
-  return (
-    <div className={`flex items-center gap-3 p-4 rounded-xl border transition-colors ${done ? 'bg-green-50 border-green-200' : 'bg-card border-border'}`}>
-      <CheckCircle2 className={`w-5 h-5 shrink-0 ${done ? 'text-green-600' : 'text-border'}`} />
-      <div className="flex-1 min-w-0">
-        <p className={`text-sm font-medium ${done ? 'text-green-700' : 'text-foreground'}`}>{label}</p>
-        {sublabel && <p className="text-xs text-muted-foreground">{sublabel}</p>}
-        {fileName && !isPdf && <p className="text-xs text-muted-foreground truncate mt-0.5">{fileName}</p>}
-        {fileName && isPdf && (
-          <div className="flex items-center gap-1 mt-0.5">
-            <span className="text-xs font-bold text-red-600 bg-red-50 border border-red-200 px-1.5 py-0.5 rounded">PDF</span>
-            <span className="text-xs text-muted-foreground truncate">{fileName}</span>
-          </div>
-        )}
-      </div>
-      <input type="file" ref={inputRef} className="hidden" accept={accept} onChange={onUpload} />
-      {fileUrl && !isPdf ? (
-        <button onClick={() => inputRef.current?.click()} className="shrink-0">
-          <img src={fileUrl} alt={label} className="w-14 h-10 object-cover rounded-lg border border-border" />
-        </button>
-      ) : (
-        <button
-          onClick={() => inputRef.current?.click()}
-          className="shrink-0 text-xs font-medium text-primary border border-primary/30 rounded-lg px-3 py-1.5 hover:bg-primary/5 transition-colors"
-        >
-          {loading ? '...' : done ? 'Trocar' : 'Enviar'}
-        </button>
-      )}
-    </div>
-  );
-}
+const fmtCountdown = (s) =>
+  `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 
 export default function ProviderOnboarding() {
   const navigate = useNavigate();
@@ -109,7 +66,7 @@ export default function ProviderOnboarding() {
   const [user, setUser] = useState(null);
   const { categories } = useServices();
 
-  // Step 1 — Criar conta
+  // ── Step 1: Conta ──────────────────────────────────────────────
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
@@ -117,55 +74,37 @@ export default function ProviderOnboarding() {
   const [confirm, setConfirm] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-  const [termsAccepted, setTermsAccepted] = useState(false);
 
-  const hasMin8 = password.length >= 8;
-  const hasUpper = /[A-Z]/.test(password);
-  const hasNumber = /[0-9]/.test(password);
+  const hasMin8    = password.length >= 8;
+  const hasUpper   = /[A-Z]/.test(password);
+  const hasNumber  = /[0-9]/.test(password);
   const hasSpecial = SPECIAL_RE.test(password);
-  const matches = password.length > 0 && password === confirm;
-  const passwordValid = hasMin8 && hasUpper && hasNumber && hasSpecial && matches;
-  const strengthScore = [hasMin8, hasUpper, hasNumber, hasSpecial].filter(Boolean).length;
+  const matches    = password.length > 0 && password === confirm;
+  const passwordValid  = hasMin8 && hasUpper && hasNumber && hasSpecial && matches;
+  const strengthScore  = [hasMin8, hasUpper, hasNumber, hasSpecial].filter(Boolean).length;
   const strengthColors = ['border-border', 'bg-red-500', 'bg-orange-400', 'bg-yellow-400', 'bg-green-500'];
 
-  // Step 2 — OTP
+  // ── Step 2: OTP ────────────────────────────────────────────────
   const [otpCode, setOtpCode] = useState('');
   const [otpLoading, setOtpLoading] = useState(false);
   const [otpCountdown, setOtpCountdown] = useState(0);
   const countdownRef = useRef(null);
   const otpInputRefs = useRef([]);
 
-  // Step 3 — Dados pessoais
-  const [cpf, setCpf] = useState('');
-  const [birthDate, setBirthDate] = useState('');
-  const [address, setAddress] = useState('');
-  const [city, setCity] = useState('');
-  const [zipCode, setZipCode] = useState('');
+  // ── Step 3: Atendimento ────────────────────────────────────────
+  const [serviceAreas, setServiceAreas] = useState([]);
+  const [currentCity, setCurrentCity] = useState('');
+  const [currentAreaType, setCurrentAreaType] = useState('entire_city');
+  const [currentNeighborhoods, setCurrentNeighborhoods] = useState([]);
+  const [neighborhoodInput, setNeighborhoodInput] = useState('');
 
-  // Step 4 — Selfie
-  const selfieInputRef = useRef(null);
-  const [selfieUrl, setSelfieUrl] = useState('');
-  const [selfieLoading, setSelfieLoading] = useState(false);
-
-  // Step 5 — Dados profissionais
+  // ── Step 4: Profissional ───────────────────────────────────────
   const [mainCategory, setMainCategory] = useState('');
   const [selectedServices, setSelectedServices] = useState([]);
+  const [servicePricing, setServicePricing] = useState({});
   const [experience, setExperience] = useState('');
   const [about, setAbout] = useState('');
-
-  // Step 6 — Documentos
-  const docIdRef = useRef(null);
-  const docAddressRef = useRef(null);
-  const docCertidaoRef = useRef(null);
-  const [docIdUrl, setDocIdUrl] = useState('');
-  const [docIdName, setDocIdName] = useState('');
-  const [docIdLoading, setDocIdLoading] = useState(false);
-  const [docAddressUrl, setDocAddressUrl] = useState('');
-  const [docAddressName, setDocAddressName] = useState('');
-  const [docAddressLoading, setDocAddressLoading] = useState(false);
-  const [docCertidaoUrl, setDocCertidaoUrl] = useState('');
-  const [docCertidaoName, setDocCertidaoName] = useState('');
-  const [docCertidaoLoading, setDocCertidaoLoading] = useState(false);
+  const [showOthersModal, setShowOthersModal] = useState(false);
 
   const [fieldErrors, setFieldErrors] = useState({});
 
@@ -177,15 +116,15 @@ export default function ProviderOnboarding() {
       setName(u.fullName || u.full_name || '');
       setPhone(u.phone || '');
       setEmail(u.email || '');
-      setCity(u.city || '');
       if (goServices) {
         const provProfiles = await api.entities.ProviderProfile.filter({ userId: u.id });
         if (provProfiles.length > 0) {
           const pp = provProfiles[0];
           setSelectedServices(pp.specialties || []);
           if (pp.mainCategory) setMainCategory(pp.mainCategory);
+          if (pp.serviceAreas?.length) setServiceAreas(pp.serviceAreas);
         }
-        setStep(5);
+        setStep(4);
         return;
       }
       setStep(3);
@@ -193,7 +132,7 @@ export default function ProviderOnboarding() {
   }, []);
 
   const startCountdown = () => {
-    setOtpCountdown(45);
+    setOtpCountdown(600);
     if (countdownRef.current) clearInterval(countdownRef.current);
     countdownRef.current = setInterval(() => {
       setOtpCountdown(prev => {
@@ -206,7 +145,25 @@ export default function ProviderOnboarding() {
   useEffect(() => () => { if (countdownRef.current) clearInterval(countdownRef.current); }, []);
 
   const mainCategoryData = categories.find(c => c.name === mainCategory);
-  const subcategories = mainCategoryData?.subcategories || [];
+  const subcategories    = mainCategoryData?.subcategories || [];
+  const mainCats         = categories.filter(c => MAIN_CAT_NAMES.includes(c.name));
+
+  const step3CityValid =
+    currentCity.trim().length > 0 &&
+    (currentAreaType === 'entire_city' || currentNeighborhoods.length > 0);
+
+  const addCurrentCity = () => {
+    if (!step3CityValid) return;
+    setServiceAreas(prev => [...prev, {
+      city: currentCity.trim(),
+      type: currentAreaType,
+      neighborhoods: [...currentNeighborhoods],
+    }]);
+    setCurrentCity('');
+    setCurrentAreaType('entire_city');
+    setCurrentNeighborhoods([]);
+    setNeighborhoodInput('');
+  };
 
   const validateStep1 = () => {
     const errors = {};
@@ -215,19 +172,16 @@ export default function ProviderOnboarding() {
     const digits = phone.replace(/\D/g, '');
     if (digits.length < 10 || digits.length > 11) errors.phone = 'Celular com DDD: 10 ou 11 dígitos.';
     if (!passwordValid) errors.password = 'Senha não atende aos requisitos.';
-    if (!termsAccepted) errors.terms = 'Aceite os termos para continuar.';
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
   };
 
   const canNext = ([
     true,
-    !!(name.trim() && email.trim() && phone.trim() && passwordValid && termsAccepted),
+    !!(name.trim() && email.trim() && phone.trim() && passwordValid),
     otpCode.length === 6,
-    !!(address.trim() && city.trim()),
-    true,
+    serviceAreas.length > 0 || step3CityValid,
     !!mainCategory,
-    true,
   ])[step] ?? true;
 
   const handleNext = async () => {
@@ -245,7 +199,10 @@ export default function ProviderOnboarding() {
         setStep(2);
       } catch (err) {
         const msg = (err.message || '').toLowerCase();
-        if (msg.includes('already') || msg.includes('exist') || msg.includes('já') || msg.includes('cadastrado') || msg.includes('registered') || msg.includes('duplicate')) {
+        if (
+          msg.includes('already') || msg.includes('exist') || msg.includes('já') ||
+          msg.includes('cadastrado') || msg.includes('registered') || msg.includes('duplicate')
+        ) {
           setFieldErrors({ email: 'E-mail já cadastrado. Tente fazer login.' });
         } else {
           setFieldErrors({ email: err.message });
@@ -255,6 +212,7 @@ export default function ProviderOnboarding() {
       }
       return;
     }
+
     if (step === 2) {
       setOtpLoading(true);
       try {
@@ -270,103 +228,27 @@ export default function ProviderOnboarding() {
       }
       return;
     }
-    if (step < 6) {
+
+    if (step === 3) {
+      if (step3CityValid) {
+        setServiceAreas(prev => [...prev, {
+          city: currentCity.trim(),
+          type: currentAreaType,
+          neighborhoods: [...currentNeighborhoods],
+        }]);
+        setCurrentCity('');
+        setCurrentAreaType('entire_city');
+        setCurrentNeighborhoods([]);
+      }
+      setStep(4);
+      return;
+    }
+
+    if (step < 4) {
       setStep(step + 1);
-    } else {
-      saveMutation.mutate();
+      return;
     }
-  };
-
-  const saveMutation = useMutation({
-    mutationFn: async () => {
-      let me = user;
-      if (!me) me = await api.auth.me().catch(() => null);
-      if (!me) { navigate('/'); return; }
-
-      await api.auth.updateMe({ full_name: name, phone, city, birthDate, cpf });
-
-      const existingUp = await api.entities.UserProfile.filter({ userId: me.id });
-      const upData = { userId: me.id, role: 'provider', onboardingCompleted: true, firstAccess: false, address, zipCode };
-      if (existingUp.length > 0) {
-        await api.entities.UserProfile.update(existingUp[0].id, upData);
-      } else {
-        await api.entities.UserProfile.create(upData);
-      }
-
-      const existingProfiles = await api.entities.ProviderProfile.filter({ userId: me.id });
-      const profileData = {
-        name,
-        phone,
-        city,
-        specialties: selectedServices,
-        description: about,
-        experience,
-        mainCategory,
-        selfieUrl,
-        docIdUrl,
-        docAddressUrl,
-        docCertidaoUrl,
-        verificationStatus: 'pending',
-        active: true,
-      };
-      if (existingProfiles.length > 0) {
-        await api.entities.ProviderProfile.update(existingProfiles[0].id, profileData);
-      } else {
-        await api.entities.ProviderProfile.create({
-          userId: me.id,
-          rating: 0,
-          reviewCount: 0,
-          completedServices: 0,
-          ...profileData,
-        });
-      }
-
-      const existingSvcs = await api.entities.ProviderService.filter({ providerId: me.id });
-      const existingByName = {};
-      for (const svc of existingSvcs) existingByName[svc.serviceName || svc.specialty] = svc;
-
-      for (const specialty of selectedServices) {
-        const data = {
-          providerId: me.id,
-          serviceName: specialty,
-          specialty,
-          price: '',
-          duration: '',
-          homeCare: 'sim',
-          freight: '',
-          materials: 'provider',
-          description: '',
-          active: true,
-        };
-        if (existingByName[specialty]) {
-          await api.entities.ProviderService.update(existingByName[specialty].id, data);
-        } else {
-          await api.entities.ProviderService.create(data);
-        }
-      }
-    },
-    onSuccess: () => setSaved(true),
-  });
-
-  const handleSelfieUpload = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setSelfieLoading(true);
-    try { setSelfieUrl(await api.uploadFile(file)); }
-    finally { setSelfieLoading(false); }
-  };
-
-  const makeDocUploader = (setUrl, setFileName, setLoading) => async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setLoading(true);
-    try {
-      const url = await api.uploadFile(file);
-      setUrl(url);
-      setFileName(file.name);
-    } finally {
-      setLoading(false);
-    }
+    saveMutation.mutate();
   };
 
   const handleOtpInput = (i, val) => {
@@ -385,7 +267,76 @@ export default function ProviderOnboarding() {
     }
   };
 
-  // Success screen
+  const handleOtpPaste = (e) => {
+    e.preventDefault();
+    const digits = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+    if (!digits) return;
+    setOtpCode(digits);
+    setFieldErrors(p => ({ ...p, otp: undefined }));
+    otpInputRefs.current[Math.min(digits.length, 5)]?.focus();
+  };
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      let me = user;
+      if (!me) me = await api.auth.me().catch(() => null);
+      if (!me) { navigate('/'); return; }
+
+      const firstCity = serviceAreas[0]?.city || '';
+      await api.auth.updateMe({ full_name: name, phone, city: firstCity });
+
+      const existingUp = await api.entities.UserProfile.filter({ userId: me.id });
+      const upData = { userId: me.id, role: 'provider', onboardingCompleted: true, firstAccess: false };
+      if (existingUp.length > 0) {
+        await api.entities.UserProfile.update(existingUp[0].id, upData);
+      } else {
+        await api.entities.UserProfile.create(upData);
+      }
+
+      const existingProfiles = await api.entities.ProviderProfile.filter({ userId: me.id });
+      const profileData = {
+        name, phone,
+        city: firstCity,
+        specialties: selectedServices,
+        description: about,
+        experience,
+        mainCategory,
+        serviceAreas,
+        servicePricing,
+        verificationStatus: 'pending',
+        active: true,
+      };
+      if (existingProfiles.length > 0) {
+        await api.entities.ProviderProfile.update(existingProfiles[0].id, profileData);
+      } else {
+        await api.entities.ProviderProfile.create({
+          userId: me.id, rating: 0, reviewCount: 0, completedServices: 0,
+          ...profileData,
+        });
+      }
+
+      const existingSvcs = await api.entities.ProviderService.filter({ providerId: me.id });
+      const existingByName = {};
+      for (const svc of existingSvcs) existingByName[svc.serviceName || svc.specialty] = svc;
+
+      for (const specialty of selectedServices) {
+        const pricing = servicePricing[specialty] || {};
+        const data = {
+          providerId: me.id, serviceName: specialty, specialty,
+          price: pricing.price || '', duration: pricing.duration || '',
+          homeCare: 'sim', freight: '', materials: 'provider', description: '', active: true,
+        };
+        if (existingByName[specialty]) {
+          await api.entities.ProviderService.update(existingByName[specialty].id, data);
+        } else {
+          await api.entities.ProviderService.create(data);
+        }
+      }
+    },
+    onSuccess: () => setSaved(true),
+  });
+
+  // ── Success screen ─────────────────────────────────────────────
   if (saved) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6">
@@ -393,21 +344,19 @@ export default function ProviderOnboarding() {
           <div className="relative flex items-center justify-center">
             <div className="absolute inset-0 flex items-center justify-center">
               {['top-0 left-8', 'top-2 right-6', 'bottom-4 left-4', 'bottom-2 right-8', 'top-8 left-0', 'top-6 right-0'].map((pos, i) => (
-                <span key={i} className={`absolute w-2 h-2 rounded-full ${['bg-yellow-400', 'bg-blue-400', 'bg-green-400', 'bg-pink-400', 'bg-purple-400', 'bg-orange-400'][i % 6]} ${pos}`} />
+                <span key={i} className={`absolute w-2 h-2 rounded-full ${['bg-yellow-400','bg-blue-400','bg-green-400','bg-pink-400','bg-purple-400','bg-orange-400'][i % 6]} ${pos}`} />
               ))}
             </div>
             <div className="w-24 h-24 rounded-full bg-primary flex items-center justify-center z-10 shadow-lg">
               <CheckCircle2 className="w-12 h-12 text-white" />
             </div>
           </div>
-
           <div>
             <h2 className="font-heading text-2xl font-bold text-foreground">Cadastro concluído!</h2>
             <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
               Sua conta está em análise.<br />Em breve você poderá receber pedidos.
             </p>
           </div>
-
           <button
             onClick={() => navigate('/provider')}
             className="w-full py-4 bg-primary text-primary-foreground rounded-xl font-semibold text-base hover:opacity-90 transition-opacity"
@@ -421,7 +370,7 @@ export default function ProviderOnboarding() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Header */}
+      {/* ── Topo ─────────────────────────────────────────────────── */}
       <div className="border-b border-border bg-card">
         <div className="max-w-md mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -437,19 +386,19 @@ export default function ProviderOnboarding() {
         </div>
       </div>
 
-      {/* Steps indicator */}
+      {/* ── Indicador de etapas ───────────────────────────────────── */}
       <div className="px-4 py-3 bg-card border-b border-border">
         <div className="flex items-center justify-between max-w-md mx-auto relative">
           <div className="absolute top-4 left-0 right-0 h-px bg-border" />
           {STEPS.map((s, i) => {
-            const done = i < step;
+            const done   = i < step;
             const active = i === step;
             return (
               <div key={s.id} className="flex flex-col items-center gap-1 z-10">
                 <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold border-2 transition-all ${
-                  done ? 'bg-primary border-primary text-primary-foreground' :
+                  done   ? 'bg-primary border-primary text-primary-foreground' :
                   active ? 'bg-card border-primary text-primary' :
-                  'bg-card border-border text-muted-foreground'
+                           'bg-card border-border text-muted-foreground'
                 }`}>
                   {done ? <CheckCircle2 className="w-3.5 h-3.5" /> : s.id}
                 </div>
@@ -460,10 +409,10 @@ export default function ProviderOnboarding() {
         </div>
       </div>
 
-      {/* Content */}
+      {/* ── Conteúdo ─────────────────────────────────────────────── */}
       <div className="flex-1 max-w-md mx-auto w-full px-6 py-8 overflow-y-auto">
 
-        {/* Step 0: Sobre o app */}
+        {/* ── Etapa 0: Início ─────────────────────────────────────── */}
         {step === 0 && (
           <div className="space-y-8">
             <div className="text-center">
@@ -485,7 +434,7 @@ export default function ProviderOnboarding() {
           </div>
         )}
 
-        {/* Step 1: Criar conta */}
+        {/* ── Etapa 1: Criar conta ─────────────────────────────────── */}
         {step === 1 && (
           <div className="space-y-4">
             <div className="text-center mb-4">
@@ -498,7 +447,7 @@ export default function ProviderOnboarding() {
                 type="text"
                 value={name}
                 onChange={e => { setName(e.target.value); setFieldErrors(p => ({ ...p, name: undefined })); }}
-                placeholder="João Eletricista"
+                placeholder="João Silva"
                 className={`w-full px-4 py-3 border rounded-xl text-sm bg-card focus:outline-none focus:ring-2 focus:ring-primary/50 ${fieldErrors.name ? 'border-red-400' : 'border-border'}`}
               />
               {fieldErrors.name && <p className="text-xs text-red-500 mt-1">{fieldErrors.name}</p>}
@@ -522,7 +471,7 @@ export default function ProviderOnboarding() {
                 type="tel"
                 value={phone}
                 onChange={e => { setPhone(formatPhone(e.target.value)); setFieldErrors(p => ({ ...p, phone: undefined })); }}
-                placeholder="(11) 98765-4321"
+                placeholder="(DDD) 90000-0000"
                 className={`w-full px-4 py-3 border rounded-xl text-sm bg-card focus:outline-none focus:ring-2 focus:ring-primary/50 ${fieldErrors.phone ? 'border-red-400' : 'border-border'}`}
               />
               {fieldErrors.phone && <p className="text-xs text-red-500 mt-1">{fieldErrors.phone}</p>}
@@ -545,14 +494,14 @@ export default function ProviderOnboarding() {
               {password.length > 0 && (
                 <>
                   <div className="flex gap-1 mt-1.5">
-                    {[0, 1, 2, 3].map(i => (
+                    {[0,1,2,3].map(i => (
                       <div key={i} className={`h-1 flex-1 rounded-full transition-colors ${i < strengthScore ? strengthColors[strengthScore] : 'bg-border'}`} />
                     ))}
                   </div>
                   <div className="mt-2 space-y-1">
-                    <Rule ok={hasMin8} label="Mínimo 8 caracteres" />
-                    <Rule ok={hasUpper} label="Uma letra maiúscula" />
-                    <Rule ok={hasNumber} label="Um número" />
+                    <Rule ok={hasMin8}    label="Mínimo 8 caracteres" />
+                    <Rule ok={hasUpper}   label="Uma letra maiúscula" />
+                    <Rule ok={hasNumber}  label="Um número" />
                     <Rule ok={hasSpecial} label="Um caractere especial" />
                   </div>
                 </>
@@ -575,26 +524,10 @@ export default function ProviderOnboarding() {
               </div>
               {confirm.length > 0 && !matches && <p className="text-xs text-red-500 mt-1">As senhas não coincidem</p>}
             </div>
-
-            <button
-              onClick={() => setTermsAccepted(v => !v)}
-              className="flex items-start gap-3 text-left w-full mt-1"
-            >
-              <div className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 mt-0.5 transition-colors ${termsAccepted ? 'bg-primary border-primary' : 'border-border'}`}>
-                {termsAccepted && <CheckCircle2 className="w-3 h-3 text-white" />}
-              </div>
-              <span className="text-xs text-muted-foreground">
-                Li e aceito os{' '}
-                <span className="text-primary font-medium">Termos de uso</span>
-                {' '}e a{' '}
-                <span className="text-primary font-medium">Política de privacidade</span>
-              </span>
-            </button>
-            {fieldErrors.terms && <p className="text-xs text-red-500">{fieldErrors.terms}</p>}
           </div>
         )}
 
-        {/* Step 2: Verificar telefone */}
+        {/* ── Etapa 2: Verificar código ────────────────────────────── */}
         {step === 2 && (
           <div className="space-y-6">
             <div className="text-center mb-6">
@@ -606,7 +539,7 @@ export default function ProviderOnboarding() {
             </div>
 
             <div className="flex gap-2 justify-center">
-              {[0, 1, 2, 3, 4, 5].map(i => (
+              {[0,1,2,3,4,5].map(i => (
                 <input
                   key={i}
                   ref={el => (otpInputRefs.current[i] = el)}
@@ -616,6 +549,7 @@ export default function ProviderOnboarding() {
                   value={otpCode[i] || ''}
                   onChange={e => handleOtpInput(i, e.target.value)}
                   onKeyDown={e => handleOtpKeyDown(i, e)}
+                  onPaste={handleOtpPaste}
                   className={`w-11 h-14 text-center text-xl font-bold border-2 rounded-xl bg-card focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-colors ${
                     otpCode[i] ? 'border-primary' : fieldErrors.otp ? 'border-red-400' : 'border-border'
                   }`}
@@ -628,9 +562,7 @@ export default function ProviderOnboarding() {
               {otpCountdown > 0 ? (
                 <p className="text-sm text-muted-foreground">
                   Reenviar código em{' '}
-                  <span className="text-primary font-semibold">
-                    00:{String(otpCountdown).padStart(2, '0')}
-                  </span>
+                  <span className="text-primary font-semibold">{fmtCountdown(otpCountdown)}</span>
                 </p>
               ) : (
                 <button
@@ -655,138 +587,187 @@ export default function ProviderOnboarding() {
           </div>
         )}
 
-        {/* Step 3: Dados pessoais */}
+        {/* ── Etapa 3: Atendimento ────────────────────────────────── */}
         {step === 3 && (
-          <div className="space-y-4">
-            <div className="text-center mb-4">
-              <h2 className="font-heading text-2xl font-bold text-foreground">Seus dados pessoais</h2>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-1">CPF</label>
-              <input
-                type="text"
-                inputMode="numeric"
-                value={cpf}
-                onChange={e => setCpf(formatCpf(e.target.value))}
-                placeholder="123.456.789-09"
-                className="w-full px-4 py-3 border border-border rounded-xl text-sm bg-card focus:outline-none focus:ring-2 focus:ring-primary/50"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-1">Data de nascimento</label>
-              <input
-                type="date"
-                value={birthDate}
-                onChange={e => setBirthDate(e.target.value)}
-                className="w-full px-4 py-3 border border-border rounded-xl text-sm bg-card focus:outline-none focus:ring-2 focus:ring-primary/50"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-1">Endereço <span className="text-red-500">*</span></label>
-              <input
-                type="text"
-                value={address}
-                onChange={e => setAddress(e.target.value)}
-                placeholder="Rua das Palmeiras, 123"
-                className="w-full px-4 py-3 border border-border rounded-xl text-sm bg-card focus:outline-none focus:ring-2 focus:ring-primary/50"
-              />
-              <input
-                type="text"
-                value={city}
-                onChange={e => setCity(e.target.value)}
-                placeholder="São Bernardo do Campo - SP"
-                className="w-full px-4 py-3 border border-border rounded-xl text-sm bg-card focus:outline-none focus:ring-2 focus:ring-primary/50 mt-2"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-1">CEP</label>
-              <input
-                type="text"
-                inputMode="numeric"
-                value={zipCode}
-                onChange={e => setZipCode(formatCep(e.target.value))}
-                placeholder="09710-000"
-                className="w-full px-4 py-3 border border-border rounded-xl text-sm bg-card focus:outline-none focus:ring-2 focus:ring-primary/50"
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Step 4: Selfie */}
-        {step === 4 && (
-          <div className="space-y-6">
+          <div className="space-y-5">
             <div className="text-center mb-2">
-              <h2 className="font-heading text-2xl font-bold text-foreground">Faça uma selfie</h2>
-              <p className="text-sm text-muted-foreground mt-2">
-                Verificamos sua identidade para aumentar sua confiabilidade.
-              </p>
+              <h2 className="font-heading text-2xl font-bold text-foreground">Área de atendimento</h2>
+              <p className="text-sm text-muted-foreground mt-1">Informe as cidades onde você presta serviço</p>
             </div>
 
-            <div className="flex flex-col items-center">
-              <input
-                type="file"
-                accept="image/*"
-                capture="user"
-                ref={selfieInputRef}
-                className="hidden"
-                onChange={handleSelfieUpload}
-              />
-              <button
-                onClick={() => selfieInputRef.current?.click()}
-                className="relative w-44 h-44 rounded-full border-4 border-dashed border-primary/50 flex items-center justify-center bg-secondary/30 hover:bg-secondary/50 transition-colors overflow-hidden"
-              >
-                {selfieUrl ? (
-                  <img src={selfieUrl} alt="Selfie" className="w-full h-full object-cover rounded-full" />
-                ) : selfieLoading ? (
-                  <div className="w-8 h-8 border-4 border-border border-t-primary rounded-full animate-spin" />
-                ) : (
-                  <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                    <Camera className="w-12 h-12" />
-                    <span className="text-xs font-medium">Tirar selfie</span>
+            {/* Cidades adicionadas */}
+            {serviceAreas.length > 0 && (
+              <div className="space-y-2">
+                {serviceAreas.map((area, idx) => (
+                  <div key={idx} className="flex items-start gap-3 p-3 bg-green-50 border border-green-200 rounded-xl">
+                    <MapPin className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-green-800">{area.city}</p>
+                      <p className="text-xs text-green-600 mt-0.5">
+                        {area.type === 'entire_city'
+                          ? 'Cidade inteira'
+                          : `Bairros: ${area.neighborhoods.join(', ')}`}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setServiceAreas(prev => prev.filter((_, i) => i !== idx))}
+                      className="p-1 hover:bg-green-100 rounded-lg transition-colors"
+                    >
+                      <X className="w-4 h-4 text-green-600" />
+                    </button>
                   </div>
-                )}
-              </button>
-            </div>
+                ))}
+              </div>
+            )}
 
-            <div className={`flex items-center gap-3 p-4 rounded-xl border ${selfieUrl ? 'bg-green-50 border-green-200' : 'bg-card border-border'}`}>
-              <CheckCircle2 className={`w-5 h-5 shrink-0 ${selfieUrl ? 'text-green-600' : 'text-border'}`} />
-              <span className={`text-sm font-medium ${selfieUrl ? 'text-green-700' : 'text-muted-foreground'}`}>Selfie realizada</span>
-            </div>
+            {/* Formulário de nova cidade */}
+            <div className="space-y-3 p-4 bg-card border border-border rounded-2xl">
+              <p className="text-sm font-semibold text-foreground">
+                {serviceAreas.length === 0 ? 'Cidade que você atende' : 'Adicionar outra cidade'}
+              </p>
 
-            <p className="text-xs text-muted-foreground text-center">
-              Você pode pular e enviar depois nas configurações.
-            </p>
+              <input
+                type="text"
+                value={currentCity}
+                onChange={e => setCurrentCity(e.target.value)}
+                placeholder="Ex.: São Paulo"
+                className="w-full px-4 py-3 border border-border rounded-xl text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/50"
+              />
+
+              {currentCity.trim() && (
+                <>
+                  <div className="space-y-2">
+                    {[
+                      { value: 'entire_city',   label: 'Atendo a cidade inteira' },
+                      { value: 'neighborhoods', label: 'Atendo somente alguns bairros' },
+                    ].map(opt => (
+                      <button
+                        key={opt.value}
+                        onClick={() => setCurrentAreaType(opt.value)}
+                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border text-sm font-medium text-left transition-colors ${
+                          currentAreaType === opt.value
+                            ? 'bg-primary/10 border-primary text-primary'
+                            : 'bg-background border-border text-foreground hover:bg-secondary/50'
+                        }`}
+                      >
+                        <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                          currentAreaType === opt.value ? 'border-primary' : 'border-border'
+                        }`}>
+                          {currentAreaType === opt.value && <div className="w-2 h-2 rounded-full bg-primary" />}
+                        </div>
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {currentAreaType === 'neighborhoods' && (
+                    <div className="space-y-2">
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={neighborhoodInput}
+                          onChange={e => setNeighborhoodInput(e.target.value)}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter' && neighborhoodInput.trim()) {
+                              setCurrentNeighborhoods(prev => [...prev, neighborhoodInput.trim()]);
+                              setNeighborhoodInput('');
+                            }
+                          }}
+                          placeholder="Nome do bairro"
+                          className="flex-1 px-4 py-2.5 border border-border rounded-xl text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/50"
+                        />
+                        <button
+                          onClick={() => {
+                            if (neighborhoodInput.trim()) {
+                              setCurrentNeighborhoods(prev => [...prev, neighborhoodInput.trim()]);
+                              setNeighborhoodInput('');
+                            }
+                          }}
+                          className="px-3 py-2.5 bg-primary text-primary-foreground rounded-xl"
+                        >
+                          <Plus className="w-4 h-4" />
+                        </button>
+                      </div>
+                      {currentNeighborhoods.length > 0 && (
+                        <div className="flex flex-wrap gap-2">
+                          {currentNeighborhoods.map((n, i) => (
+                            <div key={i} className="flex items-center gap-1.5 px-3 py-1 bg-primary/10 text-primary rounded-full text-xs font-medium">
+                              {n}
+                              <button onClick={() => setCurrentNeighborhoods(prev => prev.filter((_, j) => j !== i))}>
+                                <X className="w-3 h-3" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {currentNeighborhoods.length === 0 && (
+                        <p className="text-xs text-red-500">Adicione pelo menos 1 bairro.</p>
+                      )}
+                    </div>
+                  )}
+
+                  {step3CityValid && (
+                    <button
+                      onClick={addCurrentCity}
+                      className="w-full py-2.5 border border-primary text-primary rounded-xl text-sm font-semibold hover:bg-primary/5 flex items-center justify-center gap-2 transition-colors"
+                    >
+                      <Plus className="w-4 h-4" /> Adicionar nova cidade
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
           </div>
         )}
 
-        {/* Step 5: Dados profissionais */}
-        {step === 5 && (
+        {/* ── Etapa 4: Profissional ────────────────────────────────── */}
+        {step === 4 && (
           <div className="space-y-5">
             <div className="text-center mb-2">
               <h2 className="font-heading text-2xl font-bold text-foreground">Dados profissionais</h2>
             </div>
 
+            {/* Grid de categorias */}
             <div>
-              <label className="block text-sm font-medium text-foreground mb-1">Categoria principal <span className="text-red-500">*</span></label>
-              <div className="relative">
-                <select
-                  value={mainCategory}
-                  onChange={e => { setMainCategory(e.target.value); setSelectedServices([]); }}
-                  className="w-full px-4 py-3 border border-border rounded-xl text-sm bg-card focus:outline-none focus:ring-2 focus:ring-primary/50 appearance-none"
+              <label className="block text-sm font-medium text-foreground mb-3">
+                Categoria principal <span className="text-red-500">*</span>
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                {mainCats.map(cat => {
+                  const Icon = cat.icon;
+                  const isActive = mainCategory === cat.name;
+                  return (
+                    <button
+                      key={cat.name}
+                      onClick={() => { setMainCategory(cat.name); setSelectedServices([]); }}
+                      className={`flex flex-col items-center gap-2 p-3 rounded-2xl border transition-all ${
+                        isActive
+                          ? 'bg-primary/10 border-primary text-primary'
+                          : 'bg-card border-border text-foreground hover:border-primary/40'
+                      }`}
+                    >
+                      <Icon className="w-6 h-6" />
+                      <span className="text-[10px] font-medium text-center leading-tight">{cat.name}</span>
+                    </button>
+                  );
+                })}
+                <button
+                  onClick={() => setShowOthersModal(true)}
+                  className={`flex flex-col items-center gap-2 p-3 rounded-2xl border transition-all ${
+                    mainCategory && !MAIN_CAT_NAMES.includes(mainCategory)
+                      ? 'bg-primary/10 border-primary text-primary'
+                      : 'bg-card border-border text-foreground hover:border-primary/40'
+                  }`}
                 >
-                  <option value="">Selecione uma categoria</option>
-                  {categories.map(c => (
-                    <option key={c.name} value={c.name}>{c.name}</option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                  <MoreHorizontal className="w-6 h-6" />
+                  <span className="text-[10px] font-medium text-center leading-tight">
+                    {mainCategory && !MAIN_CAT_NAMES.includes(mainCategory) ? mainCategory : 'Outros'}
+                  </span>
+                </button>
               </div>
             </div>
 
+            {/* Subcategorias */}
             {mainCategory && subcategories.length > 0 && (
               <div>
                 <label className="block text-sm font-medium text-foreground mb-2">Serviços que realiza</label>
@@ -813,6 +794,48 @@ export default function ProviderOnboarding() {
               </div>
             )}
 
+            {/* Valores e duração */}
+            {selectedServices.length > 0 && (
+              <div className="space-y-3">
+                <label className="block text-sm font-medium text-foreground">Valores e duração por serviço</label>
+                {selectedServices.map(sub => (
+                  <div key={sub} className="p-3 bg-card border border-border rounded-xl space-y-2">
+                    <p className="text-sm font-semibold text-foreground">{sub}</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-xs text-muted-foreground mb-1">Valor (R$)</label>
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          value={servicePricing[sub]?.price || ''}
+                          onChange={e => setServicePricing(prev => ({
+                            ...prev,
+                            [sub]: { ...prev[sub], price: e.target.value },
+                          }))}
+                          placeholder="Ex.: 150"
+                          className="w-full px-3 py-2 border border-border rounded-lg text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/50"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-muted-foreground mb-1">Duração</label>
+                        <input
+                          type="text"
+                          value={servicePricing[sub]?.duration || ''}
+                          onChange={e => setServicePricing(prev => ({
+                            ...prev,
+                            [sub]: { ...prev[sub], duration: e.target.value },
+                          }))}
+                          placeholder="Ex.: 2h"
+                          className="w-full px-3 py-2 border border-border rounded-lg text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/50"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Experiência */}
             <div>
               <label className="block text-sm font-medium text-foreground mb-1">Tempo de experiência</label>
               <div className="relative">
@@ -830,6 +853,7 @@ export default function ProviderOnboarding() {
               </div>
             </div>
 
+            {/* Sobre você */}
             <div>
               <label className="block text-sm font-medium text-foreground mb-1">
                 Sobre você{' '}
@@ -838,62 +862,16 @@ export default function ProviderOnboarding() {
               <textarea
                 value={about}
                 onChange={e => setAbout(e.target.value)}
-                placeholder="Sou eletricista especializado em instalações residenciais e prediais."
+                placeholder="Sou eletricista com 5 anos de experiência em instalações residenciais."
                 rows={3}
                 className="w-full px-4 py-3 border border-border rounded-xl text-sm bg-card focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
               />
             </div>
           </div>
         )}
-
-        {/* Step 6: Documentos */}
-        {step === 6 && (
-          <div className="space-y-4">
-            <div className="text-center mb-2">
-              <h2 className="font-heading text-2xl font-bold text-foreground">Envie seus documentos</h2>
-            </div>
-
-            <DocRow
-              label="Documento com foto"
-              sublabel="RG ou CNH"
-              inputRef={docIdRef}
-              fileUrl={docIdUrl}
-              fileName={docIdName}
-              loading={docIdLoading}
-              onUpload={makeDocUploader(setDocIdUrl, setDocIdName, setDocIdLoading)}
-              accept="image/*"
-            />
-
-            <DocRow
-              label="Comprovante de endereço"
-              inputRef={docAddressRef}
-              fileUrl={docAddressUrl}
-              fileName={docAddressName}
-              loading={docAddressLoading}
-              onUpload={makeDocUploader(setDocAddressUrl, setDocAddressName, setDocAddressLoading)}
-              accept="image/*"
-            />
-
-            <DocRow
-              label="Certidão de antecedentes"
-              sublabel="(opcional)"
-              inputRef={docCertidaoRef}
-              fileUrl={docCertidaoUrl}
-              fileName={docCertidaoName}
-              loading={docCertidaoLoading}
-              onUpload={makeDocUploader(setDocCertidaoUrl, setDocCertidaoName, setDocCertidaoLoading)}
-              accept="image/*,application/pdf"
-              optional
-            />
-
-            <p className="text-xs text-muted-foreground text-center pt-1">
-              Os documentos são analisados em até 24h. Você pode enviar depois nas configurações.
-            </p>
-          </div>
-        )}
       </div>
 
-      {/* Bottom bar */}
+      {/* ── Botão inferior ───────────────────────────────────────── */}
       <div className="sticky bottom-0 px-6 py-4 bg-background border-t border-border">
         <div className="max-w-md mx-auto">
           <button
@@ -903,8 +881,8 @@ export default function ProviderOnboarding() {
           >
             {saveMutation.isPending || otpLoading
               ? 'Aguarde...'
-              : step === 6
-              ? 'Enviar documentos'
+              : step === 4
+              ? 'Finalizar cadastro'
               : step === 0
               ? 'Próximo'
               : 'Continuar'}
@@ -915,13 +893,49 @@ export default function ProviderOnboarding() {
               {saveMutation.error?.message || 'Erro ao salvar. Verifique sua conexão e tente novamente.'}
             </p>
           )}
-          {(step === 4 || step === 6) && (
-            <p className="text-xs text-muted-foreground text-center mt-2 flex items-center justify-center gap-1">
-              <ShieldCheck className="w-3 h-3" /> Esta etapa é opcional.
-            </p>
-          )}
         </div>
       </div>
+
+      {/* ── Modal: Outras categorias ─────────────────────────────── */}
+      {showOthersModal && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-end justify-center p-0">
+          <div className="bg-card rounded-t-2xl w-full max-w-md max-h-[70vh] flex flex-col shadow-xl">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+              <h3 className="font-semibold text-foreground">Outras categorias</h3>
+              <button onClick={() => setShowOthersModal(false)} className="p-1.5 hover:bg-secondary rounded-lg">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="overflow-y-auto p-4 space-y-2">
+              {categories.map(cat => {
+                const Icon = cat.icon;
+                const isActive = mainCategory === cat.name;
+                return (
+                  <button
+                    key={cat.name}
+                    onClick={() => {
+                      setMainCategory(cat.name);
+                      setSelectedServices([]);
+                      setShowOthersModal(false);
+                    }}
+                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border text-left transition-all ${
+                      isActive
+                        ? 'bg-primary/10 border-primary'
+                        : 'bg-background border-border hover:bg-secondary/50'
+                    }`}
+                  >
+                    <Icon className={`w-5 h-5 ${isActive ? 'text-primary' : 'text-muted-foreground'}`} />
+                    <span className={`text-sm font-medium flex-1 ${isActive ? 'text-primary' : 'text-foreground'}`}>
+                      {cat.name}
+                    </span>
+                    {isActive && <CheckCircle2 className="w-4 h-4 text-primary" />}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
