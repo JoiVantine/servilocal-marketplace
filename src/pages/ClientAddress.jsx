@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '@/api/apiClient';
-import { ChevronLeft, ChevronRight, MapPin, Plus } from 'lucide-react';
+import { ChevronLeft, MapPin, Plus, CheckCircle2 } from 'lucide-react';
 import ClientBottomNav from '@/components/ClientBottomNav';
 
 export default function ClientAddress() {
@@ -45,7 +45,7 @@ export default function ClientAddress() {
         >
           <ChevronLeft className="w-5 h-5 text-foreground" />
         </button>
-        <h1 className="font-heading text-lg font-bold text-foreground">Endereço</h1>
+        <h1 className="font-semibold text-foreground">Endereços salvos</h1>
       </div>
 
       {loading ? (
@@ -55,33 +55,23 @@ export default function ClientAddress() {
       ) : (
         <div className="max-w-md mx-auto px-4 pt-5 space-y-4">
           {hasAddress && (
-            <div>
-              <p className="text-xs font-semibold text-muted-foreground tracking-widest mb-2 px-1">
-                ENDEREÇO PRINCIPAL
-              </p>
-              <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
-                <button
-                  onClick={() => navigate('/client/edit-address')}
-                  className="w-full flex items-center gap-3 p-4 hover:bg-secondary/20 transition-colors text-left"
-                >
-                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                    <MapPin className="w-5 h-5 text-primary" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-foreground text-sm">{addressLine1}</p>
-                    {profile?.neighborhood && (
-                      <p className="text-xs text-muted-foreground">{profile.neighborhood}</p>
-                    )}
-                    {user?.city && profile?.address && (
-                      <p className="text-xs text-muted-foreground">{user.city}</p>
-                    )}
-                    <span className="inline-block mt-1.5 px-2.5 py-0.5 text-xs font-medium text-primary bg-primary/10 rounded-full">
-                      Principal
-                    </span>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
-                </button>
-              </div>
+            <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
+              <button
+                onClick={() => navigate('/client/edit-address')}
+                className="w-full flex items-center gap-3 p-4 hover:bg-secondary/20 transition-colors text-left"
+              >
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold text-muted-foreground mb-1">Casa</p>
+                  <p className="text-sm font-medium text-foreground">{addressLine1}</p>
+                  {profile?.neighborhood && (
+                    <p className="text-xs text-muted-foreground">{profile.neighborhood}, {user?.city}</p>
+                  )}
+                  {profile?.zipCode && (
+                    <p className="text-xs text-muted-foreground">{profile.zipCode}</p>
+                  )}
+                </div>
+                <CheckCircle2 className="w-5 h-5 text-primary shrink-0" />
+              </button>
             </div>
           )}
 
@@ -94,7 +84,7 @@ export default function ClientAddress() {
 
           <button
             onClick={() => navigate('/client/edit-address')}
-            className="w-full flex items-center justify-center gap-2 py-4 bg-primary text-primary-foreground rounded-2xl font-semibold text-sm hover:opacity-90 transition-opacity"
+            className="w-full flex items-center justify-center gap-2 py-4 border-2 border-dashed border-border rounded-2xl text-sm font-medium text-muted-foreground hover:border-primary/50 hover:text-primary transition-colors"
           >
             <Plus className="w-4 h-4" />
             {hasAddress ? 'Editar endereço' : 'Adicionar endereço'}

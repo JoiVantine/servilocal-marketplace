@@ -40,6 +40,8 @@ import ClientAddress from './pages/ClientAddress';
 import ClientEditAddress from './pages/ClientEditAddress';
 import ClientHelp from './pages/ClientHelp';
 import ClientAbout from './pages/ClientAbout';
+import ClientPayments from './pages/ClientPayments';
+import ClientNotifications from './pages/ClientNotifications';
 import ClientProposals from './pages/ClientProposals';
 import ClientConfirmProvider from './pages/ClientConfirmProvider';
 import ClientOrderProgress from './pages/ClientOrderProgress';
@@ -88,6 +90,8 @@ const AuthenticatedApp = () => {
       <Route path="/client/edit-address" element={<ClientEditAddress />} />
       <Route path="/client/help" element={<ClientHelp />} />
       <Route path="/client/about" element={<ClientAbout />} />
+      <Route path="/client/payments" element={<ClientPayments />} />
+      <Route path="/client/notifications" element={<ClientNotifications />} />
       <Route path="/admin/login" element={<AdminLogin />} />
       <Route element={<AdminRoute />}>
         <Route path="/diagnostics" element={<DiagnosticsPage />} />

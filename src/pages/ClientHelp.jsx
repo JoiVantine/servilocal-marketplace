@@ -1,98 +1,69 @@
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Headphones, MessageSquare, Mail, BookOpen, LifeBuoy } from 'lucide-react';
+import { ChevronLeft, ChevronRight, HelpCircle, MessageSquare, FileText, Shield } from 'lucide-react';
 import ClientBottomNav from '@/components/ClientBottomNav';
-
-const WHATSAPP_NUMBER = '5511999999999';
-const SUPPORT_EMAIL = 'suporte@servilocal.com';
 
 export default function ClientHelp() {
   const navigate = useNavigate();
 
-  const channels = [
+  const items = [
+    {
+      icon: HelpCircle,
+      label: 'Perguntas frequentes',
+      action: () => navigate('/client/support'),
+    },
     {
       icon: MessageSquare,
-      label: 'WhatsApp',
-      description: 'Fale com a gente pelo WhatsApp',
-      action: () => window.open(`https://wa.me/${WHATSAPP_NUMBER}`, '_blank'),
-    },
-    {
-      icon: Mail,
-      label: 'E-mail',
-      description: SUPPORT_EMAIL,
-      action: () => window.open(`mailto:${SUPPORT_EMAIL}`, '_blank'),
-    },
-    {
-      icon: BookOpen,
-      label: 'Central de ajuda',
-      description: 'Perguntas frequentes',
+      label: 'Falar com suporte',
       action: () => navigate('/client/support'),
     },
     {
-      icon: LifeBuoy,
-      label: 'Abrir chamado',
-      description: 'Acompanhe seus chamados',
-      action: () => navigate('/client/support'),
+      icon: FileText,
+      label: 'Termos de uso',
+      action: () => {},
+    },
+    {
+      icon: Shield,
+      label: 'Política de privacidade',
+      action: () => {},
     },
   ];
 
   return (
     <div className="min-h-screen bg-secondary/30 pb-20">
-      {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-4 bg-background border-b border-border">
-        <button
-          onClick={() => navigate(-1)}
-          className="p-1.5 hover:bg-secondary rounded-lg transition-colors"
-        >
-          <ChevronLeft className="w-5 h-5 text-foreground" />
+      <div className="flex items-center gap-3 px-4 py-4 bg-card border-b border-border">
+        <button onClick={() => navigate(-1)} className="p-1.5 hover:bg-secondary rounded-lg">
+          <ChevronLeft className="w-5 h-5" />
         </button>
-        <h1 className="font-heading text-lg font-bold text-foreground">Ajuda e suporte</h1>
+        <h1 className="font-semibold text-foreground">Ajuda e suporte</h1>
       </div>
 
-      <div className="max-w-md mx-auto px-4 pt-5 space-y-4">
-        {/* Hero card */}
-        <div className="bg-primary/5 border border-primary/20 rounded-2xl p-5 flex items-center gap-4">
-          <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-            <Headphones className="w-6 h-6 text-primary" />
-          </div>
-          <div>
-            <p className="font-bold text-foreground">Como podemos te ajudar?</p>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              Fale com nossa equipe e resolvemos o que precisar.
-            </p>
-          </div>
+      <div className="max-w-md mx-auto px-4 py-5 space-y-4">
+        <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
+          {items.map((item, i) => (
+            <button
+              key={item.label}
+              onClick={item.action}
+              className={`w-full flex items-center gap-3 px-4 py-4 hover:bg-secondary/50 transition-colors text-left ${
+                i > 0 ? 'border-t border-border' : ''
+              }`}
+            >
+              <item.icon className="w-5 h-5 text-muted-foreground shrink-0" />
+              <span className="flex-1 text-sm font-medium text-foreground">{item.label}</span>
+              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            </button>
+          ))}
         </div>
 
-        {/* Channels */}
-        <div>
-          <p className="text-xs font-semibold text-muted-foreground tracking-widest mb-2 px-1">
-            CANAIS DE ATENDIMENTO
-          </p>
-          <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
-            {channels.map((ch, i) => (
-              <button
-                key={ch.label}
-                onClick={ch.action}
-                className={`w-full flex items-center gap-3 px-4 py-4 hover:bg-secondary/30 transition-colors text-left ${
-                  i > 0 ? 'border-t border-border' : ''
-                }`}
-              >
-                <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                  <ch.icon className="w-5 h-5 text-primary" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-foreground">{ch.label}</p>
-                  <p className="text-xs text-muted-foreground">{ch.description}</p>
-                </div>
-                <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Hours */}
-        <div className="bg-secondary/50 border border-border rounded-2xl p-4 text-center">
-          <p className="text-sm font-semibold text-foreground">Horário de atendimento</p>
-          <p className="text-sm text-muted-foreground mt-0.5">Segunda a sexta, das 8h às 18h</p>
+        {/* Help card */}
+        <div className="bg-card border border-border rounded-2xl p-4">
+          <p className="text-sm font-semibold text-foreground mb-1">Precisa de ajuda?</p>
+          <p className="text-xs text-muted-foreground mb-4">Nossa equipe está pronta para te atender.</p>
+          <button
+            onClick={() => navigate('/client/support')}
+            className="w-full py-3 border border-border rounded-xl text-sm font-semibold text-foreground hover:bg-secondary/50 transition-colors"
+          >
+            Falar com suporte
+          </button>
         </div>
       </div>
 
