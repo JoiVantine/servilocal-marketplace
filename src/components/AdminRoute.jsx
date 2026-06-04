@@ -11,7 +11,7 @@ export default function AdminRoute() {
     api.auth
       .me()
       .then((u) => {
-        const isAdmin = u?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+        const isAdmin = u?.role === 'admin' || u?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
         setStatus(isAdmin ? 'ok' : 'denied');
       })
       .catch(() => setStatus('denied'));

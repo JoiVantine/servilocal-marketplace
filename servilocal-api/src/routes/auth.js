@@ -243,6 +243,41 @@ router.post('/logout', (req, res) => {
   res.json({ message: 'Logout realizado' });
 });
 
+// POST /api/auth/test-login — bypass de OTP exclusivo para NODE_ENV=test
+// Cria o usuário se não existir e retorna token diretamente (sem e-mail/WhatsApp)
+// O role do token respeita exatamente o role enviado (ignora lógica de ADMIN_EMAIL)
+router.post('/test-login', async (req, res) => {
+  if (process.env.NODE_ENV !== 'test') {
+    return res.status(404).json({ error: 'Not found' });
+  }
+  try {
+    const { email, role = 'client', fullName } = req.body;
+    if (!email) return res.status(400).json({ error: 'E-mail é obrigatório' });
+
+    let user = await User.findOne({ email });
+    if (!user) {
+      const passwordHash = await bcrypt.hash('test-placeholder', 10);
+      user = await User.create({
+        email,
+        passwordHash,
+        fullName: fullName || `Test ${role.charAt(0).toUpperCase() + role.slice(1)}`,
+        role,
+        emailVerified: true,
+      });
+    }
+
+    // Assina com o role exato do request — não aplica lógica de ADMIN_EMAIL
+    const token = jwt.sign(
+      { id: user._id.toString(), email: user.email, role },
+      process.env.JWT_SECRET,
+      { expiresIn: '1d' }
+    );
+    res.json({ token, user: { ...user.toJSON(), role } });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // POST /api/auth/reset-password-request
 router.post('/reset-password-request', passwordResetLimiter, async (req, res) => {
   try {

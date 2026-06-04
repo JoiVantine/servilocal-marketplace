@@ -51,6 +51,7 @@ export default function ClientOnboarding() {
   };
   const cameraInputRef = useRef(null);
   const galleryInputRef = useRef(null);
+  const otpRefs = useRef([]);
 
   // Load current user
   useEffect(() => {
@@ -109,6 +110,29 @@ export default function ClientOnboarding() {
       ...prev,
       [name]: value,
     }));
+  };
+
+  const handleOtpBoxChange = (e, idx) => {
+    const val = e.target.value.replace(/\D/g, '').slice(-1);
+    const chars = Array.from({ length: 6 }, (_, i) => otpCode[i] || '');
+    chars[idx] = val;
+    setOtpCode(chars.join(''));
+    setFieldErrors(p => ({ ...p, otp: undefined }));
+    if (val && idx < 5) otpRefs.current[idx + 1]?.focus();
+  };
+
+  const handleOtpBoxKeyDown = (e, idx) => {
+    if (e.key === 'Backspace' && !otpCode[idx] && idx > 0) {
+      otpRefs.current[idx - 1]?.focus();
+    }
+  };
+
+  const handleOtpPaste = (e) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+    setOtpCode(pasted);
+    setFieldErrors(p => ({ ...p, otp: undefined }));
+    setTimeout(() => otpRefs.current[Math.min(pasted.length, 5)]?.focus(), 0);
   };
 
   const handleStep0Submit = async () => {
@@ -187,7 +211,8 @@ export default function ClientOnboarding() {
   const isAddressComplete =
     formData.address?.endereco &&
     formData.address?.cidade &&
-    (formData.address?.numero?.trim());
+    formData.address?.numero?.trim() &&
+    (!formData.address?.sn || formData.address?.complemento?.trim());
 
   // Auto-detect location when step 1 is reached
   useEffect(() => {
@@ -270,17 +295,19 @@ export default function ClientOnboarding() {
   return (
     <div className="min-h-screen bg-background pb-20">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-4 border-b border-border bg-card">
-        <div className="flex items-center gap-2">
-          <img src="/logo.png" alt="ServiLocal" className="w-6 h-6" />
-          <span className="text-sm font-semibold text-foreground">ServiLocal</span>
+      <div className="border-b border-border bg-card">
+        <div className="max-w-lg mx-auto px-4 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <img src="/logo.png" alt="ServiLocal" className="w-6 h-6" />
+            <span className="text-sm font-semibold text-foreground">ServiLocal</span>
+          </div>
+          <div className="w-9" />
         </div>
-        <div className="w-9" />
       </div>
 
       <div className="max-w-lg mx-auto px-4 py-6">
         {/* Progress */}
-        <div className="flex items-center gap-2 mb-8">
+        <div className="flex items-center gap-2 mb-2">
           {STEPS.map((step, idx) => (
             <div key={step.id} className="flex items-center gap-2">
               <div
@@ -290,7 +317,7 @@ export default function ClientOnboarding() {
                     : 'bg-secondary text-muted-foreground'
                 }`}
               >
-                {idx < currentStep ? (
+                {idx < currentStep || currentStep === STEPS.length - 1 ? (
                   <Check className="w-4 h-4" />
                 ) : (
                   step.id
@@ -303,52 +330,59 @@ export default function ClientOnboarding() {
             </div>
           ))}
         </div>
+        <div className="flex items-center gap-3 mb-8">
+          <div className="flex-1 h-1.5 bg-secondary rounded-full overflow-hidden">
+            <div
+              className="h-full bg-primary rounded-full transition-all duration-500"
+              style={{ width: `${((currentStep + 1) / STEPS.length) * 100}%` }}
+            />
+          </div>
+          <span className="text-xs text-muted-foreground whitespace-nowrap">Passo {currentStep + 1} de {STEPS.length}</span>
+        </div>
 
         {/* Step 0: Foto e Perfil */}
         {currentStep === 0 && (
-          <div className="space-y-6">
+          <div className="space-y-5">
             <div>
-              <h2 className="font-heading text-xl font-bold text-foreground mb-2">
-                Bem-vindo!
+              <h2 className="font-heading text-xl font-bold text-foreground mb-1">
+                Crie seu perfil
               </h2>
-              <p className="text-muted-foreground text-sm">
-                Vamos completar seu perfil para começar
-              </p>
             </div>
 
-            {/* Photo Upload */}
-            <div className="flex flex-col items-center">
-              {formData.photoPreview ? (
-                <img
-                  src={formData.photoPreview}
-                  alt="Preview"
-                  className="w-24 h-24 rounded-full object-cover mb-4 border-2 border-primary"
-                />
-              ) : (
-                <div className="w-24 h-24 rounded-full bg-secondary border-2 border-border flex items-center justify-center mb-4">
-                  <Upload className="w-8 h-8 text-muted-foreground" />
+            {/* Photo Upload — secondary, optional */}
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">Foto de perfil <span className="opacity-60">(opcional)</span></p>
+              <div className="flex items-center gap-3">
+                {formData.photoPreview ? (
+                  <img
+                    src={formData.photoPreview}
+                    alt="Preview"
+                    className="w-16 h-16 rounded-full object-cover border-2 border-primary shrink-0"
+                  />
+                ) : (
+                  <div className="w-16 h-16 rounded-full bg-secondary border-2 border-border flex items-center justify-center shrink-0">
+                    <Upload className="w-5 h-5 text-muted-foreground" />
+                  </div>
+                )}
+                <div>
+                  <button
+                    onClick={() => galleryInputRef.current?.click()}
+                    className="text-xs text-muted-foreground underline hover:text-foreground transition-colors"
+                  >
+                    {formData.photoPreview ? 'Mudar foto' : 'Adicionar foto'}
+                  </button>
+                  <p className="text-xs text-muted-foreground/60 mt-0.5">JPG ou PNG, máx 5MB</p>
                 </div>
-              )}
-
-              <button
-                onClick={() => galleryInputRef.current?.click()}
-                className="text-sm font-medium text-primary hover:opacity-80 transition-opacity"
-              >
-                {formData.photoPreview ? 'Mudar foto' : 'Adicionar foto'}
-              </button>
-
-              <input
-                ref={galleryInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handlePhotoSelect}
-                className="hidden"
-              />
-              <p className="text-xs text-muted-foreground mt-2">
-                JPG ou PNG, máx 5MB
-              </p>
+                <input
+                  ref={galleryInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handlePhotoSelect}
+                  className="hidden"
+                />
+              </div>
               {fieldErrors.photo && (
-                <p className="text-xs text-red-500 mt-1">{fieldErrors.photo}</p>
+                <p className="text-xs text-red-500">{fieldErrors.photo}</p>
               )}
             </div>
 
@@ -405,33 +439,50 @@ export default function ClientOnboarding() {
             </div>
 
             {otpSent && (
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Código de verificação <span className="text-red-500">*</span>
-                </label>
-                <p className="text-xs text-muted-foreground mb-2">
-                  Digite o código enviado para seu <strong>WhatsApp</strong>.
-                </p>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  maxLength={6}
-                  value={otpCode}
-                  onChange={e => { setOtpCode(e.target.value.replace(/\D/g, '')); setFieldErrors(p => ({ ...p, otp: undefined })); }}
-                  placeholder="000000"
-                  className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm text-center tracking-widest text-lg font-mono ${fieldErrors.otp ? 'border-red-400' : 'border-border'}`}
-                />
-                {fieldErrors.otp && <p className="text-xs text-red-500 mt-1">{fieldErrors.otp}</p>}
-                <button
-                  onClick={async () => {
-                    setOtpLoading(true);
-                    try { await api.auth.sendOtp({ email: formData.email, fullName: formData.name, phone: formData.phone, role: 'client' }); } catch {}
-                    setOtpLoading(false);
-                  }}
-                  className="text-xs text-primary underline mt-2 block"
-                >
-                  Reenviar código
-                </button>
+              <div className="space-y-3 pt-1">
+                <div className="p-3 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2">
+                  <Check className="w-4 h-4 text-green-600 shrink-0" />
+                  <p className="text-sm text-green-700 font-medium">Código enviado! Verifique seu WhatsApp.</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-3">
+                    Código de verificação <span className="text-red-500">*</span>
+                  </label>
+                  <div className="flex gap-2 justify-center">
+                    {Array.from({ length: 6 }, (_, i) => (
+                      <input
+                        key={i}
+                        ref={el => otpRefs.current[i] = el}
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={1}
+                        value={otpCode[i] || ''}
+                        onChange={e => handleOtpBoxChange(e, i)}
+                        onKeyDown={e => handleOtpBoxKeyDown(e, i)}
+                        onPaste={i === 0 ? handleOtpPaste : undefined}
+                        className={`w-11 h-12 text-center border-2 rounded-lg text-xl font-mono font-bold focus:outline-none focus:ring-2 focus:ring-primary/50 transition-colors ${
+                          fieldErrors.otp ? 'border-red-400' : otpCode[i] ? 'border-primary bg-primary/5' : 'border-border'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  {fieldErrors.otp && <p className="text-xs text-red-500 mt-2 text-center">{fieldErrors.otp}</p>}
+                </div>
+
+                <div className="text-center pt-1">
+                  <p className="text-xs text-muted-foreground">Não recebeu?</p>
+                  <button
+                    onClick={async () => {
+                      setOtpLoading(true);
+                      try { await api.auth.sendOtp({ email: formData.email, fullName: formData.name, phone: formData.phone, role: 'client' }); } catch {}
+                      setOtpLoading(false);
+                    }}
+                    className="text-xs text-primary underline mt-0.5"
+                  >
+                    Reenviar código
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -488,50 +539,55 @@ export default function ClientOnboarding() {
                   {formData.name?.[0]?.toUpperCase() || '?'}
                 </div>
               )}
-              <h2 className="font-heading text-xl font-bold text-foreground mb-1">Você está pronto!</h2>
-              <p className="text-muted-foreground text-sm">Revise seus dados antes de começar</p>
+              <h2 className="font-heading text-xl font-bold text-foreground mb-1">Tudo pronto!</h2>
+              <p className="text-muted-foreground text-sm">Seu perfil foi configurado com sucesso.</p>
             </div>
 
-            <div className="space-y-3">
-              <div className="p-4 bg-card border border-border rounded-xl flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                  <ShieldCheck className="w-4 h-4 text-primary" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-xs text-muted-foreground">Nome</p>
-                  <p className="font-medium text-foreground truncate">{formData.name}</p>
-                </div>
+            {/* Perfil */}
+            <div className="space-y-2">
+              <p className="text-xs font-bold text-muted-foreground tracking-wider flex items-center gap-1.5">
+                <ShieldCheck className="w-3.5 h-3.5" /> PERFIL
+              </p>
+              <div className="p-4 bg-card border border-border rounded-xl">
+                <p className="font-medium text-foreground">{formData.name}</p>
               </div>
-              <div className="p-4 bg-card border border-border rounded-xl flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                  <Mail className="w-4 h-4 text-primary" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-xs text-muted-foreground">Email</p>
-                  <p className="font-medium text-foreground truncate">{formData.email}</p>
-                </div>
+            </div>
+
+            {/* Contato */}
+            <div className="space-y-2">
+              <p className="text-xs font-bold text-muted-foreground tracking-wider flex items-center gap-1.5">
+                <Mail className="w-3.5 h-3.5" /> CONTATO
+              </p>
+              <div className="p-4 bg-card border border-border rounded-xl space-y-1.5">
+                <p className="text-sm text-foreground">{formData.email}</p>
+                <p className="text-sm text-foreground">{formData.phone}</p>
               </div>
-              <div className="p-4 bg-card border border-border rounded-xl flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                  <Phone className="w-4 h-4 text-primary" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-xs text-muted-foreground">WhatsApp</p>
-                  <p className="font-medium text-foreground">{formData.phone}</p>
-                </div>
-              </div>
-              <div className="p-4 bg-card border border-border rounded-xl flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                  <MapPin className="w-4 h-4 text-primary" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-xs text-muted-foreground">Endereço</p>
-                  <p className="font-medium text-foreground text-sm">
-                    {formData.address
-                      ? [formData.address.endereco, formData.address.numero, formData.address.complemento, formData.address.bairro, formData.address.cidade, formData.address.estado].filter(Boolean).join(', ')
-                      : formData.city}
-                  </p>
-                </div>
+            </div>
+
+            {/* Endereço */}
+            <div className="space-y-2">
+              <p className="text-xs font-bold text-muted-foreground tracking-wider flex items-center gap-1.5">
+                <MapPin className="w-3.5 h-3.5" /> ENDEREÇO
+              </p>
+              <div className="p-4 bg-card border border-border rounded-xl space-y-0.5">
+                {formData.address ? (
+                  <>
+                    <p className="text-sm text-foreground">
+                      {formData.address.endereco}{formData.address.numero ? `, ${formData.address.numero}` : ''}
+                    </p>
+                    {formData.address.complemento && (
+                      <p className="text-sm text-muted-foreground">{formData.address.complemento}</p>
+                    )}
+                    {formData.address.bairro && (
+                      <p className="text-sm text-muted-foreground">{formData.address.bairro}</p>
+                    )}
+                    <p className="text-sm text-muted-foreground">
+                      {formData.address.cidade}{formData.address.estado ? ` - ${formData.address.estado}` : ''}
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-sm text-foreground">{formData.city}</p>
+                )}
               </div>
             </div>
           </div>

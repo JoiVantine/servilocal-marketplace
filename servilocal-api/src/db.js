@@ -1,6 +1,8 @@
 const mongoose = require('mongoose');
 const dns = require('dns');
 dns.setDefaultResultOrder('ipv4first');
+// Garante resolução SRV mesmo quando DNS local (WSL2/Docker) rejeita queries TCP
+dns.setServers(['8.8.8.8', '1.1.1.1', '8.8.4.4']);
 
 module.exports = async function connectDB() {
   mongoose.connection.on('connected', () => console.log('[db] MongoDB conectado'));

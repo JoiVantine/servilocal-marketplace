@@ -1,27 +1,98 @@
-﻿import { useState, useEffect } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { api } from '@/api/apiClient';
-import { Link, useNavigate } from 'react-router-dom';
-import { Home, ClipboardList, MapPin, ChevronRight, CheckCircle2, MessageCircle, LifeBuoy } from 'lucide-react';
-import { buildRequestSupportDraft, buildSupportComposerState } from '@/lib/support';
+import { useNavigate, Link } from 'react-router-dom';
+import {
+  ClipboardList, MapPin, Clock, ChevronRight,
+  Plus, Headphones, CheckCircle2,
+} from 'lucide-react';
+import ClientBottomNav from '@/components/ClientBottomNav';
 
-const LOGO_URL = "/logo.png";
-
-const STATUS_LABELS = {
-  open: { label: 'AGUARDANDO', color: 'text-orange-500' },
-  in_conversation: { label: 'EM CONVERSA', color: 'text-blue-500' },
-  agreed: { label: 'ACORDADO', color: 'text-green-600' },
-  completed: { label: 'CONCLUÍDO', color: 'text-muted-foreground' },
-  cancelled: { label: 'CANCELADO', color: 'text-destructive' },
+const STATUS_CONFIG = {
+  open: {
+    getBadge: () => 'Procurando profissional',
+    badgeClass: 'bg-orange-50 text-orange-500 border border-orange-200',
+    nextStep: 'Próxima etapa: receber propostas de profissionais',
+    nextStepDotClass: 'bg-orange-400',
+    actionLabel: 'Ver detalhes',
+  },
+  in_conversation: {
+    getBadge: (count) =>
+      count > 0
+        ? `${count} proposta${count !== 1 ? 's' : ''} recebida${count !== 1 ? 's' : ''}`
+        : 'Propostas recebidas',
+    badgeClass: 'bg-blue-50 text-blue-600 border border-blue-200',
+    nextStep: 'Próxima etapa: escolher um profissional',
+    nextStepDotClass: 'bg-blue-500',
+    actionLabel: 'Ver propostas',
+  },
+  agreed: {
+    getBadge: () => 'Profissional selecionado',
+    badgeClass: 'bg-teal-50 text-teal-600 border border-teal-200',
+    nextStep: 'Aguardando execução do serviço',
+    nextStepDotClass: 'bg-teal-500',
+    actionLabel: 'Ver detalhes',
+  },
+  completed: {
+    getBadge: () => 'Concluído',
+    badgeClass: 'bg-green-50 text-green-600 border border-green-200',
+    nextStep: null,
+    actionLabel: 'Ver detalhes',
+    isCompleted: true,
+  },
+  cancelled: {
+    getBadge: () => 'Cancelado',
+    badgeClass: 'bg-gray-100 text-gray-500 border border-gray-200',
+    nextStep: null,
+    actionLabel: 'Ver detalhes',
+    isCancelled: true,
+  },
 };
+
+const TABS = [
+  { key: 'all',       label: 'Todos' },
+  { key: 'open',      label: 'Abertos' },
+  { key: 'active',    label: 'Em andamento' },
+  { key: 'completed', label: 'Concluídos' },
+  { key: 'cancelled', label: 'Cancelados' },
+];
+
+function getCategoryStyle(text = '') {
+  const t = text.toLowerCase();
+  if (t.includes('elétric') || t.includes('eletric')) return { icon: '⚡', bg: 'bg-yellow-100' };
+  if (t.includes('hidrá') || t.includes('hidra') || t.includes('encana')) return { icon: '🚿', bg: 'bg-blue-100' };
+  if (t.includes('pintur')) return { icon: '🎨', bg: 'bg-rose-100' };
+  if (t.includes('limpez')) return { icon: '🧹', bg: 'bg-teal-100' };
+  if (t.includes('reform') || t.includes('constru')) return { icon: '🏠', bg: 'bg-purple-100' };
+  return { icon: '🔧', bg: 'bg-gray-100' };
+}
+
+function timeAgo(dateStr) {
+  if (!dateStr) return '';
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'Criado agora';
+  if (mins < 60) return `Criado há ${mins} minuto${mins !== 1 ? 's' : ''}`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `Criado há ${hours} hora${hours !== 1 ? 's' : ''}`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `Criado há ${days} dia${days !== 1 ? 's' : ''}`;
+  return `Criado há ${Math.floor(days / 30)} ${Math.floor(days / 30) !== 1 ? 'meses' : 'mês'}`;
+}
+
+function formatCompletedDate(dateStr) {
+  if (!dateStr) return 'Serviço finalizado';
+  const d = new Date(dateStr);
+  return `Concluído em ${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+}
 
 export default function ClientOrders() {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const [userId, setUserId] = useState(null);
+  const [activeTab, setActiveTab] = useState('all');
 
   useEffect(() => {
-    api.auth.me().then((u) => setUserId(u.id)).catch(console.error);
+    api.auth.me().then((u) => setUserId(u.id)).catch(() => navigate('/'));
   }, []);
 
   const { data: requests = [], isLoading } = useQuery({
@@ -32,160 +103,165 @@ export default function ClientOrders() {
 
   const { data: conversations = [] } = useQuery({
     queryKey: ['client-conversations', userId],
-    queryFn: () => api.entities.Conversation.filter({ clientId: userId }, '-lastMessageTime'),
+    queryFn: () => api.entities.Conversation.filter({ clientId: userId }),
     enabled: !!userId,
   });
 
+  const proposalCounts = {};
+  conversations.forEach((conv) => {
+    if (conv.serviceRequestId) {
+      proposalCounts[conv.serviceRequestId] = (proposalCounts[conv.serviceRequestId] || 0) + 1;
+    }
+  });
+
+  const filteredRequests = requests.filter((r) => {
+    if (activeTab === 'all') return true;
+    if (activeTab === 'open') return r.status === 'open';
+    if (activeTab === 'active') return r.status === 'in_conversation' || r.status === 'agreed';
+    if (activeTab === 'completed') return r.status === 'completed';
+    if (activeTab === 'cancelled') return r.status === 'cancelled';
+    return true;
+  });
+
   return (
-    <div className="min-h-screen bg-background pb-24">
-      {/* Top Header */}
-      <div className="flex items-center justify-between px-4 py-4 border-b border-border bg-card">
-        <div className="flex items-center gap-2">
-          <img src={LOGO_URL} alt="ServiLocal" className="w-6 h-6 object-contain" />
-          <span className="text-sm font-semibold text-foreground">Servi<span className="font-bold">Local</span></span>
+    <div className="min-h-screen bg-background pb-20">
+      {/* Header */}
+      <div className="px-4 pt-6 pb-4 bg-background border-b border-border">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h1 className="font-heading text-2xl font-bold text-foreground">Meus pedidos</h1>
+            <p className="text-sm text-muted-foreground mt-0.5">Acompanhe o andamento dos seus pedidos.</p>
+          </div>
+          <Link
+            to="/client/new-request"
+            className="shrink-0 flex items-center gap-1.5 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity"
+          >
+            <Plus className="w-4 h-4" />
+            Novo pedido
+          </Link>
         </div>
-        <button
-          onClick={() => api.auth.logout('/')}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-foreground border border-border rounded-lg hover:bg-secondary/50 transition-colors"
-        >
-          ⤳ Sair
-        </button>
+
+        {/* Filter tabs */}
+        <div className="flex gap-2 mt-4 overflow-x-auto pb-0.5" style={{ scrollbarWidth: 'none' }}>
+          {TABS.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                activeTab === tab.key
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-secondary text-muted-foreground hover:bg-secondary/80'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
       </div>
 
-      <div className="max-w-lg mx-auto px-4 py-6">
-        {/* Sub header */}
-        <div className="flex flex-col items-center mb-6">
-          <div className="flex items-center gap-2 mb-1">
-            <img src={LOGO_URL} alt="ServiLocal" className="w-5 h-5 object-contain" />
-            <span className="text-sm font-semibold text-foreground">Servi<span className="font-bold">Local</span></span>
-          </div>
-        </div>
-
-        {/* Title */}
-        <h1 className="font-heading text-2xl font-bold text-foreground mb-1">Meus pedidos</h1>
-        <p className="text-sm text-primary mb-6">Pedidos confirmados aparecem aqui.</p>
-
-        {/* List */}
+      {/* List */}
+      <div className="px-4 py-4 space-y-3 max-w-md mx-auto">
         {isLoading ? (
           <div className="flex justify-center py-12">
             <div className="w-7 h-7 border-4 border-slate-200 border-t-primary rounded-full animate-spin" />
           </div>
-        ) : requests.length === 0 ? (
+        ) : filteredRequests.length === 0 ? (
           <div className="text-center py-12">
             <ClipboardList className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-            <p className="text-sm text-muted-foreground">Nenhum pedido ainda.</p>
-            <Link to="/client/services" className="mt-4 inline-block text-sm font-medium text-primary hover:opacity-80">
-              Publicar meu primeiro pedido →
+            <p className="text-sm text-muted-foreground">Nenhum pedido encontrado.</p>
+            <Link to="/client/new-request" className="mt-4 inline-block text-sm font-medium text-primary hover:opacity-80">
+              Criar novo pedido →
             </Link>
           </div>
         ) : (
-          <div className="space-y-3">
-            {requests.map((req) => {
-              const status = STATUS_LABELS[req.status] || STATUS_LABELS.open;
-              const conversation = conversations.find((item) => item.serviceRequestId === req.id);
-              return (
-                <div key={req.id} className="bg-card border border-border rounded-xl overflow-hidden">
-                  <Link
-                    to={`/client/request/${req.id}`}
-                    className="flex items-center gap-3 p-4 hover:bg-secondary/20 transition-colors"
-                  >
-                    <CheckCircle2 className="w-6 h-6 text-primary shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <p className="text-sm font-semibold text-foreground">{req.title}</p>
-                        <span className={`text-xs font-bold ${status.color}`}>{status.label}</span>
-                      </div>
-                      <div className="flex items-center gap-1 mt-0.5">
-                        <MapPin className="w-3 h-3 text-muted-foreground" />
-                        <p className="text-xs text-muted-foreground truncate">
-                          {req.neighborhood ? `${req.neighborhood}, ` : ''}{req.city}
-                        </p>
-                      </div>
+          filteredRequests.map((req) => {
+            const config = STATUS_CONFIG[req.status] || STATUS_CONFIG.open;
+            const catStyle = getCategoryStyle(`${req.category || ''} ${req.title || ''}`);
+            const count = proposalCounts[req.id] || 0;
+
+            return (
+              <div key={req.id} className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
+                {/* Card row */}
+                <button
+                  onClick={() => navigate(`/client/request/${req.id}`)}
+                  className="w-full flex items-center gap-3 p-4 hover:bg-secondary/20 transition-colors text-left"
+                >
+                  <div className={`w-12 h-12 rounded-xl ${catStyle.bg} flex items-center justify-center shrink-0`}>
+                    <span className="text-xl leading-none">{catStyle.icon}</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-2 flex-wrap">
+                      <p className="font-semibold text-foreground text-sm">{req.title}</p>
+                      <span className={`shrink-0 text-xs px-2.5 py-1 rounded-full font-medium whitespace-nowrap ${config.badgeClass}`}>
+                        {config.getBadge(count)}
+                      </span>
                     </div>
-                    <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
-                  </Link>
-                  {req.status !== 'completed' && req.status !== 'cancelled' && (
-                    <div className="border-t border-border px-4 py-2 flex flex-wrap gap-2">
-                      {conversation && (
-                        <button
-                          onClick={(e) => {
-                            e.preventDefault();
-                            navigate(`/chat/${conversation.id}`);
-                          }}
-                          className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold text-primary border border-primary/30 rounded-lg py-2 hover:bg-primary/5 transition-colors"
-                        >
-                          <MessageCircle className="w-3.5 h-3.5" /> Conversar
-                        </button>
-                      )}
-                      <button
-                        onClick={(e) => {
-                          e.preventDefault();
-                          navigate('/client/support', {
-                            state: buildSupportComposerState(
-                              buildRequestSupportDraft({
-                                audience: 'client',
-                                request: req,
-                                conversation,
-                                counterpartName: conversation?.providerName || '',
-                              })
-                            ),
-                          });
-                        }}
-                        className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold text-foreground border border-border rounded-lg py-2 hover:bg-secondary/50 transition-colors"
-                      >
-                        <LifeBuoy className="w-3.5 h-3.5" /> Suporte
-                      </button>
-                      <button
-                        onClick={async (e) => {
-                          e.preventDefault();
-                          if (confirm('Tem certeza que deseja cancelar este pedido?')) {
-                            await api.entities.ServiceRequest.update(req.id, { status: 'cancelled' });
-                            const [convs, interests] = await Promise.all([
-                              api.entities.Conversation.filter({ serviceRequestId: req.id }),
-                              api.entities.ServiceRequestInterest.filter({ serviceRequestId: req.id }),
-                            ]);
-                            await Promise.all([
-                              ...convs.map(c => api.entities.Conversation.update(c.id, { status: 'cancelled' })),
-                              ...interests.map(i => api.entities.ServiceRequestInterest.update(i.id, { status: 'cancelled' })),
-                              ...interests.map(i =>
-                                api.entities.Notification.create({
-                                  userId: i.providerId,
-                                  type: 'request_cancelled',
-                                  title: 'Pedido cancelado',
-                                  body: `O pedido de "${req.title}" em ${req.city} foi cancelado pelo cliente.`,
-                                  read: false,
-                                })
-                              ),
-                            ]);
-                            queryClient.invalidateQueries({ queryKey: ['my-orders', userId] });
-                          }
-                        }}
-                        className="flex-1 text-xs font-medium text-red-600 border border-red-200 rounded-lg py-2 hover:bg-red-50 transition-colors"
-                      >
-                        Cancelar pedido
-                      </button>
+                    {req.city && (
+                      <div className="flex items-center gap-1 mt-1">
+                        <MapPin className="w-3 h-3 text-muted-foreground shrink-0" />
+                        <p className="text-xs text-muted-foreground">{req.city}</p>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-1 mt-0.5">
+                      <Clock className="w-3 h-3 text-muted-foreground shrink-0" />
+                      <p className="text-xs text-muted-foreground">{timeAgo(req.created_date)}</p>
                     </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0 ml-1" />
+                </button>
+
+                {/* Footer bar */}
+                {config.isCompleted ? (
+                  <div className="border-t border-border px-4 py-3 flex items-center justify-between bg-green-50/50">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />
+                      <span className="text-xs text-green-600 font-medium">
+                        {formatCompletedDate(req.updated_date)}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => navigate(`/client/request/${req.id}`)}
+                      className="text-xs text-primary font-semibold hover:opacity-80"
+                    >
+                      Ver detalhes
+                    </button>
+                  </div>
+                ) : !config.isCancelled && config.nextStep ? (
+                  <div className="border-t border-border px-4 py-3 flex items-center justify-between">
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      <div className={`w-2 h-2 rounded-full shrink-0 ${config.nextStepDotClass}`} />
+                      <span className="text-xs text-muted-foreground truncate">{config.nextStep}</span>
+                    </div>
+                    <button
+                      onClick={() => navigate(`/client/request/${req.id}`)}
+                      className="shrink-0 ml-3 px-3 py-1.5 border border-primary/30 text-xs text-primary font-semibold rounded-lg hover:bg-primary/5 transition-colors"
+                    >
+                      {config.actionLabel}
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+            );
+          })
         )}
+
+        {/* Help card */}
+        <button
+          onClick={() => navigate('/client/help')}
+          className="w-full flex items-center gap-4 p-4 bg-card border border-border rounded-2xl hover:bg-secondary/20 transition-colors text-left shadow-sm"
+        >
+          <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+            <Headphones className="w-5 h-5 text-primary" />
+          </div>
+          <div className="flex-1">
+            <p className="font-semibold text-foreground text-sm">Precisa de ajuda?</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Fale com nossa equipe de suporte.</p>
+          </div>
+          <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+        </button>
       </div>
 
-      {/* Bottom Navigation */}
-      <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border">
-        <div className="flex items-center justify-around max-w-lg mx-auto">
-          <Link to="/client" className="flex-1 flex flex-col items-center gap-1 py-3 text-muted-foreground hover:text-foreground transition-colors">
-            <Home className="w-5 h-5" />
-            <span className="text-xs">Início</span>
-          </Link>
-          <button className="flex-1 flex flex-col items-center gap-1 py-3 text-primary font-medium">
-            <ClipboardList className="w-5 h-5" />
-            <span className="text-xs">Pedidos</span>
-          </button>
-        </div>
-      </div>
+      <ClientBottomNav active="orders" />
     </div>
   );
 }

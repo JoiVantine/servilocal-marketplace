@@ -262,17 +262,19 @@ export default function ProviderOnboarding() {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-card">
-        <div className="flex items-center gap-2">
-          <img src={LOGO_URL} alt="ServiLocal" className="w-6 h-6 object-contain" />
-          <span className="text-sm font-bold text-foreground">Servi<span className="text-primary">Local</span></span>
+      <div className="border-b border-border bg-card">
+        <div className="max-w-md mx-auto px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <img src={LOGO_URL} alt="ServiLocal" className="w-6 h-6 object-contain" />
+            <span className="text-sm font-bold text-foreground">Servi<span className="text-primary">Local</span></span>
+          </div>
+          <button
+            onClick={() => navigate('/')}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium border border-border rounded-lg hover:bg-secondary/50"
+          >
+            <ChevronRight className="w-4 h-4 rotate-180" /> Sair
+          </button>
         </div>
-        <button
-          onClick={() => navigate('/')}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium border border-border rounded-lg hover:bg-secondary/50"
-        >
-          <ChevronRight className="w-4 h-4 rotate-180" /> Sair
-        </button>
       </div>
 
       {/* Steps indicator */}
@@ -366,6 +368,10 @@ export default function ProviderOnboarding() {
 
             {otpSent && (
               <div>
+                <div className="p-3 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2 mb-4">
+                  <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
+                  <p className="text-sm text-green-700 font-medium">Código enviado! Verifique seu WhatsApp.</p>
+                </div>
                 <label className="block text-sm font-medium text-foreground mb-1">Código de verificação <span className="text-red-500">*</span></label>
                 <p className="text-xs text-muted-foreground mb-2">Digite o código de 6 dígitos enviado para <strong>{email}</strong>.</p>
                 <input

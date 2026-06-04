@@ -1,14 +1,14 @@
 import { useState } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { api } from '@/api/apiClient';
-import { Lock, Eye, EyeOff, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
+import { Lock, Eye, EyeOff, CheckCircle2, Circle, Loader2 } from 'lucide-react';
 import AuthLayout from '@/components/AuthLayout';
 import { Button } from '@/components/ui/button';
 
 function Rule({ ok, label }) {
   return (
     <div className={`flex items-center gap-1.5 text-xs ${ok ? 'text-green-600' : 'text-muted-foreground'}`}>
-      {ok ? <CheckCircle2 className="w-3.5 h-3.5 shrink-0" /> : <XCircle className="w-3.5 h-3.5 shrink-0" />}
+      {ok ? <CheckCircle2 className="w-3.5 h-3.5 shrink-0" /> : <Circle className="w-3.5 h-3.5 shrink-0" />}
       {label}
     </div>
   );

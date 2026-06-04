@@ -33,6 +33,12 @@ import PasswordSetup from './pages/PasswordSetup';
 import Login from './pages/Login';
 import SupportCenter from './pages/SupportCenter';
 import SupportTicketDetail from './pages/SupportTicketDetail';
+import ClientMenu from './pages/ClientMenu';
+import ClientProfile from './pages/ClientProfile';
+import ClientAddress from './pages/ClientAddress';
+import ClientEditAddress from './pages/ClientEditAddress';
+import ClientHelp from './pages/ClientHelp';
+import ClientAbout from './pages/ClientAbout';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -67,6 +73,12 @@ const AuthenticatedApp = () => {
       <Route path="/client/orders" element={<ClientOrders />} />
       <Route path="/client/support" element={<SupportCenter audience="client" />} />
       <Route path="/client/support/:ticketId" element={<SupportTicketDetail audience="client" />} />
+      <Route path="/client/menu" element={<ClientMenu />} />
+      <Route path="/client/profile" element={<ClientProfile />} />
+      <Route path="/client/address" element={<ClientAddress />} />
+      <Route path="/client/edit-address" element={<ClientEditAddress />} />
+      <Route path="/client/help" element={<ClientHelp />} />
+      <Route path="/client/about" element={<ClientAbout />} />
       <Route path="/admin/login" element={<AdminLogin />} />
       <Route element={<AdminRoute />}>
         <Route path="/diagnostics" element={<DiagnosticsPage />} />

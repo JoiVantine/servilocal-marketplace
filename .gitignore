@@ -29,3 +29,8 @@ dist-ssr
 
 .env
 .vite
+
+# Playwright
+.auth/
+playwright-report/
+test-results/

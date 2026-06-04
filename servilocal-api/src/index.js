@@ -32,6 +32,7 @@ app.set('trust proxy', 1);
 
 const clientOrigins = [
   'http://localhost:5173',
+  'http://localhost:5174',
   'https://appservilocal.com',
   'https://www.appservilocal.com',
   process.env.CLIENT_URL,
