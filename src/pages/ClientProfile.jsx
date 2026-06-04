@@ -1,48 +1,52 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '@/api/apiClient';
-import { ChevronLeft, Camera, Loader2 } from 'lucide-react';
+import { ChevronLeft, Camera, Loader2, CheckCircle } from 'lucide-react';
 import ClientBottomNav from '@/components/ClientBottomNav';
+import { useCurrentUser, useRefreshUser } from '@/hooks/useCurrentUser';
 
 export default function ClientProfile() {
   const navigate = useNavigate();
   const fileRef = useRef(null);
-  const [user, setUser] = useState(null);
+  const { data: user, isLoading } = useCurrentUser();
+  const refreshUser = useRefreshUser();
+
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [birthDate, setBirthDate] = useState('');
-  const [photoLoading, setPhotoLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const [initialized, setInitialized] = useState(false);
 
-  useEffect(() => {
-    api.auth.me().then((u) => {
-      setUser(u);
-      setName(u.fullName || u.full_name || '');
-      setEmail(u.email || '');
-      setPhone(u.phone || '');
-      // birthDate stored as ISO string — convert to input date format
-      const bd = u.birthDate || u.birth_date;
-      if (bd) {
-        const d = new Date(bd);
-        if (!isNaN(d)) {
-          setBirthDate(d.toISOString().slice(0, 10));
-        }
-      }
-    }).catch(() => navigate('/'));
-  }, []);
+  const [photoLoading, setPhotoLoading] = useState(false);
+  const [photoError, setPhotoError] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+
+  // Initialize form fields once user data arrives
+  if (user && !initialized) {
+    setName(user.fullName || user.full_name || '');
+    setEmail(user.email || '');
+    setPhone(user.phone || '');
+    const bd = user.birthDate || user.birth_date;
+    if (bd) {
+      const d = new Date(bd);
+      if (!isNaN(d)) setBirthDate(d.toISOString().slice(0, 10));
+    }
+    setInitialized(true);
+  }
 
   const handlePhotoChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
     setPhotoLoading(true);
+    setPhotoError(false);
     try {
       const url = await api.uploadFile(file);
       await api.auth.updateMe({ photo: url });
-      setUser(prev => ({ ...prev, photo: url }));
+      refreshUser();
     } catch {
-      // upload failed silently
+      setPhotoError(true);
     } finally {
       setPhotoLoading(false);
       e.target.value = '';
@@ -51,6 +55,7 @@ export default function ClientProfile() {
 
   const handleSave = async () => {
     setSaving(true);
+    setSaveError(false);
     try {
       await api.auth.updateMe({
         full_name: name,
@@ -59,25 +64,25 @@ export default function ClientProfile() {
         phone,
         birthDate: birthDate || undefined,
       });
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
+      refreshUser();
+      setShowSuccessModal(true);
     } catch {
-      // save failed silently
+      setSaveError(true);
     } finally {
       setSaving(false);
     }
   };
 
-  const fullName = user?.fullName || user?.full_name || '';
-  const initials = fullName.split(' ').filter(Boolean).map(w => w[0]).slice(0, 2).join('').toUpperCase() || '?';
-
-  if (!user) {
+  if (isLoading || !user) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="w-7 h-7 border-4 border-border border-t-primary rounded-full animate-spin" />
       </div>
     );
   }
+
+  const fullName = user?.fullName || user?.full_name || '';
+  const initials = fullName.split(' ').filter(Boolean).map(w => w[0]).slice(0, 2).join('').toUpperCase() || '?';
 
   return (
     <div className="min-h-screen bg-secondary/30 pb-20">
@@ -108,13 +113,18 @@ export default function ClientProfile() {
             </div>
             <span className="text-sm text-muted-foreground">Foto do perfil</span>
           </div>
-          <button
-            onClick={() => fileRef.current?.click()}
-            disabled={photoLoading}
-            className="text-sm font-semibold text-primary hover:opacity-80 disabled:opacity-50"
-          >
-            Editar
-          </button>
+          <div className="flex flex-col items-end gap-1">
+            <button
+              onClick={() => { setPhotoError(false); fileRef.current?.click(); }}
+              disabled={photoLoading}
+              className="text-sm font-semibold text-primary hover:opacity-80 disabled:opacity-50"
+            >
+              Editar
+            </button>
+            {photoError && (
+              <span className="text-xs text-red-500">Falha ao enviar foto</span>
+            )}
+          </div>
           <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
         </div>
 
@@ -162,15 +172,37 @@ export default function ClientProfile() {
           </div>
         </div>
 
+        {saveError && (
+          <p className="text-sm text-red-500 text-center -mt-2">Falha ao salvar. Tente novamente.</p>
+        )}
         <button
           onClick={handleSave}
           disabled={saving}
           className="w-full py-4 bg-primary text-primary-foreground rounded-xl font-semibold text-base hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2"
         >
           {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : null}
-          {saving ? 'Salvando...' : saved ? 'Salvo!' : 'Salvar alterações'}
+          {saving ? 'Salvando...' : 'Salvar alterações'}
         </button>
       </div>
+
+      {/* Success modal */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-card rounded-2xl p-6 w-full max-w-xs text-center space-y-4 shadow-xl">
+            <CheckCircle className="w-12 h-12 text-green-500 mx-auto" />
+            <div>
+              <p className="font-bold text-foreground text-lg">Dados salvos!</p>
+              <p className="text-sm text-muted-foreground mt-1">Suas informações foram atualizadas.</p>
+            </div>
+            <button
+              onClick={() => setShowSuccessModal(false)}
+              className="w-full py-3 bg-primary text-primary-foreground rounded-xl font-semibold hover:opacity-90"
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      )}
 
       <ClientBottomNav active="menu" />
     </div>

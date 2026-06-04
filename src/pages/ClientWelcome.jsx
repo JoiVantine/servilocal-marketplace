@@ -113,7 +113,7 @@ export default function ClientWelcome() {
           </button>
 
           <p className="text-xs text-muted-foreground text-center">
-            Sem dados são protegidos e nunca serão compartilhados.
+            Seus dados são protegidos e nunca serão compartilhados.
           </p>
         </div>
       </div>

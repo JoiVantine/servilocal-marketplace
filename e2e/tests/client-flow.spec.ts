@@ -189,20 +189,24 @@ test.describe('Cliente — ajuda', () => {
     await expect(page.getByText(/ajuda|suporte|perguntas/i).first()).toBeVisible({ timeout: 8_000 });
   });
 
-  test('[BUG] "Termos de uso" não navega para nenhum conteúdo', async ({ page }) => {
+  test('"Termos de uso" navega para página de termos', async ({ page }) => {
     await page.goto('/client/help');
-    // Clica no item de Termos de uso
-    const termos = page.getByText(/termos de uso/i).first();
-    await termos.click();
-    // Deve permanecer na mesma URL — bug confirmado: action vazia
-    await expect(page).toHaveURL('/client/help', { timeout: 3_000 });
+    await page.getByText(/termos de uso/i).first().click();
+    await expect(page).toHaveURL('/client/terms', { timeout: 5_000 });
+    await expect(page.getByText(/termos de uso/i).first()).toBeVisible();
   });
 
-  test('[BUG] "Política de privacidade" não navega para nenhum conteúdo', async ({ page }) => {
+  test('"Política de privacidade" navega para página de política', async ({ page }) => {
     await page.goto('/client/help');
-    const privacidade = page.getByText(/política de privacidade/i).first();
-    await privacidade.click();
-    await expect(page).toHaveURL('/client/help', { timeout: 3_000 });
+    await page.getByText(/política de privacidade/i).first().click();
+    await expect(page).toHaveURL('/client/privacy', { timeout: 5_000 });
+    await expect(page.getByText(/política de privacidade/i).first()).toBeVisible();
+  });
+
+  test('"Perguntas frequentes" navega para FAQ', async ({ page }) => {
+    await page.goto('/client/help');
+    await page.getByText(/perguntas frequentes/i).first().click();
+    await expect(page).toHaveURL('/client/faq', { timeout: 5_000 });
   });
 });
 
@@ -253,7 +257,7 @@ test.describe('Cliente — avaliação', () => {
     await expect(page.locator('body')).not.toContainText(/erro interno|500/i);
   });
 
-  test('[BUG] estrelas já vêm marcadas com 5 por padrão antes do usuário interagir', async ({ page }) => {
+  test('botão de enviar fica desabilitado até o usuário avaliar todas as categorias', async ({ page }) => {
     const { token, user } = await getClientToken(page);
     const request = await createRequest(page, token, user.id, {
       title: 'Rating Default E2E',
@@ -261,28 +265,25 @@ test.describe('Cliente — avaliação', () => {
     });
 
     await page.goto(`/client/request/${request.id}/rate`);
-    // Botão de enviar deve estar visível sem o usuário ter tocado em nada
     const submitBtn = page.getByRole('button', { name: /enviar|avaliar/i }).first();
     await expect(submitBtn).toBeVisible({ timeout: 8_000 });
-    // Bug: botão ativo sem interação do usuário — avaliação seria enviada com 5 estrelas padrão
-    await expect(submitBtn).not.toBeDisabled();
+    // Sem interação: botão deve estar desabilitado
+    await expect(submitBtn).toBeDisabled();
   });
 });
 
 // ─── Pagamentos ──────────────────────────────────────────────────────────────
 
 test.describe('Cliente — pagamentos', () => {
-  test('[BUG] página de pagamentos exibe dados mock (cartão Visa 4242)', async ({ page }) => {
+  test('página de pagamentos não exibe dados mock', async ({ page }) => {
     await page.goto('/client/payments');
     await expect(page).not.toHaveURL('/login', { timeout: 8_000 });
-    // Bug confirmado: dados hardcoded aparecem como se fossem reais
-    await expect(page.getByText(/4242/i).first()).toBeVisible({ timeout: 8_000 });
+    await expect(page.getByText(/4242/i)).toHaveCount(0);
   });
 
-  test('[BUG] botão "Adicionar forma de pagamento" está desabilitado', async ({ page }) => {
+  test('página de pagamentos exibe estado vazio com mensagem de em breve', async ({ page }) => {
     await page.goto('/client/payments');
-    const btn = page.getByRole('button', { name: /adicionar/i }).first();
-    await expect(btn).toBeDisabled({ timeout: 8_000 });
+    await expect(page.getByText(/em breve|nenhuma forma|pagamentos/i).first()).toBeVisible({ timeout: 8_000 });
   });
 });
 

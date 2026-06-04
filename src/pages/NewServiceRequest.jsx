@@ -21,6 +21,7 @@ export default function NewServiceRequest() {
   const [expandedCat, setExpandedCat] = useState(null);
   const [photos, setPhotos] = useState([]);
   const [photoLoading, setPhotoLoading] = useState(false);
+  const [photoError, setPhotoError] = useState(false);
   const [address, setAddress] = useState('');
   const [userCache, setUserCache] = useState(null);
   const [profileCache, setProfileCache] = useState(null);
@@ -45,11 +46,12 @@ export default function NewServiceRequest() {
     const file = e.target.files[0];
     if (!file) return;
     setPhotoLoading(true);
+    setPhotoError(false);
     try {
       const url = await api.uploadFile(file);
       setPhotos(prev => [...prev, url]);
     } catch {
-      // upload failed silently
+      setPhotoError(true);
     } finally {
       setPhotoLoading(false);
       e.target.value = '';
@@ -197,6 +199,9 @@ export default function NewServiceRequest() {
             )}
           </div>
           <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoAdd} />
+          {photoError && (
+            <p className="text-xs text-red-500 mt-1.5">Falha ao enviar foto. Tente novamente.</p>
+          )}
         </div>
 
         {/* When */}

@@ -39,6 +39,10 @@ import ClientProfile from './pages/ClientProfile';
 import ClientAddress from './pages/ClientAddress';
 import ClientEditAddress from './pages/ClientEditAddress';
 import ClientHelp from './pages/ClientHelp';
+import ClientFAQ from './pages/ClientFAQ';
+import ClientTerms from './pages/ClientTerms';
+import ClientPrivacy from './pages/ClientPrivacy';
+import ClientProviderProfile from './pages/ClientProviderProfile';
 import ClientAbout from './pages/ClientAbout';
 import ClientPayments from './pages/ClientPayments';
 import ClientNotifications from './pages/ClientNotifications';
@@ -92,6 +96,10 @@ const AuthenticatedApp = () => {
       <Route path="/client/address" element={<ClientAddress />} />
       <Route path="/client/edit-address" element={<ClientEditAddress />} />
       <Route path="/client/help" element={<ClientHelp />} />
+      <Route path="/client/faq" element={<ClientFAQ />} />
+      <Route path="/client/terms" element={<ClientTerms />} />
+      <Route path="/client/privacy" element={<ClientPrivacy />} />
+      <Route path="/client/provider/:providerId" element={<ClientProviderProfile />} />
       <Route path="/client/about" element={<ClientAbout />} />
       <Route path="/client/payments" element={<ClientPayments />} />
       <Route path="/client/notifications" element={<ClientNotifications />} />

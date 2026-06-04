@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import pkg from '../../package.json';
 import { ChevronLeft, ChevronRight, X, User, FileText, Lock, Shield } from 'lucide-react';
 import { TERMS_TEXT, PRIVACY_TEXT } from '@/lib/legalContent';
 import ClientBottomNav from '@/components/ClientBottomNav';
@@ -114,7 +115,7 @@ export default function ClientAbout() {
             <p className="font-bold text-foreground text-lg">
               Servi<span className="text-primary">Local</span>
             </p>
-            <p className="text-sm text-muted-foreground">Versão 1.0.0</p>
+            <p className="text-sm text-muted-foreground">Versão {pkg.version}</p>
           </div>
         </div>
 

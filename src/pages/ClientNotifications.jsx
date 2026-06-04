@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft } from 'lucide-react';
+import { api } from '@/api/apiClient';
 import ClientBottomNav from '@/components/ClientBottomNav';
 
 const PREFS_KEY = 'servilocal_notification_prefs';
@@ -62,27 +63,38 @@ export default function ClientNotifications() {
       return DEFAULT_PREFS;
     }
   });
-  const [permissionStatus, setPermissionStatus] = useState(
-    typeof Notification !== 'undefined' ? Notification.permission : 'unsupported'
+  const [profileId, setProfileId] = useState(null);
+  const [browserDenied, setBrowserDenied] = useState(
+    typeof Notification !== 'undefined' && Notification.permission === 'denied'
   );
 
-  const requestPermission = async () => {
-    if (typeof Notification === 'undefined') return 'unsupported';
-    if (Notification.permission === 'granted') return 'granted';
-    const result = await Notification.requestPermission();
-    setPermissionStatus(result);
-    return result;
-  };
+  useEffect(() => {
+    api.auth.me().then(async (user) => {
+      const profiles = await api.entities.UserProfile.filter({ userId: user.id });
+      const profile = profiles.find((p) => p.role === 'client') || profiles[0];
+      if (!profile) return;
+      setProfileId(profile.id);
+      if (profile.notificationPrefs) {
+        const merged = { ...DEFAULT_PREFS, ...profile.notificationPrefs };
+        setPrefs(merged);
+        localStorage.setItem(PREFS_KEY, JSON.stringify(merged));
+      }
+    }).catch(() => {});
+  }, []);
 
-  const toggle = async (key) => {
-    const newValue = !prefs[key];
-    if (newValue && permissionStatus !== 'granted') {
-      const result = await requestPermission();
-      if (result === 'denied') return;
-    }
-    const updated = { ...prefs, [key]: newValue };
+  const toggle = (key) => {
+    const updated = { ...prefs, [key]: !prefs[key] };
     setPrefs(updated);
     localStorage.setItem(PREFS_KEY, JSON.stringify(updated));
+    if (profileId) {
+      api.entities.UserProfile.update(profileId, { notificationPrefs: updated }).catch(() => {});
+    }
+    // Non-blocking: try to request browser permission when enabling
+    if (updated[key] && typeof Notification !== 'undefined' && Notification.permission === 'default') {
+      Notification.requestPermission().then(result => {
+        setBrowserDenied(result === 'denied');
+      }).catch(() => {});
+    }
   };
 
   return (
@@ -95,11 +107,11 @@ export default function ClientNotifications() {
       </div>
 
       <div className="max-w-md mx-auto px-4 py-5 space-y-4">
-        {permissionStatus === 'denied' && (
+        {browserDenied && (
           <div className="p-4 bg-orange-50 border border-orange-200 rounded-xl">
-            <p className="text-sm font-semibold text-orange-700">Notificações bloqueadas</p>
+            <p className="text-sm font-semibold text-orange-700">Notificações do navegador bloqueadas</p>
             <p className="text-xs text-orange-600 mt-0.5">
-              Para receber notificações, habilite nas configurações do seu navegador.
+              Para receber notificações push, habilite nas configurações do seu navegador. As preferências abaixo ainda são salvas.
             </p>
           </div>
         )}

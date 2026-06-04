@@ -94,9 +94,9 @@ export default function ClientConfirmProvider() {
                 {providerProfile?.description && (
                   <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{providerProfile.description}</p>
                 )}
-                {conversation && (
+                {interest?.providerId && (
                   <button
-                    onClick={() => navigate(`/chat/${conversation.id}`)}
+                    onClick={() => navigate(`/client/provider/${interest.providerId}`)}
                     className="mt-2 text-xs text-primary font-semibold hover:opacity-80"
                   >
                     Ver perfil completo

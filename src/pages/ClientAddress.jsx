@@ -61,7 +61,7 @@ export default function ClientAddress() {
                 className="w-full flex items-center gap-3 p-4 hover:bg-secondary/20 transition-colors text-left"
               >
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold text-muted-foreground mb-1">Casa</p>
+                  <p className="text-xs font-semibold text-muted-foreground mb-1">{profile?.addressLabel || 'Casa'}</p>
                   <p className="text-sm font-medium text-foreground">{addressLine1}</p>
                   {profile?.neighborhood && (
                     <p className="text-xs text-muted-foreground">{profile.neighborhood}, {user?.city}</p>

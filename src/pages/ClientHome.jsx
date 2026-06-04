@@ -1,12 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/api/apiClient';
-import { Search, ChevronRight, MapPin, ShieldCheck } from 'lucide-react';
+import { Search, ChevronRight, MapPin, ShieldCheck, LogOut } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import ServiceCategoryGrid from '../components/ServiceCategoryGrid';
 import ClientBottomNav from '../components/ClientBottomNav';
-
-const LOGO_URL = '/logo.png';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 
 const STATUS_LABELS = {
   open: 'Procurando profissional',
@@ -51,23 +50,10 @@ function formatDate(dateStr) {
 
 export default function ClientHome() {
   const navigate = useNavigate();
-  const [user, setUser] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showCategories, setShowCategories] = useState(false);
 
-  const loadUser = async () => {
-    try {
-      const u = await api.auth.me();
-      setUser(u);
-      const profiles = await api.entities.UserProfile.filter({ userId: u.id });
-      const clientProfile = profiles.find((p) => p.role === 'client');
-      if (!clientProfile || clientProfile.firstAccess !== false) navigate('/client/onboarding');
-    } catch {
-      navigate('/client/onboarding');
-    }
-  };
-
-  useEffect(() => { loadUser(); }, []);
+  const { data: user, isLoading } = useCurrentUser();
 
   const { data: requests = [] } = useQuery({
     queryKey: ['client-requests', user?.id],
@@ -77,7 +63,7 @@ export default function ClientHome() {
 
   const firstName = (user?.fullName || user?.full_name)?.split(' ')[0] || '';
 
-  if (!user) {
+  if (isLoading || !user) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin" />
@@ -90,23 +76,6 @@ export default function ClientHome() {
   return (
     <div className="min-h-screen bg-background flex flex-col items-center">
       <div className="w-full max-w-md flex flex-col min-h-screen bg-background">
-
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-card">
-          <div className="flex items-center gap-2">
-            <img src={LOGO_URL} alt="ServiLocal" className="w-6 h-6 object-contain" />
-            <span className="text-sm font-semibold text-foreground">
-              Servi<span className="text-primary font-bold">Local</span>
-            </span>
-          </div>
-          <button
-            onClick={() => api.auth.logout('/')}
-            className="px-3 py-1.5 text-sm font-medium text-foreground border border-border rounded-lg hover:bg-secondary/50 transition-colors"
-          >
-            Sair
-          </button>
-        </div>
-
         {/* Scrollable content */}
         <div className="flex-1 overflow-y-auto pb-20">
           {!showCategories ? (
@@ -138,6 +107,13 @@ export default function ClientHome() {
                       Editar dados <ChevronRight className="w-3 h-3" />
                     </button>
                   </div>
+                  <button
+                    onClick={() => api.auth.logout('/')}
+                    className="p-2 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-lg transition-colors"
+                    title="Sair"
+                  >
+                    <LogOut className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
 
@@ -182,14 +158,26 @@ export default function ClientHome() {
               </div>
 
               {/* Seus pedidos */}
-              {activeRequests.length > 0 && (
-                <div className="px-4 mb-5">
-                  <div className="flex items-center justify-between mb-3">
-                    <p className="text-base font-bold text-foreground">Seus pedidos</p>
+              <div className="px-4 mb-5">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-base font-bold text-foreground">Seus pedidos</p>
+                  {activeRequests.length > 0 && (
                     <Link to="/client/orders" className="text-xs text-primary font-medium">
                       Ver todos
                     </Link>
+                  )}
+                </div>
+                {activeRequests.length === 0 ? (
+                  <div className="bg-card border border-dashed border-border rounded-xl p-5 flex flex-col items-center text-center gap-2">
+                    <p className="text-sm text-muted-foreground">Você ainda não tem pedidos.</p>
+                    <button
+                      onClick={() => navigate('/client/new-request')}
+                      className="text-sm font-semibold text-primary hover:opacity-80"
+                    >
+                      Criar primeiro pedido
+                    </button>
                   </div>
+                ) : (
                   <div className="space-y-3">
                     {activeRequests.slice(0, 3).map((request) => {
                       const catStyle = getCategoryStyle(`${request.category || ''} ${request.title || ''}`);
@@ -221,8 +209,8 @@ export default function ClientHome() {
                       );
                     })}
                   </div>
-                </div>
-              )}
+                )}
+              </div>
 
               {/* Profissionais verificados */}
               <div className="px-4 mb-6">

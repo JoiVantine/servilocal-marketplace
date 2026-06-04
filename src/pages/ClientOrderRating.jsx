@@ -39,7 +39,7 @@ function StarRating({ value, onChange }) {
 export default function ClientOrderRating() {
   const { requestId } = useParams();
   const navigate = useNavigate();
-  const [ratings, setRatings] = useState({ quality: 5, service: 5, punctuality: 5, cleanliness: 5 });
+  const [ratings, setRatings] = useState({ quality: 0, service: 0, punctuality: 0, cleanliness: 0 });
   const [comment, setComment] = useState('');
   const [done, setDone] = useState(false);
 
@@ -157,7 +157,7 @@ export default function ClientOrderRating() {
 
         <button
           onClick={() => submitMutation.mutate()}
-          disabled={submitMutation.isPending}
+          disabled={submitMutation.isPending || Object.values(ratings).some(v => v === 0)}
           className="w-full py-4 bg-primary text-primary-foreground rounded-xl font-semibold text-base hover:opacity-90 transition-opacity disabled:opacity-50"
         >
           {submitMutation.isPending ? 'Enviando...' : 'Enviar avaliação'}

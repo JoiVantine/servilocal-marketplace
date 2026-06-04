@@ -9,8 +9,16 @@ const userProfileSchema = new mongoose.Schema({
   city: String,
   neighborhood: String,
   address: String,
+  cep: String,
+  addressStreet: String,
+  addressNumber: String,
+  addressComplement: String,
+  addressCity: String,
+  addressState: String,
   onboardingCompleted: { type: Boolean, default: false },
   firstAccess: { type: Boolean, default: true },
+  addressLabel: { type: String, default: 'Casa' },
+  notificationPrefs: { type: mongoose.Schema.Types.Mixed },
 }, { timestamps: true });
 
 userProfileSchema.set('toJSON', {

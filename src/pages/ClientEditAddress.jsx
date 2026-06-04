@@ -8,17 +8,22 @@ export default function ClientEditAddress() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
+  const [loaded, setLoaded] = useState(false);
   const [addressData, setAddressData] = useState(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [validateNow, setValidateNow] = useState(false);
+  const [addressLabel, setAddressLabel] = useState('Casa');
 
   useEffect(() => {
     const load = async () => {
       const u = await api.auth.me();
       setUser(u);
       const profiles = await api.entities.UserProfile.filter({ userId: u.id });
-      setProfile(profiles.find((p) => p.role === 'client') || profiles[0] || null);
+      const p = profiles.find((pp) => pp.role === 'client') || profiles[0] || null;
+      setProfile(p);
+      if (p?.addressLabel) setAddressLabel(p.addressLabel);
+      setLoaded(true);
     };
     load().catch(() => navigate('/'));
   }, []);
@@ -34,8 +39,14 @@ export default function ClientEditAddress() {
         address: addressLine,
         neighborhood: addressData.bairro || '',
         cep: addressData.cep || '',
+        addressStreet: addressData.endereco || '',
+        addressNumber: addressData.numero || '',
+        addressComplement: addressData.complemento || '',
+        addressCity: addressData.cidade || '',
+        addressState: addressData.estado || '',
         role: profile?.role || 'client',
         onboardingCompleted: true,
+        addressLabel,
       };
       if (profile) {
         await api.entities.UserProfile.update(profile.id, profileData);
@@ -55,6 +66,16 @@ export default function ClientEditAddress() {
     }
   };
 
+  const initialData = profile ? {
+    cep: profile.cep || '',
+    endereco: profile.addressStreet || '',
+    numero: profile.addressNumber || '',
+    complemento: profile.addressComplement || '',
+    bairro: profile.neighborhood || '',
+    cidade: profile.addressCity || user?.city?.split(' - ')[0] || '',
+    estado: profile.addressState || user?.city?.split(' - ')[1] || '',
+  } : undefined;
+
   return (
     <div className="min-h-screen bg-background pb-28">
       <div className="flex items-center gap-3 px-4 py-4 border-b border-border bg-background">
@@ -67,28 +88,59 @@ export default function ClientEditAddress() {
         <h1 className="font-heading text-lg font-bold text-foreground">Editar endereço</h1>
       </div>
 
-      <div className="max-w-md mx-auto px-4 py-5">
-        <AddressFormWithMap
-          onAddressChange={setAddressData}
-          validateNow={validateNow}
-        />
+      <div className="max-w-md mx-auto px-4 py-5 space-y-5">
+        <div>
+          <label className="block text-xs font-medium text-muted-foreground mb-2">Identificar como</label>
+          <div className="flex gap-2">
+            {['Casa', 'Trabalho', 'Outro'].map((opt) => (
+              <button
+                key={opt}
+                onClick={() => setAddressLabel(opt)}
+                className={`flex-1 py-2.5 rounded-xl text-sm font-medium border transition-colors ${
+                  addressLabel === opt
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-card text-foreground border-border hover:bg-secondary/50'
+                }`}
+              >
+                {opt}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {loaded && (
+          <AddressFormWithMap
+            key={profile?.id || 'new'}
+            onAddressChange={setAddressData}
+            validateNow={validateNow}
+            initialData={initialData}
+          />
+        )}
+
+        {!loaded && (
+          <div className="flex justify-center py-12">
+            <div className="w-7 h-7 border-4 border-border border-t-primary rounded-full animate-spin" />
+          </div>
+        )}
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-background border-t border-border">
-        {saved ? (
-          <div className="w-full py-4 bg-green-500 text-white rounded-xl font-semibold flex items-center justify-center gap-2">
-            <CheckCircle className="w-5 h-5" />
-            Endereço salvo!
-          </div>
-        ) : (
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="w-full py-4 bg-primary text-primary-foreground rounded-xl font-semibold hover:opacity-90 disabled:opacity-50 transition-opacity"
-          >
-            {saving ? 'Salvando...' : 'Salvar endereço'}
-          </button>
-        )}
+      <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border z-[1001]">
+        <div className="max-w-md mx-auto p-4">
+          {saved ? (
+            <div className="w-full py-4 bg-green-500 text-white rounded-xl font-semibold flex items-center justify-center gap-2">
+              <CheckCircle className="w-5 h-5" />
+              Endereço salvo!
+            </div>
+          ) : (
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="w-full py-4 bg-primary text-primary-foreground rounded-xl font-semibold hover:opacity-90 disabled:opacity-50 transition-opacity"
+            >
+              {saving ? 'Salvando...' : 'Salvar endereço'}
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

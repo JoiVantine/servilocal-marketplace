@@ -1,17 +1,16 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '@/api/apiClient';
-import { User, MapPin, CreditCard, Bell, Headphones, Info, LogOut, ChevronRight } from 'lucide-react';
+import { User, MapPin, CreditCard, Bell, Headphones, Info, LogOut, ChevronRight, AlertCircle } from 'lucide-react';
 import ClientBottomNav from '@/components/ClientBottomNav';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 
 export default function ClientMenu() {
   const navigate = useNavigate();
-  const [user, setUser] = useState(null);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [confirmLogout, setConfirmLogout] = useState(false);
 
-  useEffect(() => {
-    api.auth.me().then(setUser).catch(() => {});
-  }, []);
+  const { data: user } = useCurrentUser();
 
   const handleLogout = async () => {
     setLoggingOut(true);
@@ -33,14 +32,6 @@ export default function ClientMenu() {
 
   return (
     <div className="min-h-screen bg-secondary/30 flex flex-col pb-20">
-      {/* Header with logo */}
-      <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-card">
-        <img src="/logo.png" alt="ServiLocal" className="w-6 h-6 object-contain" />
-        <span className="text-sm font-semibold text-foreground">
-          Servi<span className="text-primary font-bold">Local</span>
-        </span>
-      </div>
-
       <div className="flex-1 flex flex-col max-w-md mx-auto w-full px-4 py-5 space-y-4">
         {/* Profile header */}
         <div className="bg-card border border-border rounded-2xl p-4 flex items-center gap-4">
@@ -81,14 +72,37 @@ export default function ClientMenu() {
         </div>
 
         {/* Logout */}
-        <button
-          onClick={handleLogout}
-          disabled={loggingOut}
-          className="flex items-center gap-2 px-1 py-2 text-sm font-semibold text-red-500 hover:opacity-80 transition-opacity disabled:opacity-50"
-        >
-          <LogOut className="w-4 h-4" />
-          {loggingOut ? 'Saindo...' : 'Sair da conta'}
-        </button>
+        {confirmLogout ? (
+          <div className="bg-card border border-red-200 rounded-2xl p-4 space-y-3">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+              <p className="text-sm text-foreground font-medium">Tem certeza que deseja sair?</p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setConfirmLogout(false)}
+                className="flex-1 py-2.5 border border-border rounded-xl text-sm font-medium text-foreground hover:bg-secondary/50 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleLogout}
+                disabled={loggingOut}
+                className="flex-1 py-2.5 bg-red-500 text-white rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
+              >
+                {loggingOut ? 'Saindo...' : 'Sair'}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            onClick={() => setConfirmLogout(true)}
+            className="flex items-center gap-2 px-1 py-2 text-sm font-semibold text-red-500 hover:opacity-80 transition-opacity"
+          >
+            <LogOut className="w-4 h-4" />
+            Sair da conta
+          </button>
+        )}
       </div>
 
       <ClientBottomNav active="menu" />
