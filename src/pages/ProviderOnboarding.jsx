@@ -5,7 +5,6 @@ import { useMutation } from '@tanstack/react-query';
 import {
   ChevronRight, Eye, EyeOff,
   CheckCircle2,
-  Zap, Star, Shield, Wrench,
   MapPin, Plus, X, MoreHorizontal, Search,
 } from 'lucide-react';
 import { useServices } from '@/hooks/useServices';
@@ -13,11 +12,10 @@ import { useServices } from '@/hooks/useServices';
 const LOGO_URL = '/logo.png';
 
 const STEPS = [
-  { id: 1, label: 'Início' },
-  { id: 2, label: 'Conta' },
-  { id: 3, label: 'Código' },
-  { id: 4, label: 'Atendimento' },
-  { id: 5, label: 'Profissional' },
+  { id: 1, label: 'Conta' },
+  { id: 2, label: 'Código' },
+  { id: 3, label: 'Atendimento' },
+  { id: 4, label: 'Profissional' },
 ];
 
 const MAIN_CAT_NAMES = [
@@ -30,13 +28,6 @@ const MAIN_CAT_NAMES = [
 ];
 
 const SPECIAL_RE = /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?`~]/;
-
-const SOBRE_ITEMS = [
-  { icon: Zap,    text: 'Receba pedidos na sua região' },
-  { icon: Wrench, text: 'Escolha os serviços que deseja realizar' },
-  { icon: Star,   text: 'Atenda, seja avaliado e aumente seus ganhos' },
-  { icon: Shield, text: 'Receba com segurança pelo app' },
-];
 
 function Rule({ ok, label }) {
   return (
@@ -58,6 +49,9 @@ const formatPhone = (val) => {
 const fmtCountdown = (s) =>
   `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 
+const normalize = (s) =>
+  s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+
 export default function ProviderOnboarding() {
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
@@ -65,7 +59,7 @@ export default function ProviderOnboarding() {
   const [user, setUser] = useState(null);
   const { categories } = useServices();
 
-  // ── Step 1: Conta ──────────────────────────────────────────────
+  // ── Step 0: Conta ──────────────────────────────────────────────
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
@@ -83,31 +77,43 @@ export default function ProviderOnboarding() {
   const strengthScore  = [hasMin8, hasUpper, hasNumber, hasSpecial].filter(Boolean).length;
   const strengthColors = ['border-border', 'bg-red-500', 'bg-orange-400', 'bg-yellow-400', 'bg-green-500'];
 
-  // ── Step 2: OTP ────────────────────────────────────────────────
+  // ── Step 1: OTP ────────────────────────────────────────────────
   const [otpCode, setOtpCode] = useState('');
   const [otpLoading, setOtpLoading] = useState(false);
   const [otpCountdown, setOtpCountdown] = useState(0);
   const countdownRef = useRef(null);
   const otpInputRefs = useRef([]);
 
-  // ── Step 3: Atendimento ────────────────────────────────────────
+  // ── Step 2: Atendimento ────────────────────────────────────────
   const [serviceAreas, setServiceAreas] = useState([]);
   const [currentCity, setCurrentCity] = useState('');
   const [currentAreaType, setCurrentAreaType] = useState('entire_city');
   const [currentNeighborhoods, setCurrentNeighborhoods] = useState([]);
   const [neighborhoodInput, setNeighborhoodInput] = useState('');
   const [citySuggestions, setCitySuggestions] = useState([]);
-  const [citySearching, setCitySearching] = useState(false);
   const [showCitySuggestions, setShowCitySuggestions] = useState(false);
-  const citySearchTimeout = useRef(null);
+  const ibgeCities = useRef([]);
 
-  // ── Step 4: Profissional ───────────────────────────────────────
+  // ── Step 3: Profissional ───────────────────────────────────────
   const [mainCategory, setMainCategory] = useState('');
   const [selectedServices, setSelectedServices] = useState([]);
   const [servicePricing, setServicePricing] = useState({});
   const [showOthersModal, setShowOthersModal] = useState(false);
 
   const [fieldErrors, setFieldErrors] = useState({});
+
+  // Carrega municípios do IBGE uma vez
+  useEffect(() => {
+    fetch('https://servicodados.ibge.gov.br/api/v1/localidades/municipios?orderBy=nome')
+      .then(r => r.json())
+      .then(data => {
+        ibgeCities.current = data.map(m => ({
+          nome: m.nome,
+          uf: m.microrregiao.mesorregiao.UF.sigla,
+        }));
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -125,10 +131,10 @@ export default function ProviderOnboarding() {
           if (pp.mainCategory) setMainCategory(pp.mainCategory);
           if (pp.serviceAreas?.length) setServiceAreas(pp.serviceAreas);
         }
-        setStep(4);
+        setStep(3);
         return;
       }
-      setStep(3);
+      setStep(2);
     }).catch(() => {});
   }, []);
 
@@ -147,31 +153,17 @@ export default function ProviderOnboarding() {
 
   const searchCities = (query) => {
     setCurrentCity(query);
-    setShowCitySuggestions(true);
-    if (citySearchTimeout.current) clearTimeout(citySearchTimeout.current);
-    if (!query.trim() || query.length < 2) { setCitySuggestions([]); return; }
-    citySearchTimeout.current = setTimeout(async () => {
-      setCitySearching(true);
-      try {
-        const res = await fetch(
-          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=br&featureType=city&addressdetails=1&limit=7`,
-          { headers: { 'Accept-Language': 'pt-BR', 'User-Agent': 'ServiLocal/1.0' } }
-        );
-        const data = await res.json();
-        const names = [...new Set(
-          data.map(r => r.address?.city || r.address?.town || r.address?.village || r.name).filter(Boolean)
-        )].slice(0, 6);
-        setCitySuggestions(names);
-      } catch {
-        setCitySuggestions([]);
-      } finally {
-        setCitySearching(false);
-      }
-    }, 400);
+    if (query.length < 3) { setCitySuggestions([]); setShowCitySuggestions(false); return; }
+    const q = normalize(query);
+    const results = ibgeCities.current
+      .filter(m => normalize(m.nome).includes(q))
+      .slice(0, 8);
+    setCitySuggestions(results);
+    setShowCitySuggestions(results.length > 0);
   };
 
-  const selectCity = (name) => {
-    setCurrentCity(name);
+  const selectCity = (city) => {
+    setCurrentCity(city.nome);
     setCitySuggestions([]);
     setShowCitySuggestions(false);
   };
@@ -180,12 +172,12 @@ export default function ProviderOnboarding() {
   const subcategories    = mainCategoryData?.subcategories || [];
   const mainCats         = categories.filter(c => MAIN_CAT_NAMES.includes(c.name));
 
-  const step3CityValid =
+  const step2CityValid =
     currentCity.trim().length > 0 &&
     (currentAreaType === 'entire_city' || currentNeighborhoods.length > 0);
 
   const addCurrentCity = () => {
-    if (!step3CityValid) return;
+    if (!step2CityValid) return;
     setServiceAreas(prev => [...prev, {
       city: currentCity.trim(),
       type: currentAreaType,
@@ -197,7 +189,7 @@ export default function ProviderOnboarding() {
     setNeighborhoodInput('');
   };
 
-  const validateStep1 = () => {
+  const validateStep0 = () => {
     const errors = {};
     if (!name.trim() || name.trim().length < 3) errors.name = 'Nome deve ter ao menos 3 caracteres.';
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) errors.email = 'E-mail inválido.';
@@ -209,16 +201,15 @@ export default function ProviderOnboarding() {
   };
 
   const canNext = ([
-    true,
     !!(name.trim() && email.trim() && phone.trim() && passwordValid),
     otpCode.length === 6,
-    serviceAreas.length > 0 || step3CityValid,
+    serviceAreas.length > 0 || step2CityValid,
     !!mainCategory,
   ])[step] ?? true;
 
   const handleNext = async () => {
-    if (step === 1) {
-      if (!validateStep1()) return;
+    if (step === 0) {
+      if (!validateStep0()) return;
       setOtpLoading(true);
       try {
         const { hasProfile } = await api.auth.checkProfile(email, 'provider');
@@ -228,7 +219,7 @@ export default function ProviderOnboarding() {
         }
         await api.auth.sendOtp({ email, fullName: name, phone, role: 'provider' });
         startCountdown();
-        setStep(2);
+        setStep(1);
       } catch (err) {
         const msg = (err.message || '').toLowerCase();
         if (
@@ -245,14 +236,14 @@ export default function ProviderOnboarding() {
       return;
     }
 
-    if (step === 2) {
+    if (step === 1) {
       setOtpLoading(true);
       try {
         const res = await api.auth.verifyOtp({ email, otp: otpCode });
         if (res?.token) api.auth.setToken(res.token);
         await api.auth.setPassword(password);
         setFieldErrors({});
-        setStep(3);
+        setStep(2);
       } catch (err) {
         setFieldErrors({ otp: err.message || 'Código inválido ou expirado.' });
       } finally {
@@ -261,8 +252,8 @@ export default function ProviderOnboarding() {
       return;
     }
 
-    if (step === 3) {
-      if (step3CityValid) {
+    if (step === 2) {
+      if (step2CityValid) {
         setServiceAreas(prev => [...prev, {
           city: currentCity.trim(),
           type: currentAreaType,
@@ -272,14 +263,10 @@ export default function ProviderOnboarding() {
         setCurrentAreaType('entire_city');
         setCurrentNeighborhoods([]);
       }
-      setStep(4);
+      setStep(3);
       return;
     }
 
-    if (step < 4) {
-      setStep(step + 1);
-      return;
-    }
     saveMutation.mutate();
   };
 
@@ -366,7 +353,7 @@ export default function ProviderOnboarding() {
     onSuccess: () => setSaved(true),
   });
 
-  // ── Success screen ─────────────────────────────────────────────
+  // ── Tela de sucesso ────────────────────────────────────────────
   if (saved) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6">
@@ -442,30 +429,8 @@ export default function ProviderOnboarding() {
       {/* ── Conteúdo ─────────────────────────────────────────────── */}
       <div className="flex-1 max-w-md mx-auto w-full px-6 py-8 overflow-y-auto">
 
-        {/* ── Etapa 0: Início ─────────────────────────────────────── */}
+        {/* ── Etapa 0: Criar conta ─────────────────────────────────── */}
         {step === 0 && (
-          <div className="space-y-8">
-            <div className="text-center">
-              <img src={LOGO_URL} alt="ServiLocal" className="w-16 h-16 object-contain mx-auto mb-4" />
-              <h2 className="font-heading text-2xl font-bold text-foreground leading-tight">
-                Tudo que você precisa<br />para trabalhar
-              </h2>
-            </div>
-            <div className="space-y-3">
-              {SOBRE_ITEMS.map(({ icon: Icon, text }) => (
-                <div key={text} className="flex items-center gap-4 p-4 bg-card border border-border rounded-2xl">
-                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                    <Icon className="w-5 h-5 text-primary" />
-                  </div>
-                  <span className="text-sm font-medium text-foreground">{text}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* ── Etapa 1: Criar conta ─────────────────────────────────── */}
-        {step === 1 && (
           <div className="space-y-4">
             <div className="text-center mb-4">
               <h2 className="font-heading text-2xl font-bold text-foreground">Crie sua conta</h2>
@@ -557,8 +522,8 @@ export default function ProviderOnboarding() {
           </div>
         )}
 
-        {/* ── Etapa 2: Verificar código ────────────────────────────── */}
-        {step === 2 && (
+        {/* ── Etapa 1: Verificar código ────────────────────────────── */}
+        {step === 1 && (
           <div className="space-y-6">
             <div className="text-center mb-6">
               <h2 className="font-heading text-2xl font-bold text-foreground">Verifique seu telefone</h2>
@@ -617,8 +582,8 @@ export default function ProviderOnboarding() {
           </div>
         )}
 
-        {/* ── Etapa 3: Atendimento ────────────────────────────────── */}
-        {step === 3 && (
+        {/* ── Etapa 2: Atendimento ────────────────────────────────── */}
+        {step === 2 && (
           <div className="space-y-5">
             <div className="text-center mb-2">
               <h2 className="font-heading text-2xl font-bold text-foreground">Área de atendimento</h2>
@@ -662,27 +627,24 @@ export default function ProviderOnboarding() {
                     type="text"
                     value={currentCity}
                     onChange={e => searchCities(e.target.value)}
-                    onFocus={() => currentCity.length >= 2 && setShowCitySuggestions(true)}
+                    onFocus={() => currentCity.length >= 3 && setShowCitySuggestions(citySuggestions.length > 0)}
                     onBlur={() => setTimeout(() => setShowCitySuggestions(false), 150)}
-                    placeholder="Digite o nome da cidade"
+                    placeholder="Digite ao menos 3 letras"
                     className="w-full pl-4 pr-10 py-3 border border-border rounded-xl text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/50"
                   />
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                    {citySearching
-                      ? <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-                      : <Search className="w-4 h-4 text-muted-foreground" />}
-                  </div>
+                  <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
                 </div>
                 {showCitySuggestions && citySuggestions.length > 0 && (
                   <div className="absolute z-20 w-full mt-1 bg-card border border-border rounded-xl shadow-lg overflow-hidden">
-                    {citySuggestions.map((name, i) => (
+                    {citySuggestions.map((city, i) => (
                       <button
                         key={i}
-                        onMouseDown={() => selectCity(name)}
-                        className="w-full flex items-center gap-2 px-4 py-3 text-sm text-foreground hover:bg-secondary/50 transition-colors text-left border-b border-border last:border-b-0"
+                        onMouseDown={() => selectCity(city)}
+                        className="w-full flex items-center gap-2 px-4 py-3 text-sm hover:bg-secondary/50 transition-colors text-left border-b border-border last:border-b-0"
                       >
                         <MapPin className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                        {name}
+                        <span className="flex-1 text-foreground">{city.nome}</span>
+                        <span className="text-xs text-muted-foreground">{city.uf}</span>
                       </button>
                     ))}
                   </div>
@@ -761,12 +723,12 @@ export default function ProviderOnboarding() {
                     </div>
                   )}
 
-                  {step3CityValid && (
+                  {step2CityValid && (
                     <button
                       onClick={addCurrentCity}
                       className="w-full py-2.5 border border-primary text-primary rounded-xl text-sm font-semibold hover:bg-primary/5 flex items-center justify-center gap-2 transition-colors"
                     >
-                      <Plus className="w-4 h-4" /> Adicionar nova cidade
+                      <Plus className="w-4 h-4" /> Adicionar outra cidade
                     </button>
                   )}
                 </>
@@ -775,8 +737,8 @@ export default function ProviderOnboarding() {
           </div>
         )}
 
-        {/* ── Etapa 4: Profissional ────────────────────────────────── */}
-        {step === 4 && (
+        {/* ── Etapa 3: Profissional ────────────────────────────────── */}
+        {step === 3 && (
           <div className="space-y-5">
             <div className="text-center mb-2">
               <h2 className="font-heading text-2xl font-bold text-foreground">Dados profissionais</h2>
@@ -889,7 +851,6 @@ export default function ProviderOnboarding() {
                 ))}
               </div>
             )}
-
           </div>
         )}
       </div>
@@ -904,10 +865,8 @@ export default function ProviderOnboarding() {
           >
             {saveMutation.isPending || otpLoading
               ? 'Aguarde...'
-              : step === 4
+              : step === 3
               ? 'Finalizar cadastro'
-              : step === 0
-              ? 'Próximo'
               : 'Continuar'}
             <ChevronRight className="w-5 h-5" />
           </button>
