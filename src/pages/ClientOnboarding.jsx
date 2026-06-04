@@ -45,7 +45,7 @@ export default function ClientOnboarding() {
 
   // Step 1 — Verificação
   const [otp, setOtp] = useState('');
-  const [otpCountdown, setOtpCountdown] = useState(60);
+  const [otpCountdown, setOtpCountdown] = useState(600);
   const [canResend, setCanResend] = useState(false);
   const otpRefs = useRef([]);
 
@@ -81,7 +81,7 @@ export default function ClientOnboarding() {
   // OTP countdown
   useEffect(() => {
     if (step !== 1) return;
-    setOtpCountdown(60);
+    setOtpCountdown(600);
     setCanResend(false);
     const interval = setInterval(() => {
       setOtpCountdown((c) => {
@@ -397,7 +397,7 @@ export default function ClientOnboarding() {
                   </button>
                 ) : (
                   <p className="text-sm text-muted-foreground">
-                    Reenviar em <span className="font-medium text-foreground">{otpCountdown}s</span>
+                    Reenviar em <span className="font-medium text-foreground">{String(Math.floor(otpCountdown / 60)).padStart(2, '0')}:{String(otpCountdown % 60).padStart(2, '0')}</span>
                   </p>
                 )}
               </div>
