@@ -1,7 +1,29 @@
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/api/apiClient';
-import { ChevronLeft, Star, Home, ClipboardList, UserCircle2, Lock } from 'lucide-react';
+import { ChevronLeft, Star, Home, ClipboardList, UserCircle2, Lock, Clock } from 'lucide-react';
+
+const PROPOSAL_TTL_MS = 72 * 60 * 60 * 1000;
+
+function getExpiryInfo(createdDate) {
+  if (!createdDate) return { expired: false, label: null };
+  const expiresAt = new Date(createdDate).getTime() + PROPOSAL_TTL_MS;
+  const now = Date.now();
+  if (now >= expiresAt) return { expired: true, label: 'Expirada' };
+  const diffMs = expiresAt - now;
+  const diffHours = Math.floor(diffMs / 3600000);
+  if (diffHours < 1) {
+    const diffMins = Math.floor(diffMs / 60000);
+    return { expired: false, label: `Expira em ${diffMins} min` };
+  }
+  if (diffHours < 24) return { expired: false, label: `Expira em ${diffHours}h` };
+  const d = new Date(expiresAt);
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const hh = String(d.getHours()).padStart(2, '0');
+  const min = String(d.getMinutes()).padStart(2, '0');
+  return { expired: false, label: `Válida até ${dd}/${mm} às ${hh}:${min}` };
+}
 
 function AnonymousAvatar({ index }) {
   const colors = [
@@ -93,18 +115,24 @@ export default function ClientProposals() {
               const hasPrice = interest.price && !isNaN(priceNum);
               const professionalLabel = getProfessionalLabel(interest, request?.category);
 
+              const expiry = getExpiryInfo(interest.created_date);
+
               return (
-                <div key={interest.id} className="bg-card border border-border rounded-2xl p-4 shadow-sm">
+                <div key={interest.id} className={`bg-card border rounded-2xl p-4 shadow-sm ${expiry.expired ? 'border-border opacity-60' : 'border-border'}`}>
                   <div className="flex items-start gap-3 mb-3">
                     <AnonymousAvatar index={idx} />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2">
                         <p className="font-semibold text-foreground">{professionalLabel}</p>
-                        {idx === 0 && (
+                        {expiry.expired ? (
+                          <span className="text-xs bg-gray-100 text-gray-500 border border-gray-200 px-2 py-0.5 rounded-full font-medium shrink-0">
+                            Expirada
+                          </span>
+                        ) : idx === 0 ? (
                           <span className="text-xs bg-yellow-50 text-yellow-700 border border-yellow-200 px-2 py-0.5 rounded-full font-medium shrink-0">
                             Melhor proposta
                           </span>
-                        )}
+                        ) : null}
                       </div>
                       <div className="flex items-center gap-1 mt-0.5">
                         <Star className="w-3.5 h-3.5 text-yellow-400 fill-yellow-400" />
@@ -132,6 +160,12 @@ export default function ClientProposals() {
                           Chega até {interest.arrivalTime}
                         </p>
                       )}
+                      {expiry.label && (
+                        <p className={`text-xs flex items-center gap-1 ${expiry.expired ? 'text-red-500' : 'text-muted-foreground'}`}>
+                          <Clock className="w-3 h-3" />
+                          {expiry.label}
+                        </p>
+                      )}
                       {interest.message && (
                         <p className="text-sm text-muted-foreground leading-relaxed border-t border-border pt-2 mt-2">
                           "{interest.message}"
@@ -151,7 +185,8 @@ export default function ClientProposals() {
                     )}
                     <button
                       onClick={() => navigate(`/client/request/${requestId}/confirm/${interest.id}`)}
-                      className="flex-1 py-2.5 text-sm font-semibold text-primary-foreground bg-primary rounded-xl hover:opacity-90 transition-opacity"
+                      disabled={expiry.expired}
+                      className="flex-1 py-2.5 text-sm font-semibold text-primary-foreground bg-primary rounded-xl hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
                     >
                       Selecionar
                     </button>

@@ -24,6 +24,8 @@ export default function ProviderProfile() {
 
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
+  const [pixKey, setPixKey] = useState('');
+  const [pixKeyType, setPixKeyType] = useState('ALEATORIA');
   const [initialized, setInitialized] = useState(false);
 
   const [serviceAreas, setServiceAreas] = useState([]);
@@ -59,8 +61,10 @@ export default function ProviderProfile() {
     setInitialized(true);
     api.entities.ProviderProfile.filter({ userId: user.id })
       .then(pp => {
-        if (pp.length > 0 && pp[0].serviceAreas?.length) {
-          setServiceAreas(pp[0].serviceAreas);
+        if (pp.length > 0) {
+          if (pp[0].serviceAreas?.length) setServiceAreas(pp[0].serviceAreas);
+          if (pp[0].pixKey) setPixKey(pp[0].pixKey);
+          if (pp[0].pixKeyType) setPixKeyType(pp[0].pixKeyType);
         }
       })
       .catch(() => {});
@@ -132,7 +136,7 @@ export default function ProviderProfile() {
       const me = await api.auth.me();
       const provProfiles = await api.entities.ProviderProfile.filter({ userId: me.id });
       if (provProfiles.length > 0) {
-        await api.entities.ProviderProfile.update(provProfiles[0].id, { name, phone, city: firstCity, serviceAreas });
+        await api.entities.ProviderProfile.update(provProfiles[0].id, { name, phone, city: firstCity, serviceAreas, pixKey, pixKeyType });
       }
 
       refreshUser();
@@ -379,6 +383,37 @@ export default function ProviderProfile() {
               </>
             )}
           </div>
+        </div>
+
+        {/* Chave Pix */}
+        <div className="space-y-3">
+          <div>
+            <label className="block text-xs font-medium text-muted-foreground mb-1.5">Tipo de chave Pix</label>
+            <select
+              value={pixKeyType}
+              onChange={e => setPixKeyType(e.target.value)}
+              className="w-full px-4 py-3 border border-border rounded-xl bg-card text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+            >
+              <option value="ALEATORIA">Chave aleatória (recomendado)</option>
+              <option value="CPF">CPF</option>
+              <option value="CNPJ">CNPJ</option>
+              <option value="EMAIL">E-mail</option>
+              <option value="TELEFONE">Telefone</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-muted-foreground mb-1.5">Chave Pix</label>
+            <input
+              type="text"
+              value={pixKey}
+              onChange={e => setPixKey(e.target.value)}
+              placeholder={pixKeyType === 'ALEATORIA' ? 'Ex: a1b2c3d4-...' : pixKeyType === 'CPF' ? '000.000.000-00' : pixKeyType === 'EMAIL' ? 'seu@email.com' : pixKeyType === 'TELEFONE' ? '(DDD) 90000-0000' : ''}
+              className="w-full px-4 py-3 border border-border rounded-xl bg-card text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Sua chave Pix é exibida somente após o cliente contratar você.
+          </p>
         </div>
 
         {saveError && (

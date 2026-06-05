@@ -4,7 +4,7 @@ import { api } from '@/api/apiClient';
 import { useNavigate, Link } from 'react-router-dom';
 import {
   ClipboardList, MapPin, Clock, ChevronRight,
-  Plus, Headphones, CheckCircle2,
+  Plus, Headphones, CheckCircle2, Star,
 } from 'lucide-react';
 import ClientBottomNav from '@/components/ClientBottomNav';
 
@@ -165,6 +165,26 @@ export default function ClientOrders() {
 
       {/* List */}
       <div className="px-4 py-4 space-y-3 max-w-md mx-auto">
+        {/* Pending rating reminder */}
+        {(() => {
+          const pending = requests.filter(r => r.status === 'completed' && (!r.ratingStatus || r.ratingStatus === 'PENDING'));
+          if (!pending.length) return null;
+          return (
+            <button
+              onClick={() => navigate(`/client/request/${pending[0].id}/rate`)}
+              className="w-full flex items-center gap-3 bg-yellow-50 border border-yellow-200 rounded-xl px-4 py-3 text-left hover:bg-yellow-100/70 transition-colors"
+            >
+              <Star className="w-4 h-4 text-yellow-500 fill-yellow-400 shrink-0" />
+              <p className="text-sm text-yellow-800 flex-1 font-medium">
+                {pending.length === 1
+                  ? 'Você tem um atendimento para avaliar.'
+                  : `Você tem ${pending.length} atendimentos para avaliar.`}
+              </p>
+              <ChevronRight className="w-4 h-4 text-yellow-500 shrink-0" />
+            </button>
+          );
+        })()}
+
         {isLoading ? (
           <div className="flex justify-center py-12">
             <div className="w-7 h-7 border-4 border-slate-200 border-t-primary rounded-full animate-spin" />

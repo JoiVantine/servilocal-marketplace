@@ -1,20 +1,45 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/api/apiClient';
-import { ChevronRight, MapPin, ShieldCheck, LogOut, X, ArrowLeft, Users, Star } from 'lucide-react';
+import { ChevronRight, MapPin, ShieldCheck, LogOut, X, ArrowLeft, Users, Star, Search } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import ClientBottomNav from '../components/ClientBottomNav';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useServices } from '@/hooks/useServices';
 
-const QUICK_CATEGORIES = [
-  { icon: '⚡', label: 'Elétrica',   bg: 'bg-yellow-100', name: 'Elétrica' },
-  { icon: '🚿', label: 'Hidráulica', bg: 'bg-blue-100',   name: 'Hidráulica' },
-  { icon: '🎨', label: 'Pintura',    bg: 'bg-rose-100',   name: 'Pintura' },
-  { icon: '🧹', label: 'Limpeza',    bg: 'bg-teal-100',   name: 'Limpeza' },
-  { icon: '🏠', label: 'Reformas',   bg: 'bg-purple-100', name: 'Construção e Reformas' },
-  { icon: '···', label: 'Outros',   bg: 'bg-gray-100',   name: null },
+const CAT_COLORS = [
+  'bg-yellow-100', 'bg-blue-100', 'bg-rose-100', 'bg-teal-100',
+  'bg-purple-100', 'bg-orange-100', 'bg-green-100', 'bg-indigo-100',
 ];
+
+function normalize(s) {
+  return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+}
+
+function searchCategories(query, categories) {
+  if (!query.trim()) return [];
+  const q = normalize(query.trim());
+  const results = [];
+  const seen = new Set();
+
+  categories.forEach(cat => {
+    if (normalize(cat.name).includes(q) && !seen.has(cat.name)) {
+      seen.add(cat.name);
+      results.push({ category: cat.name, subcategories: cat.subcategories, icon: cat.icon });
+    }
+    (cat.subcategories || []).forEach(sub => {
+      if (normalize(sub).includes(q)) {
+        const key = `${cat.name}::${sub}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          results.push({ category: cat.name, subcategory: sub, icon: cat.icon });
+        }
+      }
+    });
+  });
+
+  return results.slice(0, 6);
+}
 
 const STATUS_LABELS = {
   open: 'Procurando profissional',
@@ -61,6 +86,7 @@ export default function ClientHome() {
   const [categorySheet, setCategorySheet] = useState(null);
   const [showOthersModal, setShowOthersModal] = useState(false);
   const [modalCat, setModalCat] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const { data: user, isLoading } = useCurrentUser();
   const { categories } = useServices();
@@ -87,20 +113,23 @@ export default function ClientHome() {
     : null;
 
   const getSubcategories = (name) => categories.find(c => c.name === name)?.subcategories || [];
+  const searchResults = searchCategories(searchQuery, categories);
+
+  const quickCategories = categories.slice(0, 5).map((cat, i) => ({
+    name: cat.name,
+    label: cat.name.split(' ')[0],
+    icon: cat.icon,
+    bg: CAT_COLORS[i % CAT_COLORS.length],
+  }));
 
   const handleQuickCatClick = (cat) => {
-    if (!cat.name) {
-      setShowOthersModal(true);
-      setModalCat(null);
-    } else {
-      const subs = getSubcategories(cat.name);
-      const provCount = cityProviders.filter(p => matchesCategory(p, cat.name)).length;
-      const catRatings = cityProviders.filter(p => matchesCategory(p, cat.name) && p.rating && parseFloat(p.rating) > 0);
-      const catAvg = catRatings.length > 0
-        ? (catRatings.reduce((sum, p) => sum + parseFloat(p.rating), 0) / catRatings.length).toFixed(1)
-        : null;
-      setCategorySheet({ ...cat, subcategories: subs, providerCount: provCount, avgRating: catAvg });
-    }
+    const subs = getSubcategories(cat.name);
+    const provCount = cityProviders.filter(p => matchesCategory(p, cat.name)).length;
+    const catRatings = cityProviders.filter(p => matchesCategory(p, cat.name) && p.rating && parseFloat(p.rating) > 0);
+    const catAvg = catRatings.length > 0
+      ? (catRatings.reduce((sum, p) => sum + parseFloat(p.rating), 0) / catRatings.length).toFixed(1)
+      : null;
+    setCategorySheet({ ...cat, subcategories: subs, providerCount: provCount, avgRating: catAvg });
   };
 
   const closeModal = () => {
@@ -154,26 +183,105 @@ export default function ClientHome() {
             </div>
           </div>
 
-          {/* Categorias */}
+          {/* Search */}
           <div className="px-4 mb-4">
-            <p className="text-base font-bold text-foreground mb-3">O que você precisa hoje?</p>
-            <div className="grid grid-cols-3 gap-3">
-              {QUICK_CATEGORIES.map((cat) => (
+            <div className="relative">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder="O que você precisa hoje?"
+                className="w-full pl-10 pr-4 py-3 rounded-xl border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+              />
+              {searchQuery && (
                 <button
-                  key={cat.label}
-                  onClick={() => handleQuickCatClick(cat)}
-                  className="flex flex-col items-center gap-2 py-3 px-2 rounded-2xl border border-border bg-card hover:border-primary/30 hover:bg-primary/5 transition-all"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-secondary rounded-lg"
                 >
-                  <div className={`w-12 h-12 rounded-full ${cat.bg} flex items-center justify-center shrink-0`}>
-                    <span className="text-2xl leading-none">{cat.icon}</span>
-                  </div>
-                  <span className="text-xs font-medium text-center leading-tight text-foreground">
-                    {cat.label}
-                  </span>
+                  <X className="w-3.5 h-3.5 text-muted-foreground" />
                 </button>
-              ))}
+              )}
+            </div>
+
+            {/* Search results */}
+            {searchQuery && (
+              <div className="mt-2 bg-card border border-border rounded-xl overflow-hidden shadow-sm">
+                {searchResults.length === 0 ? (
+                  <p className="px-4 py-3 text-sm text-muted-foreground">Nenhum serviço encontrado.</p>
+                ) : (
+                  searchResults.map((result, i) => {
+                    const Icon = result.icon;
+                    return (
+                      <button
+                        key={i}
+                        onClick={() => {
+                          setSearchQuery('');
+                          if (result.subcategory) {
+                            navigate('/client/new-request', { state: { category: result.category, subcategory: result.subcategory } });
+                          } else {
+                            const subs = result.subcategories || [];
+                            const provCount = cityProviders.filter(p => matchesCategory(p, result.category)).length;
+                            const catRatings = cityProviders.filter(p => matchesCategory(p, result.category) && p.rating && parseFloat(p.rating) > 0);
+                            const catAvg = catRatings.length > 0
+                              ? (catRatings.reduce((sum, p) => sum + parseFloat(p.rating), 0) / catRatings.length).toFixed(1)
+                              : null;
+                            setCategorySheet({ label: result.category, name: result.category, bg: 'bg-primary/10', icon: null, subcategories: subs, providerCount: provCount, avgRating: catAvg });
+                          }
+                        }}
+                        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-secondary/50 transition-colors text-left border-t border-border first:border-t-0"
+                      >
+                        {Icon && <Icon className="w-4 h-4 text-primary shrink-0" />}
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-foreground truncate">
+                            {result.subcategory ? result.subcategory : result.category}
+                          </p>
+                          {result.subcategory && (
+                            <p className="text-xs text-muted-foreground">{result.category}</p>
+                          )}
+                        </div>
+                        <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0 ml-auto" />
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Categorias */}
+          {!searchQuery && quickCategories.length > 0 && (
+          <div className="px-4 mb-4">
+            <div className="grid grid-cols-3 gap-3">
+              {quickCategories.map((cat) => {
+                const Icon = cat.icon;
+                return (
+                  <button
+                    key={cat.name}
+                    onClick={() => handleQuickCatClick(cat)}
+                    className="flex flex-col items-center gap-2 py-3 px-2 rounded-2xl border border-border bg-card hover:border-primary/30 hover:bg-primary/5 transition-all"
+                  >
+                    <div className={`w-12 h-12 rounded-full ${cat.bg} flex items-center justify-center shrink-0`}>
+                      {Icon && <Icon className="w-6 h-6 text-foreground/70" />}
+                    </div>
+                    <span className="text-xs font-medium text-center leading-tight text-foreground">
+                      {cat.label}
+                    </span>
+                  </button>
+                );
+              })}
+              <button
+                onClick={() => { setShowOthersModal(true); setModalCat(null); }}
+                className="flex flex-col items-center gap-2 py-3 px-2 rounded-2xl border border-border bg-card hover:border-primary/30 hover:bg-primary/5 transition-all"
+              >
+                <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
+                  <span className="text-xl text-foreground/50 font-bold">···</span>
+                </div>
+                <span className="text-xs font-medium text-center leading-tight text-foreground">Outros</span>
+              </button>
             </div>
           </div>
+          )}
 
           {/* Profissionais disponíveis na sua região */}
           {user.city && availableCount > 0 && (
@@ -295,11 +403,13 @@ export default function ClientHome() {
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-3 shrink-0">
               <div className="flex items-center gap-3">
-                <div className={`w-11 h-11 rounded-full ${categorySheet.bg} flex items-center justify-center`}>
-                  <span className="text-2xl leading-none">{categorySheet.icon}</span>
+                <div className={`w-11 h-11 rounded-full ${categorySheet.bg || 'bg-primary/10'} flex items-center justify-center`}>
+                  {categorySheet.icon
+                    ? (() => { const Icon = categorySheet.icon; return <Icon className="w-5 h-5 text-foreground/70" />; })()
+                    : null}
                 </div>
                 <div>
-                  <p className="font-bold text-foreground text-base">{categorySheet.label}</p>
+                  <p className="font-bold text-foreground text-base">{categorySheet.label || categorySheet.name}</p>
                   {categorySheet.providerCount > 0 ? (
                     <p className="text-xs text-muted-foreground">
                       {categorySheet.providerCount} profissional{categorySheet.providerCount !== 1 ? 'is' : ''} disponível{categorySheet.providerCount !== 1 ? 'is' : ''} na sua região

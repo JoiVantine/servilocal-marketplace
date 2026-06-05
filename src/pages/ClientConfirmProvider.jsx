@@ -45,6 +45,8 @@ export default function ClientConfirmProvider() {
         confirmedProviderId: interest.providerId,
         confirmedProviderName: interest.providerName,
         confirmedProviderPhoto: interest.providerPhoto || providerProfile?.profilePhoto,
+        confirmedProviderPixKey: providerProfile?.pixKey || null,
+        confirmedProviderPixKeyType: providerProfile?.pixKeyType || null,
         agreedPrice: interest.price,
       });
       if (conversation) {

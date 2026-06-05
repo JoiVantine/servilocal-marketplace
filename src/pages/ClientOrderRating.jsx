@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/api/apiClient';
 import { ChevronLeft, Star } from 'lucide-react';
+import { useToast } from '@/components/ui/use-toast';
 
 const CATEGORIES = [
   { key: 'quality',      label: 'Qualidade do serviço' },
@@ -39,9 +40,10 @@ function StarRating({ value, onChange }) {
 export default function ClientOrderRating() {
   const { requestId } = useParams();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
   const [ratings, setRatings] = useState({ quality: 0, service: 0, punctuality: 0, cleanliness: 0 });
   const [comment, setComment] = useState('');
-  const [done, setDone] = useState(false);
 
   const { data: request } = useQuery({
     queryKey: ['request', requestId],
@@ -54,45 +56,35 @@ export default function ClientOrderRating() {
       const overall = Math.round(
         (ratings.quality + ratings.service + ratings.punctuality + ratings.cleanliness) / 4
       );
-      await api.entities.ProviderReview.create({
-        providerId: request.confirmedProviderId,
-        providerName: request.confirmedProviderName,
-        clientId: me.id,
-        clientName: me.full_name || me.fullName,
-        serviceRequestId: requestId,
-        rating: overall,
-        ratings,
-        comment,
-      });
+      await Promise.all([
+        api.entities.ProviderReview.create({
+          providerId: request.confirmedProviderId,
+          providerName: request.confirmedProviderName,
+          clientId: me.id,
+          clientName: me.full_name || me.fullName,
+          serviceRequestId: requestId,
+          rating: overall,
+          ratings,
+          comment,
+        }),
+        api.entities.ServiceRequest.update(requestId, { ratingStatus: 'COMPLETED' }),
+      ]);
     },
-    onSuccess: () => setDone(true),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my-orders'] });
+      toast({ title: 'Obrigado pela avaliação.' });
+      navigate('/client/orders');
+    },
   });
 
-  if (done) {
-    return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4 pb-24">
-        <div className="text-6xl mb-5">🎉</div>
-        <h2 className="font-heading text-xl font-bold text-foreground mb-2 text-center">
-          Serviço concluído com sucesso!
-        </h2>
-        <p className="text-sm text-muted-foreground text-center mb-8">
-          Obrigado por avaliar o profissional.
-        </p>
-        <button
-          onClick={() => navigate('/client/orders')}
-          className="w-full max-w-sm py-4 bg-primary text-primary-foreground rounded-xl font-semibold hover:opacity-90 transition-opacity"
-        >
-          Ver meus pedidos
-        </button>
-        <button
-          onClick={() => navigate(`/client/request/${requestId}`)}
-          className="mt-3 text-sm text-primary font-medium hover:opacity-80"
-        >
-          Ver detalhes do pedido
-        </button>
-      </div>
-    );
-  }
+  const handleSkip = async () => {
+    try {
+      await api.entities.ServiceRequest.update(requestId, { ratingStatus: 'SKIPPED' });
+      queryClient.invalidateQueries({ queryKey: ['my-orders'] });
+    } catch {}
+    toast({ title: 'Você pode avaliar este atendimento depois.' });
+    navigate('/client/orders');
+  };
 
   return (
     <div className="min-h-screen bg-background pb-24">
@@ -164,10 +156,10 @@ export default function ClientOrderRating() {
         </button>
 
         <button
-          onClick={() => navigate(`/client/request/${requestId}`)}
-          className="w-full text-sm text-primary font-medium hover:opacity-80 text-center"
+          onClick={handleSkip}
+          className="w-full text-sm text-muted-foreground font-medium hover:text-foreground text-center py-2"
         >
-          Ver detalhes do pedido
+          Pular por enquanto
         </button>
       </div>
     </div>

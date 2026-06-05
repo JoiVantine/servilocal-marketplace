@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/api/apiClient';
@@ -205,11 +205,15 @@ function StatusTimeline({ request, interests }) {
 function ConfirmedProviderCard({ request, conversation, navigate }) {
   const photo = request.confirmedProviderPhoto;
   const name = request.confirmedProviderName;
+  const pixKey = request.confirmedProviderPixKey;
+  const pixKeyType = request.confirmedProviderPixKeyType;
   if (!name) return null;
+
+  const PIX_TYPE_LABELS = { ALEATORIA: 'Chave aleatória', CPF: 'CPF', CNPJ: 'CNPJ', EMAIL: 'E-mail', TELEFONE: 'Telefone' };
 
   return (
     <div className="bg-card border border-border rounded-2xl p-4 mb-4">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 mb-3">
         <div className="shrink-0">
           {photo ? (
             <img src={photo} alt={name} className="w-12 h-12 rounded-full object-cover" />
@@ -236,6 +240,12 @@ function ConfirmedProviderCard({ request, conversation, navigate }) {
           </button>
         )}
       </div>
+      {pixKey && (
+        <div className="bg-secondary/50 rounded-xl px-3 py-2.5 border border-border">
+          <p className="text-xs text-muted-foreground mb-0.5">Chave Pix · {PIX_TYPE_LABELS[pixKeyType] || pixKeyType}</p>
+          <p className="text-sm font-medium text-foreground break-all">{pixKey}</p>
+        </div>
+      )}
     </div>
   );
 }
@@ -251,6 +261,8 @@ export default function ClientRequestDetail({ viewerMode = 'client' }) {
   const [userProfile, setUserProfile] = useState(null);
   const [showEdit, setShowEdit] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const [undoVisible, setUndoVisible] = useState(false);
+  const undoTimerRef = useRef(null);
 
   useEffect(() => {
     const load = async () => {
@@ -290,38 +302,53 @@ export default function ClientRequestDetail({ viewerMode = 'client' }) {
     mutationFn: () => api.entities.ServiceRequest.update(requestId, {
       progressStatus: 'completed',
       status: 'completed',
+      ratingStatus: 'PENDING',
     }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['request', requestId] });
+      navigate(`/client/request/${requestId}/rate`);
     },
   });
 
+  const doCancelRequest = async () => {
+    await api.entities.ServiceRequest.update(requestId, { status: 'cancelled' });
+    const [convs, interestsList] = await Promise.all([
+      api.entities.Conversation.filter({ serviceRequestId: requestId }),
+      api.entities.ServiceRequestInterest.filter({ serviceRequestId: requestId }),
+    ]);
+    await Promise.all([
+      ...convs.map(c => api.entities.Conversation.update(c.id, { status: 'cancelled' })),
+      ...interestsList.map(i => api.entities.ServiceRequestInterest.update(i.id, { status: 'cancelled' })),
+      ...interestsList.map(i =>
+        api.entities.Notification.create({
+          userId: i.providerId,
+          type: 'request_cancelled',
+          title: 'Pedido cancelado',
+          body: `O pedido de "${request.category}" em ${request.city} foi cancelado pelo cliente.`,
+          read: false,
+        })
+      ),
+    ]);
+  };
+
   const cancelMutation = useMutation({
-    mutationFn: async () => {
-      await api.entities.ServiceRequest.update(requestId, { status: 'cancelled' });
-      const [convs, interestsList] = await Promise.all([
-        api.entities.Conversation.filter({ serviceRequestId: requestId }),
-        api.entities.ServiceRequestInterest.filter({ serviceRequestId: requestId }),
-      ]);
-      await Promise.all([
-        ...convs.map(c => api.entities.Conversation.update(c.id, { status: 'cancelled' })),
-        ...interestsList.map(i => api.entities.ServiceRequestInterest.update(i.id, { status: 'cancelled' })),
-        ...interestsList.map(i =>
-          api.entities.Notification.create({
-            userId: i.providerId,
-            type: 'request_cancelled',
-            title: 'Pedido cancelado',
-            body: `O pedido de "${request.category}" em ${request.city} foi cancelado pelo cliente.`,
-            read: false,
-          })
-        ),
-      ]);
-    },
+    mutationFn: doCancelRequest,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['request', requestId] });
-      navigate('/client/orders');
+      setUndoVisible(true);
+      undoTimerRef.current = setTimeout(() => {
+        setUndoVisible(false);
+        navigate('/client/orders');
+      }, 30000);
     },
   });
+
+  const handleUndoCancel = async () => {
+    clearTimeout(undoTimerRef.current);
+    setUndoVisible(false);
+    await api.entities.ServiceRequest.update(requestId, { status: 'open' });
+    queryClient.invalidateQueries({ queryKey: ['request', requestId] });
+  };
 
   if (isLoading) {
     return (
@@ -550,8 +577,13 @@ export default function ClientRequestDetail({ viewerMode = 'client' }) {
               <span className="text-2xl">⚠️</span>
             </div>
             <h3 className="font-heading text-base font-bold text-foreground mb-2">Cancelar pedido?</h3>
+            {isConfirmedOrBeyond && (
+              <p className="text-sm font-medium text-orange-600 mb-3">
+                Este profissional já reservou horário para você.
+              </p>
+            )}
             <p className="text-sm text-muted-foreground mb-6">
-              Esta ação não poderá ser desfeita. Todos os prestadores interessados serão notificados.
+              Tem certeza que deseja cancelar este pedido? Esta ação encerrará propostas e conversas relacionadas.
             </p>
             <div className="flex gap-3">
               <button
@@ -565,10 +597,23 @@ export default function ClientRequestDetail({ viewerMode = 'client' }) {
                 disabled={cancelMutation.isPending}
                 className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
               >
-                {cancelMutation.isPending ? 'Cancelando...' : 'Confirmar'}
+                {cancelMutation.isPending ? 'Cancelando...' : 'Confirmar cancelamento'}
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Undo cancel toast */}
+      {undoVisible && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-foreground text-background rounded-2xl px-5 py-3.5 shadow-xl">
+          <span className="text-sm font-medium">Pedido cancelado.</span>
+          <button
+            onClick={handleUndoCancel}
+            className="text-sm font-bold text-primary-foreground underline underline-offset-2 bg-primary px-3 py-1 rounded-lg hover:opacity-90"
+          >
+            Desfazer
+          </button>
         </div>
       )}
     </div>
