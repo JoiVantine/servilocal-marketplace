@@ -2,12 +2,11 @@ import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/api/apiClient';
-import { ChevronLeft, Star, Loader2, Banknote, CreditCard, QrCode } from 'lucide-react';
+import { ChevronLeft, Star, Loader2, Banknote, QrCode } from 'lucide-react';
 
 const PAYMENT_OPTIONS = [
-  { value: 'PIX',             label: 'Pix',                      icon: QrCode,    desc: 'Transferência para a chave Pix do prestador' },
-  { value: 'DINHEIRO',        label: 'Dinheiro',                 icon: Banknote,  desc: 'Pagamento em espécie no local' },
-  { value: 'CARTAO_PRESENCIAL', label: 'Cartão na maquininha',   icon: CreditCard, desc: 'Máquina do próprio prestador' },
+  { value: 'PIX',      label: 'Pix',      icon: QrCode,   desc: 'Transferência para a chave Pix do prestador' },
+  { value: 'DINHEIRO', label: 'Dinheiro', icon: Banknote, desc: 'Pagamento em espécie no local' },
 ];
 
 export default function ClientConfirmProvider() {
