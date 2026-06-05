@@ -18,6 +18,7 @@ import ProviderWelcome from './pages/ProviderWelcome';
 import CityServices from './pages/CityServices';
 import ProviderOnboarding from './pages/ProviderOnboarding';
 import ClientOrders from './pages/ClientOrders';
+import ClientConversations from './pages/ClientConversations';
 import DiagnosticsPage from './pages/DiagnosticsPage';
 import AdminUsers from './pages/AdminUsers';
 import AdminLogin from './pages/AdminLogin';
@@ -91,6 +92,7 @@ const AuthenticatedApp = () => {
       <Route path="/client/request/:requestId/rate" element={<ClientOrderRating />} />
       <Route path="/client/services" element={<CityServices />} />
       <Route path="/client/orders" element={<ClientOrders />} />
+      <Route path="/client/conversations" element={<ClientConversations />} />
       <Route path="/client/support" element={<SupportCenter audience="client" />} />
       <Route path="/client/support/:ticketId" element={<SupportTicketDetail audience="client" />} />
       <Route path="/client/menu" element={<ClientMenu />} />

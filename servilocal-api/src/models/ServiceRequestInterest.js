@@ -4,11 +4,14 @@ const serviceRequestInterestSchema = new mongoose.Schema({
   serviceRequestId: { type: mongoose.Schema.Types.ObjectId, ref: 'ServiceRequest', required: true },
   providerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   providerName: String,
+  providerPhoto: String,
   city: String,
   rating: { type: Number, default: 0 },
   reviewCount: { type: Number, default: 0 },
   specialties: [String],
-  status: { type: String, enum: ['pending', 'accepted', 'rejected', 'completed', 'cancelled'], default: 'pending' },
+  price: String,
+  arrivalTime: String,
+  status: { type: String, enum: ['pending', 'in_conversation', 'accepted', 'rejected', 'completed', 'cancelled'], default: 'pending' },
   message: String,
 }, { timestamps: true });
 

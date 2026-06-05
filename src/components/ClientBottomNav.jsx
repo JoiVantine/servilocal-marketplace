@@ -1,10 +1,11 @@
 import { Link } from 'react-router-dom';
-import { Home, ClipboardList, Menu } from 'lucide-react';
+import { Home, ClipboardList, MessageCircle, Menu } from 'lucide-react';
 
 export default function ClientBottomNav({ active = 'home' }) {
   const tabs = [
     { key: 'home',   icon: Home,          label: 'Início',  to: '/client' },
     { key: 'orders', icon: ClipboardList,  label: 'Pedidos', to: '/client/orders' },
+    { key: 'conversations', icon: MessageCircle, label: 'Conversas', to: '/client/conversations' },
     { key: 'menu',   icon: Menu,           label: 'Menu',    to: '/client/menu' },
   ];
 

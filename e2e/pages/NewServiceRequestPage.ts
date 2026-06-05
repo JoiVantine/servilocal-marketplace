@@ -25,9 +25,19 @@ export class NewServiceRequestPage extends BasePage {
     await textarea.fill(text);
   }
 
+  async fillAddress() {
+    await this.page.getByLabel('Rua').fill('Rua E2E');
+    await this.page.getByLabel('Número').fill('123');
+    await this.page.getByLabel('Bairro').fill('Centro');
+    await this.page.getByLabel('Cidade').fill('São Paulo');
+    await this.page.getByLabel('UF').fill('SP');
+  }
+
   async setScheduledAt(isoLocalString: string) {
-    const input = this.page.locator('input[type="datetime-local"]');
-    await input.fill(isoLocalString);
+    const [date, time] = isoLocalString.split('T');
+    await this.page.locator('input[type="date"]').first().fill(date);
+    await this.page.locator('input[type="time"]').nth(0).fill(time);
+    await this.page.locator('input[type="time"]').nth(1).fill('23:00');
   }
 
   async submit() {

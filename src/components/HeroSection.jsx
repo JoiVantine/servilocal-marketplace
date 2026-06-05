@@ -1,6 +1,5 @@
 ﻿import { Search, Building2, ChevronRight, MapPin } from "lucide-react";
 import { useNavigate } from 'react-router-dom';
-import { api } from '@/api/apiClient';
 import { useState } from 'react';
 
 const LOGO_URL = "/logo.png";

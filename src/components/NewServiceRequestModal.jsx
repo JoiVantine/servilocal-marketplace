@@ -127,7 +127,7 @@ export default function NewServiceRequestModal({ category, request, onClose, onU
           {/* Description */}
           <div>
             <label className="block text-sm font-semibold text-foreground mb-1.5">
-              Descreva seu pedido
+              Descreva seu pedido <span className="text-red-500">*</span>
             </label>
             <div className="relative">
               <textarea
@@ -189,7 +189,7 @@ export default function NewServiceRequestModal({ category, request, onClose, onU
           {/* Submit */}
           <button
             onClick={handleSubmit}
-            disabled={!title.trim() || mutation.isPending || (isEdit && !hasChanged)}
+            disabled={!title.trim() || !description.trim() || mutation.isPending || (isEdit && !hasChanged)}
             className="w-full flex items-center justify-center gap-2 py-3.5 bg-primary text-primary-foreground rounded-xl font-semibold text-sm hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isEdit ? 'Salvar alterações' : 'Publicar pedido'}

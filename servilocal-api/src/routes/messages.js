@@ -45,6 +45,18 @@ function getSenderType(conversation, req) {
   throw httpError(403, 'Acesso negado a esta conversa');
 }
 
+function normalizeAttachments(value) {
+  const raw = Array.isArray(value) ? value : value ? [value] : [];
+  return raw
+    .map((item) => ({
+      url: normalizeText(item?.url),
+      type: ['image', 'audio', 'file'].includes(item?.type) ? item.type : 'file',
+      name: normalizeText(item?.name),
+      mimeType: normalizeText(item?.mimeType),
+    }))
+    .filter((item) => item.url);
+}
+
 router.get('/', requireAuth, async (req, res) => {
   try {
     const filters = buildMessageFilters(req.query);
@@ -106,8 +118,9 @@ router.post('/', requireAuth, async (req, res) => {
       req
     );
     const messageText = normalizeText(req.body.text) || normalizeText(req.body.content);
+    const attachments = normalizeAttachments(req.body.attachments);
 
-    if (!messageText) throw httpError(400, 'Mensagem e obrigatoria');
+    if (!messageText && attachments.length === 0) throw httpError(400, 'Mensagem ou anexo e obrigatorio');
 
     const sender = await User.findById(req.user.id).select('fullName email');
     const message = await Message.create({
@@ -117,12 +130,13 @@ router.post('/', requireAuth, async (req, res) => {
       senderType: getSenderType(conversation, req),
       text: messageText,
       content: messageText,
+      attachments,
       read: false,
     });
 
     req.app.get('io').to(`conversation:${conversation.id}`).emit('new-message', message);
     await Conversation.findByIdAndUpdate(conversation._id, {
-      lastMessage: message.text || message.content,
+      lastMessage: message.text || message.content || (attachments[0]?.type === 'audio' ? 'Audio enviado' : 'Imagem enviada'),
       lastMessageTime: message.createdAt,
     });
 

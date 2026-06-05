@@ -111,6 +111,13 @@ export default function ClientRequestDetail({ viewerMode = 'client' }) {
     },
   });
 
+  const rejectInterestMutation = useMutation({
+    mutationFn: (interest) => api.entities.ServiceRequestInterest.update(interest.id, { status: 'rejected' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['interests', requestId] });
+    },
+  });
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -148,11 +155,23 @@ export default function ClientRequestDetail({ viewerMode = 'client' }) {
     });
   };
 
+  const scheduleOptions = request.scheduleOptions?.length
+    ? request.scheduleOptions
+    : request.scheduledAt
+      ? [{
+          date: new Date(request.scheduledAt).toISOString().slice(0, 10),
+          startTime: new Date(request.scheduledAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+          endTime: '',
+        }]
+      : [];
+
   const backPath = isAdminView ? '/admin/support' : '/client';
   const homePath = isAdminView ? '/admin/support' : '/client';
-  const requestAddress = !isAdminView && userProfile?.address
-    ? `${userProfile.address}${userProfile.neighborhood ? `, ${userProfile.neighborhood}` : ''} - ${user?.city || request.city}`
-    : request.address || [request.neighborhood, request.city].filter(Boolean).join(', ') || request.city;
+  const requestAddress = request.address
+    || [request.neighborhood, request.city].filter(Boolean).join(', ')
+    || (!isAdminView && userProfile?.address
+      ? `${userProfile.address}${userProfile.neighborhood ? `, ${userProfile.neighborhood}` : ''} - ${user?.city || request.city}`
+      : request.city);
 
   return (
     <div className="min-h-screen bg-background">
@@ -251,15 +270,21 @@ export default function ClientRequestDetail({ viewerMode = 'client' }) {
               <p className="text-sm text-foreground">{request.description || '—'}</p>
             </div>
 
-            {request.scheduledAt && (
+            {scheduleOptions.length > 0 && (
               <div>
-                <p className="text-xs text-muted-foreground mb-1">Data desejada</p>
-                <p className="text-sm text-foreground">
-                  {new Date(request.scheduledAt).toLocaleString('pt-BR', {
-                    day: '2-digit', month: '2-digit', year: 'numeric',
-                    hour: '2-digit', minute: '2-digit',
-                  })}
-                </p>
+                <p className="text-xs text-muted-foreground mb-1">Datas e horários desejados</p>
+                <div className="space-y-1">
+                  {scheduleOptions.map((option, index) => (
+                    <p key={`${option.date}-${option.startTime}-${index}`} className="text-sm text-foreground">
+                      {option.date
+                        ? new Date(`${option.date}T00:00:00`).toLocaleDateString('pt-BR')
+                        : 'Data a combinar'}
+                      {option.startTime && option.endTime
+                        ? `, entre ${option.startTime} e ${option.endTime}`
+                        : option.startTime ? `, a partir das ${option.startTime}` : ''}
+                    </p>
+                  ))}
+                </div>
               </div>
             )}
 
@@ -296,6 +321,12 @@ export default function ClientRequestDetail({ viewerMode = 'client' }) {
                 const photo = providerProfile?.profilePhoto;
                 const bio = providerProfile?.description;
                 const completedServices = providerProfile?.completedServices;
+                const isRejected = interest.status === 'rejected';
+                const canChoose = !isAdminView
+                  && !isRejected
+                  && request.status !== 'agreed'
+                  && request.status !== 'completed'
+                  && request.status !== 'cancelled';
 
                 return (
                   <div
@@ -317,7 +348,14 @@ export default function ClientRequestDetail({ viewerMode = 'client' }) {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between gap-2">
                             <div>
-                              <p className="font-medium text-foreground text-sm">{interest.providerName}</p>
+                              <div className="flex items-center gap-2">
+                                <p className="font-medium text-foreground text-sm">{interest.providerName}</p>
+                                {isRejected && (
+                                  <span className="rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-semibold text-red-600">
+                                    Recusada
+                                  </span>
+                                )}
+                              </div>
                               <p className="text-xs text-muted-foreground">{interest.city}</p>
                             </div>
                             <div className="text-right shrink-0">
@@ -361,6 +399,23 @@ export default function ClientRequestDetail({ viewerMode = 'client' }) {
                         >
                           <MessageCircle className="w-3.5 h-3.5" /> Conversar
                         </button>
+                        {canChoose && (
+                          <button
+                            onClick={() => navigate(`/client/request/${requestId}/confirm/${interest.id}`)}
+                            className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold text-primary-foreground bg-primary rounded-lg py-2 hover:opacity-90 transition-opacity"
+                          >
+                            Selecionar profissional
+                          </button>
+                        )}
+                        {canChoose && (
+                          <button
+                            onClick={() => rejectInterestMutation.mutate(interest)}
+                            disabled={rejectInterestMutation.isPending}
+                            className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold text-red-600 border border-red-200 rounded-lg py-2 hover:bg-red-50 transition-colors disabled:opacity-50"
+                          >
+                            Recusar proposta
+                          </button>
+                        )}
                         {!isAdminView && (
                           <button
                             onClick={() => navigate('/client/support', {
@@ -380,10 +435,27 @@ export default function ClientRequestDetail({ viewerMode = 'client' }) {
                         )}
                       </div>
                     ) : (
-                      <div className="border-t border-border px-4 py-3">
+                      <div className="border-t border-border px-4 py-3 flex flex-col gap-2">
                         <p className="text-xs text-muted-foreground">
                           Quando a conversa estiver ativa, voce tambem podera abrir o ticket ja vinculado ao prestador.
                         </p>
+                        {canChoose && (
+                          <button
+                            onClick={() => navigate(`/client/request/${requestId}/confirm/${interest.id}`)}
+                            className="w-full flex items-center justify-center text-xs font-semibold text-primary-foreground bg-primary rounded-lg py-2 hover:opacity-90 transition-opacity"
+                          >
+                            Selecionar profissional
+                          </button>
+                        )}
+                        {canChoose && (
+                          <button
+                            onClick={() => rejectInterestMutation.mutate(interest)}
+                            disabled={rejectInterestMutation.isPending}
+                            className="w-full flex items-center justify-center text-xs font-semibold text-red-600 border border-red-200 rounded-lg py-2 hover:bg-red-50 transition-colors disabled:opacity-50"
+                          >
+                            Recusar proposta
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>

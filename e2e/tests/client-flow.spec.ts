@@ -63,6 +63,7 @@ test.describe('Cliente — home', () => {
     const home = new ClientHomePage(page);
     await home.goto();
     await page.getByText('Elétrica').first().click();
+    await page.getByText(/eletricista residencial/i).first().click();
     await expect(page).toHaveURL(/\/client\/new-request/, { timeout: 8_000 });
   });
 });
@@ -77,6 +78,7 @@ test.describe('Cliente — criar pedido', () => {
     await newReq.selectCategory('Limpeza');
     await newReq.selectSubcategory('Limpeza Residencial');
     await newReq.fillDescription('Preciso de limpeza geral em apartamento de 2 quartos.');
+    await newReq.fillAddress();
     await newReq.submit();
 
     await newReq.expectRedirectToDetail();
@@ -94,8 +96,10 @@ test.describe('Cliente — criar pedido', () => {
     await newReq.goto();
     const future = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16);
     await newReq.setScheduledAt(future);
-    const input = page.locator('input[type="datetime-local"]');
-    await expect(input).toHaveValue(future);
+    const [date, time] = future.split('T');
+    await expect(page.locator('input[type="date"]').first()).toHaveValue(date);
+    await expect(page.locator('input[type="time"]').nth(0)).toHaveValue(time);
+    await expect(page.locator('input[type="time"]').nth(1)).toHaveValue('23:00');
   });
 
   test('detalhe do pedido criado via API exibe título e status "Aberto"', async ({ page }) => {

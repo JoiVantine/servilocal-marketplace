@@ -1,3 +1,5 @@
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
@@ -127,7 +129,9 @@ const _upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (_, file, cb) => {
-    if (!file.mimetype.startsWith('image/')) return cb(new Error('Apenas imagens são permitidas'));
+    if (!file.mimetype.startsWith('image/') && !file.mimetype.startsWith('audio/')) {
+      return cb(new Error('Apenas imagens e audios sao permitidos'));
+    }
     cb(null, true);
   },
 });
@@ -140,7 +144,7 @@ app.post('/api/upload', requireAuth, _upload.single('file'), async (req, res) =>
       const cloudinary = require('cloudinary').v2;
       const result = await new Promise((resolve, reject) => {
         cloudinary.uploader
-          .upload_stream({ folder: 'servilocal', resource_type: 'image' }, (err, r) =>
+          .upload_stream({ folder: 'servilocal', resource_type: 'auto' }, (err, r) =>
             err ? reject(err) : resolve(r)
           )
           .end(req.file.buffer);

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '@/api/apiClient';
 import { Lock, Eye, EyeOff, CheckCircle2, Circle, Loader2 } from 'lucide-react';
 import AuthLayout from '@/components/AuthLayout';

@@ -1,7 +1,7 @@
 ﻿import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Send, CheckCircle, LifeBuoy } from 'lucide-react';
+import { ArrowLeft, Send, CheckCircle, LifeBuoy, Image as ImageIcon, Mic, X, Loader2 } from 'lucide-react';
 import { io } from 'socket.io-client';
 import { api, API_URL } from '@/api/apiClient';
 import ReviewModal from '@/components/ReviewModal';
@@ -12,8 +12,11 @@ export default function ChatPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const bottomRef = useRef(null);
+  const imageInputRef = useRef(null);
+  const audioInputRef = useRef(null);
   const [user, setUser] = useState(null);
   const [text, setText] = useState('');
+  const [attachment, setAttachment] = useState(null);
   const [showReview, setShowReview] = useState(false);
 
   useEffect(() => {
@@ -84,9 +87,23 @@ export default function ChatPage() {
   const sendMutation = useMutation({
     mutationFn: async () => {
       const cleanText = text.trim();
-      if (!cleanText || !user || !conversation) return;
+      if ((!cleanText && !attachment) || !user || !conversation) return;
       const senderType = user.id === conversation.clientId ? 'client' : 'provider';
       const recipientId = senderType === 'client' ? conversation.providerId : conversation.clientId;
+      let uploadedAttachment = null;
+
+      if (attachment?.file) {
+        const url = await api.uploadFile(attachment.file);
+        uploadedAttachment = {
+          url,
+          type: attachment.type,
+          name: attachment.file.name,
+          mimeType: attachment.file.type,
+        };
+      }
+
+      const messageLabel = cleanText
+        || (uploadedAttachment?.type === 'audio' ? 'Áudio enviado' : 'Imagem enviada');
 
       await api.entities.Message.create({
         conversationId,
@@ -95,11 +112,12 @@ export default function ChatPage() {
         senderType,
         content: cleanText,
         text: cleanText,
+        attachments: uploadedAttachment ? [uploadedAttachment] : [],
         read: false,
       });
 
       await api.entities.Conversation.update(conversationId, {
-        lastMessage: cleanText,
+        lastMessage: messageLabel,
         lastMessageTime: new Date().toISOString(),
         unreadCount: (conversation.unreadCount || 0) + 1,
       });
@@ -117,10 +135,22 @@ export default function ChatPage() {
     },
     onSuccess: () => {
       setText('');
+      setAttachment(null);
       queryClient.invalidateQueries({ queryKey: ['messages', conversationId] });
       queryClient.invalidateQueries({ queryKey: ['conversation', conversationId] });
     },
   });
+
+  const handleAttachmentSelect = (event, type) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    setAttachment({
+      file,
+      type,
+      previewUrl: URL.createObjectURL(file),
+    });
+  };
 
   const isClient = user?.id === conversation?.clientId;
   const audience = isClient ? 'client' : 'provider';
@@ -172,7 +202,7 @@ export default function ChatPage() {
             <LifeBuoy className="h-5 w-5" />
           </div>
           <div className="space-y-1">
-            <h1 className="text-base font-semibold text-foreground">Conversa indisponível</h1>
+            <h1 className="text-base font-semibold text-foreground">Acesso negado</h1>
             <p className="text-sm text-muted-foreground">
               {conversationQuery.error?.message || 'Voce nao tem acesso a esta conversa ou ela nao existe mais.'}
             </p>
@@ -229,7 +259,26 @@ export default function ChatPage() {
           return (
             <div key={message.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
               <div className={`max-w-[80%] rounded-2xl px-4 py-2 ${mine ? 'bg-primary text-primary-foreground rounded-br-sm' : 'bg-card border border-border text-foreground rounded-bl-sm'}`}>
-                <p className="text-sm whitespace-pre-wrap">{message.text || message.content}</p>
+                {message.attachments?.map((item, index) => (
+                  <div key={`${item.url}-${index}`} className="mb-2">
+                    {item.type === 'image' ? (
+                      <img
+                        src={item.url}
+                        alt={item.name || 'Imagem enviada'}
+                        className="max-h-64 rounded-xl object-cover"
+                      />
+                    ) : item.type === 'audio' ? (
+                      <audio controls src={item.url} className="max-w-full" />
+                    ) : (
+                      <a href={item.url} target="_blank" rel="noreferrer" className="text-sm underline">
+                        {item.name || 'Abrir anexo'}
+                      </a>
+                    )}
+                  </div>
+                ))}
+                {(message.text || message.content) && (
+                  <p className="text-sm whitespace-pre-wrap">{message.text || message.content}</p>
+                )}
                 <p className={`text-[10px] mt-1 ${mine ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
                   {new Date(message.created_date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                 </p>
@@ -260,7 +309,59 @@ export default function ChatPage() {
         </div>
       ) : (
         <div className="sticky bottom-0 bg-background border-t border-border px-4 py-3">
-          <div className="max-w-lg mx-auto flex gap-2">
+          <div className="max-w-lg mx-auto space-y-2">
+            {attachment && (
+              <div className="flex items-center gap-3 rounded-xl border border-border bg-card px-3 py-2">
+                {attachment.type === 'image' ? (
+                  <img src={attachment.previewUrl} alt="" className="h-12 w-12 rounded-lg object-cover" />
+                ) : (
+                  <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    <Mic className="h-5 w-5" />
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-xs font-medium text-foreground">{attachment.file.name}</p>
+                  <p className="text-[10px] text-muted-foreground">
+                    {attachment.type === 'audio' ? 'Áudio pronto para envio' : 'Imagem pronta para envio'}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setAttachment(null)}
+                  className="p-1 text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            )}
+            <div className="flex gap-2">
+              <input
+                ref={imageInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(event) => handleAttachmentSelect(event, 'image')}
+              />
+              <input
+                ref={audioInputRef}
+                type="file"
+                accept="audio/*"
+                className="hidden"
+                onChange={(event) => handleAttachmentSelect(event, 'audio')}
+              />
+              <button
+                onClick={() => imageInputRef.current?.click()}
+                className="w-11 h-12 rounded-xl border border-border bg-card text-muted-foreground flex items-center justify-center hover:text-foreground"
+                title="Enviar imagem"
+              >
+                <ImageIcon className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => audioInputRef.current?.click()}
+                className="w-11 h-12 rounded-xl border border-border bg-card text-muted-foreground flex items-center justify-center hover:text-foreground"
+                title="Enviar áudio"
+              >
+                <Mic className="w-5 h-5" />
+              </button>
             <textarea
               value={text}
               onChange={(e) => setText(e.target.value)}
@@ -270,11 +371,12 @@ export default function ChatPage() {
             />
             <button
               onClick={() => sendMutation.mutate()}
-              disabled={!text.trim() || sendMutation.isPending}
+              disabled={(!text.trim() && !attachment) || sendMutation.isPending}
               className="w-12 h-12 rounded-xl bg-primary text-primary-foreground flex items-center justify-center disabled:opacity-50"
             >
-              <Send className="w-5 h-5" />
+              {sendMutation.isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
             </button>
+            </div>
           </div>
         </div>
       )}

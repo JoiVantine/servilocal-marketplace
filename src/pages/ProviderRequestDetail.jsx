@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '@/api/apiClient';
 import {
   ChevronLeft, MapPin, Calendar, Clock, User,
-  CheckCircle2, MessageCircle, Star,
+  CheckCircle2, MessageCircle,
 } from 'lucide-react';
 
 function formatDate(iso) {
@@ -17,6 +17,16 @@ function formatTime(iso) {
   if (!iso) return null;
   const d = new Date(iso);
   return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+}
+
+function getScheduleOptions(request) {
+  if (request?.scheduleOptions?.length) return request.scheduleOptions;
+  if (!request?.scheduledAt) return [];
+  return [{
+    date: new Date(request.scheduledAt).toISOString().slice(0, 10),
+    startTime: formatTime(request.scheduledAt),
+    endTime: '',
+  }];
 }
 
 function timeAgo(iso) {
@@ -171,16 +181,28 @@ export default function ProviderRequestDetail() {
                 </div>
               )}
 
-              {request.scheduledAt && (
-                <div className="flex gap-4">
-                  <div className="flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-muted-foreground shrink-0" />
-                    <p className="text-sm text-foreground">{formatDate(request.scheduledAt)}</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Clock className="w-4 h-4 text-muted-foreground shrink-0" />
-                    <p className="text-sm text-foreground">A partir das {formatTime(request.scheduledAt)}</p>
-                  </div>
+              {getScheduleOptions(request).length > 0 && (
+                <div className="space-y-2">
+                  {getScheduleOptions(request).map((option, index) => (
+                    <div key={`${option.date}-${option.startTime}-${index}`} className="flex items-start gap-2">
+                      <Calendar className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-sm text-foreground">
+                          {option.date
+                            ? new Date(`${option.date}T00:00:00`).toLocaleDateString('pt-BR')
+                            : formatDate(request.scheduledAt)}
+                        </p>
+                        {(option.startTime || option.endTime) && (
+                          <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                            <Clock className="w-3 h-3" />
+                            {option.startTime && option.endTime
+                              ? `Entre ${option.startTime} e ${option.endTime}`
+                              : `A partir das ${option.startTime}`}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
 

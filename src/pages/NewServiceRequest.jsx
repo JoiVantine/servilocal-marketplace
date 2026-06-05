@@ -2,10 +2,38 @@ import { useState, useEffect, useRef } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { api } from '@/api/apiClient';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { ChevronLeft, Home, ClipboardList, ChevronDown, Camera, X, Loader2 } from 'lucide-react';
+import {
+  ChevronLeft,
+  Home,
+  ClipboardList,
+  ChevronDown,
+  Camera,
+  X,
+  Loader2,
+  Plus,
+  Trash2,
+} from 'lucide-react';
 import { useServices } from '@/hooks/useServices';
 
-const LOGO_URL = "/logo.png";
+const LOGO_URL = '/logo.png';
+
+const emptyScheduleOption = () => ({
+  date: '',
+  startTime: '',
+  endTime: '',
+});
+
+const onlyDigits = (value) => String(value || '').replace(/\D/g, '');
+
+function formatCep(value) {
+  const digits = onlyDigits(value).slice(0, 8);
+  if (digits.length <= 5) return digits;
+  return `${digits.slice(0, 5)}-${digits.slice(5)}`;
+}
+
+function normalizeCityState(city, state) {
+  return [city, state].filter(Boolean).join(' - ');
+}
 
 export default function NewServiceRequest() {
   const navigate = useNavigate();
@@ -14,7 +42,7 @@ export default function NewServiceRequest() {
   const fileRef = useRef(null);
 
   const [description, setDescription] = useState('');
-  const [scheduledAt, setScheduledAt] = useState('');
+  const [scheduleOptions, setScheduleOptions] = useState([emptyScheduleOption()]);
   const [selectedCategory, setSelectedCategory] = useState(state?.category || '');
   const [selectedSubcategory, setSelectedSubcategory] = useState(state?.subcategory || '');
   const [categoryExpanded, setCategoryExpanded] = useState(false);
@@ -22,7 +50,18 @@ export default function NewServiceRequest() {
   const [photos, setPhotos] = useState([]);
   const [photoLoading, setPhotoLoading] = useState(false);
   const [photoError, setPhotoError] = useState(false);
-  const [address, setAddress] = useState('');
+  const [editAddress, setEditAddress] = useState(false);
+  const [addressData, setAddressData] = useState({
+    cep: '',
+    street: '',
+    number: '',
+    complement: '',
+    neighborhood: '',
+    city: '',
+    state: '',
+  });
+  const [cepLoading, setCepLoading] = useState(false);
+  const [cepError, setCepError] = useState('');
   const [userCache, setUserCache] = useState(null);
   const [profileCache, setProfileCache] = useState(null);
 
@@ -32,8 +71,16 @@ export default function NewServiceRequest() {
       const profiles = await api.entities.UserProfile.filter({ userId: user.id });
       const profile = profiles[0];
       setProfileCache(profile);
-      const parts = [profile?.address, profile?.neighborhood, user.city].filter(Boolean);
-      setAddress(parts.join(', '));
+      setAddressData({
+        cep: formatCep(profile?.cep || ''),
+        street: profile?.addressStreet || profile?.address?.split(',')[0] || '',
+        number: profile?.addressNumber || '',
+        complement: profile?.addressComplement || '',
+        neighborhood: profile?.neighborhood || '',
+        city: profile?.addressCity || user.city?.split(' - ')[0] || '',
+        state: profile?.addressState || user.city?.split(' - ')[1] || '',
+      });
+      if (!profile?.address && !profile?.addressStreet) setEditAddress(true);
     }).catch(() => navigate('/'));
   }, []);
 
@@ -58,31 +105,111 @@ export default function NewServiceRequest() {
     }
   };
 
+  const updateScheduleOption = (index, field, value) => {
+    setScheduleOptions((current) => current.map((option, i) => (
+      i === index ? { ...option, [field]: value } : option
+    )));
+  };
+
+  const removeScheduleOption = (index) => {
+    setScheduleOptions((current) => (
+      current.length === 1 ? [emptyScheduleOption()] : current.filter((_, i) => i !== index)
+    ));
+  };
+
+  const handleCepChange = async (value) => {
+    const formatted = formatCep(value);
+    setAddressData((current) => ({ ...current, cep: formatted }));
+    setCepError('');
+
+    const cep = onlyDigits(formatted);
+    if (cep.length !== 8) return;
+
+    setCepLoading(true);
+    try {
+      const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+      const data = await res.json();
+      if (data.erro) {
+        setCepError('CEP não encontrado.');
+        return;
+      }
+      setAddressData((current) => ({
+        ...current,
+        street: data.logradouro || current.street,
+        neighborhood: data.bairro || current.neighborhood,
+        city: data.localidade || current.city,
+        state: data.uf || current.state,
+      }));
+    } catch {
+      setCepError('Não foi possível consultar o CEP agora.');
+    } finally {
+      setCepLoading(false);
+    }
+  };
+
+  const validScheduleOptions = scheduleOptions
+    .filter((option) => option.date && option.startTime && option.endTime)
+    .map((option) => ({
+      ...option,
+      label: `${option.date} entre ${option.startTime} e ${option.endTime}`,
+    }));
+
+  const firstSchedule = validScheduleOptions[0];
+  const scheduledAt = firstSchedule
+    ? `${firstSchedule.date}T${firstSchedule.startTime}`
+    : '';
+
+  const addressLine = [
+    addressData.street,
+    addressData.number,
+  ].filter(Boolean).join(', ');
+  const fullAddress = [
+    addressLine,
+    addressData.complement,
+    addressData.neighborhood,
+    normalizeCityState(addressData.city, addressData.state),
+  ].filter(Boolean).join(' - ');
+
+  const savedAddress = [
+    profileCache?.address,
+    profileCache?.neighborhood,
+    userCache?.city,
+  ].filter(Boolean).join(', ');
+
   const handleSubmit = () => {
-    if (!userCache) return;
+    if (!userCache || !isValid) return;
+
     createMutation.mutate({
       title: selectedSubcategory,
-      description,
+      description: description.trim(),
       category: selectedCategory,
       subcategory: selectedSubcategory,
-      city: userCache.city || '',
-      neighborhood: profileCache?.neighborhood || '',
-      address: address || profileCache?.address || '',
+      city: editAddress ? normalizeCityState(addressData.city, addressData.state) : (userCache.city || ''),
+      neighborhood: editAddress ? addressData.neighborhood : (profileCache?.neighborhood || ''),
+      address: editAddress ? fullAddress : (savedAddress || profileCache?.address || ''),
+      zipCode: editAddress ? onlyDigits(addressData.cep) : onlyDigits(profileCache?.cep),
+      addressStreet: editAddress ? addressData.street : (profileCache?.addressStreet || ''),
+      addressNumber: editAddress ? addressData.number : (profileCache?.addressNumber || ''),
+      addressComplement: editAddress ? addressData.complement : (profileCache?.addressComplement || ''),
+      addressCity: editAddress ? addressData.city : (profileCache?.addressCity || ''),
+      addressState: editAddress ? addressData.state : (profileCache?.addressState || ''),
       clientPhone: userCache.phone || '',
-      when: scheduledAt ? 'scheduled' : '',
+      when: validScheduleOptions.length > 0 ? 'scheduled' : '',
       scheduledAt: scheduledAt || undefined,
+      scheduleOptions: validScheduleOptions,
       photos,
       urgency: 'medium',
       status: 'open',
     });
   };
 
-  const isValid = selectedSubcategory !== '';
-  const minDT = new Date(Date.now() + 30 * 60000).toISOString().slice(0, 16);
+  const isDescriptionValid = description.trim().length > 0;
+  const isAddressValid = !editAddress || Boolean(addressData.street && addressData.number && addressData.city && addressData.state);
+  const isValid = selectedSubcategory !== '' && isDescriptionValid && isAddressValid;
+  const minDate = new Date(Date.now() + 30 * 60000).toISOString().slice(0, 10);
 
   return (
     <div className="min-h-screen bg-background pb-24">
-      {/* Header */}
       <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-card">
         <button onClick={() => navigate('/client')} className="p-1.5 hover:bg-secondary rounded-lg">
           <ChevronLeft className="w-5 h-5" />
@@ -97,7 +224,6 @@ export default function NewServiceRequest() {
       </div>
 
       <div className="max-w-lg mx-auto px-4 py-6 space-y-5">
-        {/* Service */}
         <div>
           <label className="block text-sm font-semibold text-foreground mb-2">
             Qual serviço você precisa? <span className="text-red-500">*</span>
@@ -153,24 +279,29 @@ export default function NewServiceRequest() {
           )}
         </div>
 
-        {/* Description */}
         <div>
-          <label className="block text-sm font-semibold text-foreground mb-2">Descreva o que precisa</label>
+          <label className="block text-sm font-semibold text-foreground mb-2">
+            Descreva o que precisa <span className="text-red-500">*</span>
+          </label>
           <div className="relative">
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value.slice(0, 300))}
               placeholder="Descreva os detalhes do serviço..."
               rows={4}
-              className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm resize-none bg-card"
+              className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm resize-none bg-card ${
+                !isDescriptionValid && description.length > 0 ? 'border-red-400' : 'border-border'
+              }`}
             />
             <span className={`absolute bottom-3 right-3 text-xs ${description.length >= 270 ? 'text-orange-500' : 'text-muted-foreground'}`}>
               {description.length}/300
             </span>
           </div>
+          {!isDescriptionValid && (
+            <p className="text-xs text-red-500 mt-1.5">A descrição é obrigatória para publicar o pedido.</p>
+          )}
         </div>
 
-        {/* Photos */}
         <div>
           <label className="block text-sm font-semibold text-foreground mb-2">Adicione fotos (opcional)</label>
           <div className="flex gap-2 flex-wrap">
@@ -204,33 +335,180 @@ export default function NewServiceRequest() {
           )}
         </div>
 
-        {/* When */}
         <div>
-          <label className="block text-sm font-semibold text-foreground mb-2">
-            Quando você precisa? <span className="text-muted-foreground font-normal text-xs">(opcional)</span>
-          </label>
-          <input
-            type="datetime-local"
-            value={scheduledAt}
-            min={minDT}
-            onChange={(e) => setScheduledAt(e.target.value)}
-            className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm bg-card"
-          />
+          <div className="flex items-center justify-between gap-3 mb-2">
+            <label className="block text-sm font-semibold text-foreground">
+              Quando você precisa? <span className="text-muted-foreground font-normal text-xs">(opcional)</span>
+            </label>
+            <button
+              onClick={() => setScheduleOptions((current) => [...current, emptyScheduleOption()])}
+              className="inline-flex items-center gap-1 text-xs font-semibold text-primary"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Adicionar
+            </button>
+          </div>
+
+          <div className="space-y-3">
+            {scheduleOptions.map((option, index) => (
+              <div key={index} className="rounded-xl border border-border bg-card p-3">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-semibold text-muted-foreground">Opção {index + 1}</span>
+                  <button
+                    onClick={() => removeScheduleOption(index)}
+                    className="p-1 text-muted-foreground hover:text-red-500 transition-colors"
+                    aria-label="Remover opção de data"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 gap-3">
+                  <input
+                    type="date"
+                    value={option.date}
+                    min={minDate}
+                    onChange={(e) => updateScheduleOption(index, 'date', e.target.value)}
+                    className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm bg-background"
+                  />
+                  <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+                    <input
+                      type="time"
+                      value={option.startTime}
+                      onChange={(e) => updateScheduleOption(index, 'startTime', e.target.value)}
+                      className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm bg-background"
+                    />
+                    <span className="text-xs text-muted-foreground">até</span>
+                    <input
+                      type="time"
+                      value={option.endTime}
+                      onChange={(e) => updateScheduleOption(index, 'endTime', e.target.value)}
+                      className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm bg-background"
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">Formato: entre o horário inicial e final.</p>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
 
-        {/* Address */}
         <div>
-          <label className="block text-sm font-semibold text-foreground mb-2">Endereço do serviço</label>
-          <input
-            type="text"
-            value={address}
-            onChange={(e) => setAddress(e.target.value)}
-            placeholder={userCache ? 'Endereço não cadastrado' : 'Carregando...'}
-            className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm bg-card"
-          />
+          <div className="flex items-start gap-3 rounded-xl border border-border bg-card p-4">
+            <input
+              id="edit-service-address"
+              type="checkbox"
+              checked={editAddress}
+              onChange={(e) => setEditAddress(e.target.checked)}
+              className="mt-0.5 w-4 h-4 accent-primary"
+            />
+            <label htmlFor="edit-service-address" className="flex-1 cursor-pointer">
+              <span className="block text-sm font-semibold text-foreground">Editar endereço deste pedido</span>
+              <span className="block text-xs text-muted-foreground mt-1">
+                {savedAddress || 'Nenhum endereço salvo. Preencha os dados abaixo.'}
+              </span>
+            </label>
+          </div>
+
+          {editAddress && (
+            <div className="mt-3 rounded-xl border border-border bg-card p-4 space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground mb-1.5">CEP</label>
+                <div className="relative">
+                  <input
+                    aria-label="CEP"
+                    type="text"
+                    inputMode="numeric"
+                    value={addressData.cep}
+                    onChange={(e) => handleCepChange(e.target.value)}
+                    placeholder="00000-000"
+                    className="w-full px-4 py-3 pr-10 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm bg-background"
+                  />
+                  {cepLoading && (
+                    <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground animate-spin" />
+                  )}
+                </div>
+                {cepError && <p className="text-xs text-red-500 mt-1.5">{cepError}</p>}
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+                  Rua <span className="text-red-500">*</span>
+                </label>
+                <input
+                  aria-label="Rua"
+                  type="text"
+                  value={addressData.street}
+                  onChange={(e) => setAddressData((current) => ({ ...current, street: e.target.value }))}
+                  className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm bg-background"
+                />
+              </div>
+
+              <div className="grid grid-cols-[1fr_1.4fr] gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+                    Número <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    aria-label="Número"
+                    type="text"
+                    value={addressData.number}
+                    onChange={(e) => setAddressData((current) => ({ ...current, number: e.target.value }))}
+                    className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm bg-background"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground mb-1.5">Complemento</label>
+                  <input
+                    aria-label="Complemento"
+                    type="text"
+                    value={addressData.complement}
+                    onChange={(e) => setAddressData((current) => ({ ...current, complement: e.target.value }))}
+                    className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm bg-background"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground mb-1.5">Bairro</label>
+                <input
+                  aria-label="Bairro"
+                  type="text"
+                  value={addressData.neighborhood}
+                  onChange={(e) => setAddressData((current) => ({ ...current, neighborhood: e.target.value }))}
+                  className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm bg-background"
+                />
+              </div>
+
+              <div className="grid grid-cols-[1.5fr_0.8fr] gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+                    Cidade <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    aria-label="Cidade"
+                    type="text"
+                    value={addressData.city}
+                    onChange={(e) => setAddressData((current) => ({ ...current, city: e.target.value }))}
+                    className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm bg-background"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+                    UF <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    aria-label="UF"
+                    type="text"
+                    value={addressData.state}
+                    onChange={(e) => setAddressData((current) => ({ ...current, state: e.target.value.toUpperCase().slice(0, 2) }))}
+                    className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm bg-background uppercase"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Submit */}
         <button
           onClick={handleSubmit}
           disabled={!isValid || createMutation.isPending}
@@ -240,7 +518,6 @@ export default function NewServiceRequest() {
         </button>
       </div>
 
-      {/* Bottom Navigation */}
       <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border">
         <div className="flex items-center justify-around max-w-lg mx-auto">
           <Link to="/client" className="flex-1 flex flex-col items-center gap-1 py-3 text-muted-foreground hover:text-foreground transition-colors">

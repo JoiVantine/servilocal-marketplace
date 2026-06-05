@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '@/api/apiClient';
-import { ChevronLeft, Camera, Loader2, CheckCircle } from 'lucide-react';
+import { ChevronLeft, Loader2, CheckCircle } from 'lucide-react';
 import ClientBottomNav from '@/components/ClientBottomNav';
 import { useCurrentUser, useRefreshUser } from '@/hooks/useCurrentUser';
 

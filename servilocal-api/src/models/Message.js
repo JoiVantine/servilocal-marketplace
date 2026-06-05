@@ -20,6 +20,10 @@ function normalizeMessagePayload(target) {
   if (payload.read === false) {
     payload.readAt = null;
   }
+
+  if (payload.attachments && !Array.isArray(payload.attachments)) {
+    payload.attachments = [];
+  }
 }
 
 const messageSchema = new mongoose.Schema({
@@ -29,13 +33,19 @@ const messageSchema = new mongoose.Schema({
   senderType: { type: String, enum: ['client', 'provider', 'admin'], default: 'client' },
   text: { type: String, trim: true, default: '' },
   content: { type: String, trim: true, default: '' },
+  attachments: [{
+    url: String,
+    type: { type: String, enum: ['image', 'audio', 'file'], default: 'file' },
+    name: String,
+    mimeType: String,
+  }],
   read: { type: Boolean, default: false },
   readAt: Date,
 }, { timestamps: true });
 
 messageSchema.pre('validate', function(next) {
   normalizeMessagePayload(this);
-  if (!this.text && !this.content) {
+  if (!this.text && !this.content && (!this.attachments || this.attachments.length === 0)) {
     this.invalidate('content', 'Path `content` is required.');
   }
   next();
