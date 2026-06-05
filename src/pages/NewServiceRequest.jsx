@@ -85,7 +85,7 @@ export default function NewServiceRequest() {
 
   const createMutation = useMutation({
     mutationFn: (data) => api.entities.ServiceRequest.create(data),
-    onSuccess: (result) => navigate(`/client/request/${result.id || result._id}`),
+    onSuccess: () => navigate('/client'),
   });
 
   const handlePhotoAdd = async (e) => {
