@@ -391,27 +391,34 @@ export default function ProviderOrderProgress() {
       {!isLoading && request && ps !== 'completed' && (
         <div className="fixed bottom-0 left-0 right-0 px-4 py-4 bg-background border-t border-border">
           <div className="max-w-lg mx-auto">
-            {(!ps || ps === 'on_the_way') && (
+            {/* Confirmed but not started yet */}
+            {!ps && isConfirmedProvider && (
               <button
-                onClick={() => {
-                  if (!ps) {
-                    updateProgress.mutate({ status: 'on_the_way' });
-                  } else {
-                    const t = now();
-                    updateProgress.mutate({
-                      status: 'in_progress',
-                      extraLogs: [{ status: 'arrived', time: t }],
-                    });
-                  }
-                }}
+                onClick={() => updateProgress.mutate({ status: 'on_the_way' })}
                 disabled={updateProgress.isPending}
                 className="w-full py-4 bg-primary text-primary-foreground rounded-xl font-semibold text-base hover:opacity-90 transition-opacity disabled:opacity-50"
               >
-                {updateProgress.isPending
-                  ? 'Atualizando...'
-                  : !ps
-                  ? 'Estou a caminho'
-                  : 'Cheguei ao local'}
+                {updateProgress.isPending ? 'Atualizando...' : 'Estou a caminho'}
+              </button>
+            )}
+
+            {ps === 'on_the_way' && (
+              <button
+                onClick={() => updateProgress.mutate({ status: 'arrived' })}
+                disabled={updateProgress.isPending}
+                className="w-full py-4 bg-primary text-primary-foreground rounded-xl font-semibold text-base hover:opacity-90 transition-opacity disabled:opacity-50"
+              >
+                {updateProgress.isPending ? 'Atualizando...' : 'Cheguei ao local'}
+              </button>
+            )}
+
+            {ps === 'arrived' && (
+              <button
+                onClick={() => updateProgress.mutate({ status: 'in_progress' })}
+                disabled={updateProgress.isPending}
+                className="w-full py-4 bg-primary text-primary-foreground rounded-xl font-semibold text-base hover:opacity-90 transition-opacity disabled:opacity-50"
+              >
+                {updateProgress.isPending ? 'Atualizando...' : 'Iniciar atendimento'}
               </button>
             )}
 
