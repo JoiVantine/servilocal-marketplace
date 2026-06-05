@@ -241,6 +241,8 @@ export default function ProviderOnboarding() {
         const res = await api.auth.verifyOtp({ email, otp: otpCode });
         if (res?.token) api.auth.setToken(res.token);
         await api.auth.setPassword(password);
+        const u = await api.auth.me().catch(() => null);
+        if (u) setUser(u);
         setFieldErrors({});
         setStep(2);
       } catch (err) {
@@ -298,7 +300,7 @@ export default function ProviderOnboarding() {
     mutationFn: async () => {
       let me = user;
       if (!me) me = await api.auth.me().catch(() => null);
-      if (!me) { navigate('/'); return; }
+      if (!me) throw new Error('Sessão expirada. Faça login novamente.');
 
       const firstCity = serviceAreas[0]?.city || '';
       await api.auth.updateMe({ full_name: name, phone, city: firstCity });

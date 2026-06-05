@@ -439,7 +439,7 @@ export default function ProviderProfile() {
               <p className="text-sm text-muted-foreground mt-1">Suas informações foram atualizadas.</p>
             </div>
             <button
-              onClick={() => setShowSuccessModal(false)}
+              onClick={() => navigate('/provider')}
               className="w-full py-3 bg-primary text-primary-foreground rounded-xl font-semibold hover:opacity-90"
             >
               OK
