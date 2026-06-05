@@ -7,7 +7,7 @@ const requireAuth = require('../middleware/auth');
  * @param {{ publicRead?, fieldMap?, afterCreate?, injectUser? }} options
  */
 module.exports = function createCrudRouter(Model, options = {}) {
-  const { publicRead = false, fieldMap = {}, afterCreate, injectUser } = options;
+  const { publicRead = false, fieldMap = {}, afterCreate, afterUpdate, injectUser } = options;
   const r = Router();
   const guard = publicRead ? [] : [requireAuth];
 
@@ -68,6 +68,7 @@ module.exports = function createCrudRouter(Model, options = {}) {
     try {
       const doc = await Model.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
       if (!doc) return res.status(404).json({ error: 'Not found' });
+      if (afterUpdate) afterUpdate(doc, req).catch(err => console.error('[afterUpdate]', err.message));
       res.json(doc);
     } catch (err) {
       res.status(500).json({ error: err.message });

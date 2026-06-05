@@ -71,6 +71,8 @@ app.use('/api/service-requests', createCrudRouter(ServiceRequest, {
   fieldMap: { created_by_id: 'clientId' },
   injectUser: 'clientId',
   afterCreate: async (doc, req) => {
+    const baseUrl = process.env.CLIENT_URL || 'https://www.appservilocal.com';
+    // Notifica cliente
     try {
       const user = await User.findById(req.user.id);
       if (user?.email) {
@@ -78,7 +80,6 @@ app.use('/api/service-requests', createCrudRouter(ServiceRequest, {
         const whenLabel = doc.when === 'scheduled' && doc.scheduledAt
           ? new Date(doc.scheduledAt).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
           : (WHEN_LABELS[doc.when] || doc.when || '—');
-        const baseUrl = process.env.CLIENT_URL || 'https://www.appservilocal.com';
         await sendMail(user.email, 'service_request_created', {
           fullName: user.fullName || '',
           title: doc.title,
@@ -93,12 +94,151 @@ app.use('/api/service-requests', createCrudRouter(ServiceRequest, {
         });
       }
     } catch (err) {
-      console.error('[mail] Falha ao notificar pedido criado:', err.message);
+      console.error('[mail] service_request_created:', err.message);
+    }
+    // Notifica prestadores da região (prestador_novo_pedido)
+    if (doc.city) {
+      try {
+        const profiles = await ProviderProfile.find({ 'serviceAreas.city': doc.city, active: true }).limit(50).lean();
+        for (const profile of profiles) {
+          User.findById(profile.userId).then(provider => {
+            if (!provider?.email) return;
+            sendMail(provider.email, 'prestador_novo_pedido', {
+              NOME_PRESTADOR: provider.fullName || '',
+              NOME_SERVICO: doc.title || '',
+              CIDADE: doc.city || '',
+              LINK_PEDIDO: `${baseUrl}/provider/requests`,
+            }, {
+              subject: `Novo pedido em ${doc.city}! 🔔`,
+              text: `Olá ${provider.fullName || ''}! Há um novo pedido de "${doc.title}" em ${doc.city}. Acesse o app para enviar sua proposta!`,
+            }).catch(e => console.error('[mail] prestador_novo_pedido:', e.message));
+          }).catch(() => {});
+        }
+      } catch (err) {
+        console.error('[mail] prestador_novo_pedido batch:', err.message);
+      }
+    }
+  },
+  afterUpdate: async (doc, req) => {
+    const status = req.body.status;
+    if (!status) return;
+    const baseUrl = process.env.CLIENT_URL || 'https://www.appservilocal.com';
+
+    if (status === 'agreed') {
+      const providerId = req.body.confirmedProviderId || doc.confirmedProviderId;
+      // Notifica prestador confirmado
+      if (providerId) {
+        try {
+          const [provider, client] = await Promise.all([
+            User.findById(providerId),
+            User.findById(doc.clientId),
+          ]);
+          if (provider?.email) {
+            await sendMail(provider.email, 'prestador_proposta_aceita', {
+              NOME_PRESTADOR: provider.fullName || '',
+              NOME_CLIENTE: client?.fullName || '',
+              NOME_SERVICO: doc.title || '',
+              LINK_AGENDAMENTO: `${baseUrl}/provider/requests`,
+            }, {
+              subject: 'Sua proposta foi aceita! 🎉',
+              text: `${provider.fullName || 'Profissional'}, sua proposta para "${doc.title}" foi aceita pelo cliente!`,
+            });
+          }
+        } catch (err) {
+          console.error('[mail] prestador_proposta_aceita:', err.message);
+        }
+      }
+      // Notifica demais prestadores (proposta recusada)
+      try {
+        const confirmedStr = (req.body.confirmedProviderId || doc.confirmedProviderId)?.toString();
+        const others = await ServiceRequestInterest.find({
+          serviceRequestId: doc._id,
+          status: 'pending',
+          ...(confirmedStr ? { providerId: { $ne: confirmedStr } } : {}),
+        }).lean();
+        for (const interest of others) {
+          User.findById(interest.providerId).then(provider => {
+            if (!provider?.email) return;
+            sendMail(provider.email, 'prestador_proposta_recusada', {
+              NOME_PRESTADOR: provider.fullName || '',
+              NOME_SERVICO: doc.title || '',
+            }, {
+              subject: 'Sua proposta não foi selecionada',
+              text: `Olá ${provider.fullName || ''}! O cliente escolheu outro profissional para "${doc.title}". Continue mandando propostas!`,
+            }).catch(e => console.error('[mail] prestador_proposta_recusada:', e.message));
+          }).catch(() => {});
+        }
+      } catch (err) {
+        console.error('[mail] proposta_recusada batch:', err.message);
+      }
+    }
+
+    if (status === 'completed') {
+      // Notifica cliente
+      try {
+        const client = await User.findById(doc.clientId);
+        if (client?.email) {
+          await sendMail(client.email, 'cliente_servico_concluido', {
+            NOME_CLIENTE: client.fullName || '',
+            NOME_PRESTADOR: doc.confirmedProviderName || '',
+            NOME_SERVICO: doc.title || '',
+            LINK_AVALIACAO: `${baseUrl}/client/request/${doc._id}`,
+          }, {
+            subject: 'Serviço concluído! Avalie o profissional ✅',
+            text: `Olá ${client.fullName || ''}! O serviço "${doc.title}" foi concluído. Que tal avaliar o profissional?`,
+          });
+        }
+      } catch (err) {
+        console.error('[mail] cliente_servico_concluido:', err.message);
+      }
+      // Notifica prestador
+      try {
+        const providerId = doc.confirmedProviderId;
+        if (providerId) {
+          const provider = await User.findById(providerId);
+          if (provider?.email) {
+            const valor = doc.paymentAmount
+              ? `R$ ${Number(doc.paymentAmount).toFixed(2).replace('.', ',')}`
+              : (doc.agreedPrice || 'não informado');
+            await sendMail(provider.email, 'prestador_servico_concluido', {
+              NOME_PRESTADOR: provider.fullName || '',
+              NOME_SERVICO: doc.title || '',
+              VALOR: valor,
+            }, {
+              subject: 'Serviço concluído com sucesso! 🎉',
+              text: `${provider.fullName || 'Profissional'}, o serviço "${doc.title}" foi marcado como concluído!`,
+            });
+          }
+        }
+      } catch (err) {
+        console.error('[mail] prestador_servico_concluido:', err.message);
+      }
     }
   },
 }));
 
-app.use('/api/service-request-interests', createCrudRouter(ServiceRequestInterest));
+app.use('/api/service-request-interests', createCrudRouter(ServiceRequestInterest, {
+  afterCreate: async (interest, req) => {
+    try {
+      const baseUrl = process.env.CLIENT_URL || 'https://www.appservilocal.com';
+      const request = await ServiceRequest.findById(interest.serviceRequestId);
+      if (!request) return;
+      const client = await User.findById(request.clientId);
+      if (!client?.email) return;
+      await sendMail(client.email, 'cliente_proposta_recebida', {
+        NOME_CLIENTE: client.fullName || '',
+        NOME_SERVICO: request.title || '',
+        PRECO: interest.price || 'não informado',
+        LINK_PROPOSTAS: `${baseUrl}/client/request/${request._id}/proposals`,
+      }, {
+        subject: 'Você recebeu uma nova proposta! 🙌',
+        text: `Olá ${client.fullName || ''}! Um profissional enviou uma proposta para "${request.title}". Acesse o app para ver.`,
+      });
+    } catch (err) {
+      console.error('[mail] cliente_proposta_recebida:', err.message);
+    }
+  },
+}));
 
 app.use('/api/conversations', require('./routes/conversations'));
 
@@ -108,7 +248,31 @@ app.use('/api/provider-profiles', createCrudRouter(ProviderProfile, {
   fieldMap: { created_by_id: 'userId' },
 }));
 
-app.use('/api/provider-reviews', createCrudRouter(ProviderReview));
+app.use('/api/provider-reviews', createCrudRouter(ProviderReview, {
+  afterCreate: async (review, req) => {
+    try {
+      const baseUrl = process.env.CLIENT_URL || 'https://www.appservilocal.com';
+      const [provider, client] = await Promise.all([
+        User.findById(review.providerId),
+        User.findById(review.clientId),
+      ]);
+      if (provider?.email) {
+        await sendMail(provider.email, 'prestador_avaliacao_recebida', {
+          NOME_PRESTADOR: provider.fullName || '',
+          NOME_CLIENTE: client?.fullName || '',
+          NOTA: String(review.rating || ''),
+          COMENTARIO: review.comment || '',
+          LINK_PERFIL: `${baseUrl}/provider/profile`,
+        }, {
+          subject: 'Você recebeu uma nova avaliação! ⭐',
+          text: `${provider.fullName || 'Profissional'}, você recebeu uma avaliação ${review.rating}/5${review.comment ? `: "${review.comment}"` : ''}!`,
+        });
+      }
+    } catch (err) {
+      console.error('[mail] prestador_avaliacao_recebida:', err.message);
+    }
+  },
+}));
 
 app.use('/api/provider-services', createCrudRouter(ProviderService));
 

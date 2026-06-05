@@ -3,6 +3,7 @@ const requireAuth = require('../middleware/auth');
 const Message = require('../models/Message');
 const Conversation = require('../models/Conversation');
 const User = require('../models/User');
+const { sendMail } = require('../utils/mail');
 const {
   buildConversationAccessFilter,
   buildLimit,
@@ -138,6 +139,44 @@ router.post('/', requireAuth, async (req, res) => {
     await Conversation.findByIdAndUpdate(conversation._id, {
       lastMessage: message.text || message.content || (attachments[0]?.type === 'audio' ? 'Audio enviado' : 'Imagem enviada'),
       lastMessageTime: message.createdAt,
+    });
+
+    // Notifica a outra parte por e-mail (fire-and-forget)
+    setImmediate(async () => {
+      try {
+        const baseUrl = process.env.CLIENT_URL || 'https://www.appservilocal.com';
+        const chatUrl = `${baseUrl}/chat/${conversation.id}`;
+        const preview = (messageText || '').substring(0, 120) || 'Mensagem recebida';
+        if (message.senderType === 'client') {
+          const provider = await User.findById(conversation.providerId).select('fullName email');
+          if (provider?.email) {
+            await sendMail(provider.email, 'prestador_nova_mensagem', {
+              NOME_PRESTADOR: provider.fullName || '',
+              NOME_CLIENTE: sender?.fullName || '',
+              PREVIEW_MENSAGEM: preview,
+              LINK_CHAT: chatUrl,
+            }, {
+              subject: `Nova mensagem de ${sender?.fullName || 'um cliente'}`,
+              text: `${provider.fullName || 'Profissional'}, você recebeu uma mensagem. Acesse o app para responder.`,
+            });
+          }
+        } else if (message.senderType === 'provider') {
+          const clientUser = await User.findById(conversation.clientId).select('fullName email');
+          if (clientUser?.email) {
+            await sendMail(clientUser.email, 'cliente_nova_mensagem', {
+              NOME_CLIENTE: clientUser.fullName || '',
+              NOME_PRESTADOR: sender?.fullName || '',
+              PREVIEW_MENSAGEM: preview,
+              LINK_CHAT: chatUrl,
+            }, {
+              subject: `Nova mensagem de ${sender?.fullName || 'um profissional'}`,
+              text: `${clientUser.fullName || 'Olá'}, você recebeu uma mensagem. Acesse o app para responder.`,
+            });
+          }
+        }
+      } catch (err) {
+        console.error('[mail] nova_mensagem:', err.message);
+      }
     });
 
     res.status(201).json(message);
