@@ -493,10 +493,10 @@ export default function ProviderOnboarding() {
         {step === 1 && (
           <div className="space-y-6">
             <div className="text-center mb-6">
-              <h2 className="font-heading text-2xl font-bold text-foreground">Verifique seu telefone</h2>
+              <h2 className="font-heading text-2xl font-bold text-foreground">Verifique seu e-mail</h2>
               <p className="text-sm text-muted-foreground mt-2">
                 Enviamos um código para<br />
-                <strong className="text-foreground">{phone}</strong>
+                <strong className="text-foreground">{email}</strong>
               </p>
             </div>
 
@@ -595,7 +595,7 @@ export default function ProviderOnboarding() {
                     value={currentCity}
                     onChange={e => searchCities(e.target.value)}
                     onFocus={() => currentCity.length >= 3 && setShowCitySuggestions(citySuggestions.length > 0)}
-                    onBlur={() => setTimeout(() => setShowCitySuggestions(false), 150)}
+                    onBlur={() => setTimeout(() => setShowCitySuggestions(false), 250)}
                     placeholder="Digite ao menos 3 letras"
                     className="w-full pl-4 pr-10 py-3 border border-border rounded-xl text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/50"
                   />
@@ -606,7 +606,7 @@ export default function ProviderOnboarding() {
                     {citySuggestions.map((city, i) => (
                       <button
                         key={i}
-                        onMouseDown={() => selectCity(city)}
+                        onPointerDown={() => selectCity(city)}
                         className="w-full flex items-center gap-2 px-4 py-3 text-sm hover:bg-secondary/50 transition-colors text-left border-b border-border last:border-b-0"
                       >
                         <MapPin className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
@@ -848,11 +848,11 @@ export default function ProviderOnboarding() {
       {/* ── Modal: Outras categorias ─────────────────────────────── */}
       {showOthersModal && (
         <div
-          className="fixed inset-0 bg-black/50 z-50 flex items-end"
+          className="fixed inset-0 bg-black/50 z-50 flex items-end md:items-center md:justify-center"
           onClick={() => setShowOthersModal(false)}
         >
           <div
-            className="bg-card rounded-t-2xl w-full flex flex-col shadow-xl"
+            className="bg-card rounded-t-2xl md:rounded-2xl w-full md:max-w-lg flex flex-col shadow-xl"
             style={{ maxHeight: '75dvh' }}
             onClick={e => e.stopPropagation()}
           >
