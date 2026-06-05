@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/api/apiClient';
-import { ChevronLeft, Home, LifeBuoy, MessageCircle, CheckCircle2, Circle, XCircle, AlertTriangle } from 'lucide-react';
+import { ChevronLeft, Home, LifeBuoy, MessageCircle, CheckCircle2, Circle, XCircle, AlertTriangle, Banknote, CreditCard, QrCode } from 'lucide-react';
 import NewServiceRequestModal from '../components/NewServiceRequestModal';
 import { buildRequestSupportDraft, buildSupportComposerState } from '@/lib/support';
 
@@ -202,14 +202,20 @@ function StatusTimeline({ request, interests }) {
   );
 }
 
-function ConfirmedProviderCard({ request, conversation, navigate }) {
+const PAYMENT_ICONS = { PIX: QrCode, DINHEIRO: Banknote, CARTAO_PRESENCIAL: CreditCard };
+const PAYMENT_LABELS = { PIX: 'Pix', DINHEIRO: 'Dinheiro', CARTAO_PRESENCIAL: 'Cartão na maquininha' };
+const PIX_TYPE_LABELS = { ALEATORIA: 'Chave aleatória', CPF: 'CPF', CNPJ: 'CNPJ', EMAIL: 'E-mail', TELEFONE: 'Telefone' };
+
+function ConfirmedProviderCard({ request, conversation, navigate, onMarkPaid, markingPaid }) {
   const photo = request.confirmedProviderPhoto;
   const name = request.confirmedProviderName;
   const pixKey = request.confirmedProviderPixKey;
   const pixKeyType = request.confirmedProviderPixKeyType;
+  const paymentMethod = request.paymentMethod;
+  const paymentStatus = request.paymentStatus;
   if (!name) return null;
 
-  const PIX_TYPE_LABELS = { ALEATORIA: 'Chave aleatória', CPF: 'CPF', CNPJ: 'CNPJ', EMAIL: 'E-mail', TELEFONE: 'Telefone' };
+  const PayIcon = PAYMENT_ICONS[paymentMethod];
 
   return (
     <div className="bg-card border border-border rounded-2xl p-4 mb-4">
@@ -240,8 +246,44 @@ function ConfirmedProviderCard({ request, conversation, navigate }) {
           </button>
         )}
       </div>
-      {pixKey && (
-        <div className="bg-secondary/50 rounded-xl px-3 py-2.5 border border-border">
+      {/* Payment info */}
+      {paymentMethod && (
+        <div className="mt-3 space-y-2">
+          <div className="flex items-center gap-2 bg-secondary/50 rounded-xl px-3 py-2.5 border border-border">
+            {PayIcon && <PayIcon className="w-4 h-4 text-muted-foreground shrink-0" />}
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-muted-foreground">Forma de pagamento</p>
+              <p className="text-sm font-medium text-foreground">{PAYMENT_LABELS[paymentMethod] || paymentMethod}</p>
+            </div>
+            {paymentStatus === 'PAGO' && (
+              <span className="text-xs bg-green-100 text-green-700 border border-green-200 px-2 py-0.5 rounded-full font-medium shrink-0">
+                Pago
+              </span>
+            )}
+          </div>
+
+          {paymentMethod === 'PIX' && pixKey && (
+            <div className="bg-secondary/50 rounded-xl px-3 py-2.5 border border-border">
+              <p className="text-xs text-muted-foreground mb-0.5">Chave Pix · {PIX_TYPE_LABELS[pixKeyType] || pixKeyType}</p>
+              <p className="text-sm font-medium text-foreground break-all">{pixKey}</p>
+            </div>
+          )}
+
+          {paymentStatus === 'PENDENTE' && request.status === 'completed' && (
+            <button
+              onClick={onMarkPaid}
+              disabled={markingPaid}
+              className="w-full py-2.5 border border-green-300 text-green-700 bg-green-50 rounded-xl text-sm font-semibold hover:bg-green-100 transition-colors disabled:opacity-50"
+            >
+              {markingPaid ? 'Registrando...' : 'Marcar como pago'}
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Pix key (when no payment method selected, legacy) */}
+      {!paymentMethod && pixKey && (
+        <div className="mt-3 bg-secondary/50 rounded-xl px-3 py-2.5 border border-border">
           <p className="text-xs text-muted-foreground mb-0.5">Chave Pix · {PIX_TYPE_LABELS[pixKeyType] || pixKeyType}</p>
           <p className="text-sm font-medium text-foreground break-all">{pixKey}</p>
         </div>
@@ -341,6 +383,11 @@ export default function ClientRequestDetail({ viewerMode = 'client' }) {
         navigate('/client/orders');
       }, 30000);
     },
+  });
+
+  const markPaidMutation = useMutation({
+    mutationFn: () => api.entities.ServiceRequest.update(requestId, { paymentStatus: 'PAGO' }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['request', requestId] }),
   });
 
   const handleUndoCancel = async () => {
@@ -443,7 +490,13 @@ export default function ClientRequestDetail({ viewerMode = 'client' }) {
 
         {/* Confirmed provider card */}
         {!isAdminView && isConfirmedOrBeyond && (
-          <ConfirmedProviderCard request={request} conversation={confirmedConversation} navigate={navigate} />
+          <ConfirmedProviderCard
+            request={request}
+            conversation={confirmedConversation}
+            navigate={navigate}
+            onMarkPaid={() => markPaidMutation.mutate()}
+            markingPaid={markPaidMutation.isPending}
+          />
         )}
 
         {/* Request summary */}

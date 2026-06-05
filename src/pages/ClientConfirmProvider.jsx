@@ -2,12 +2,19 @@ import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/api/apiClient';
-import { ChevronLeft, Star, Loader2 } from 'lucide-react';
+import { ChevronLeft, Star, Loader2, Banknote, CreditCard, QrCode } from 'lucide-react';
+
+const PAYMENT_OPTIONS = [
+  { value: 'PIX',             label: 'Pix',                      icon: QrCode,    desc: 'Transferência para a chave Pix do prestador' },
+  { value: 'DINHEIRO',        label: 'Dinheiro',                 icon: Banknote,  desc: 'Pagamento em espécie no local' },
+  { value: 'CARTAO_PRESENCIAL', label: 'Cartão na maquininha',   icon: CreditCard, desc: 'Máquina do próprio prestador' },
+];
 
 export default function ClientConfirmProvider() {
   const { requestId, interestId } = useParams();
   const navigate = useNavigate();
   const [confirming, setConfirming] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState('PIX');
 
   const { data: request } = useQuery({
     queryKey: ['request', requestId],
@@ -40,6 +47,7 @@ export default function ClientConfirmProvider() {
     if (!interest || !request) return;
     setConfirming(true);
     try {
+      const priceNum = parseFloat(String(interest.price || '').replace(',', '.'));
       await api.entities.ServiceRequest.update(requestId, {
         status: 'agreed',
         confirmedProviderId: interest.providerId,
@@ -48,11 +56,14 @@ export default function ClientConfirmProvider() {
         confirmedProviderPixKey: providerProfile?.pixKey || null,
         confirmedProviderPixKeyType: providerProfile?.pixKeyType || null,
         agreedPrice: interest.price,
+        paymentMethod,
+        paymentStatus: 'PENDENTE',
+        paymentAmount: !isNaN(priceNum) ? priceNum : null,
       });
       if (conversation) {
         navigate(`/chat/${conversation.id}`);
       } else {
-        navigate(`/client/request/${requestId}/progress`);
+        navigate(`/client/request/${requestId}`);
       }
     } catch {
       setConfirming(false);
@@ -66,7 +77,7 @@ export default function ClientConfirmProvider() {
   return (
     <div className="min-h-screen bg-background pb-24">
       <div className="flex items-center gap-3 px-4 py-4 border-b border-border bg-card">
-        <button onClick={() => navigate('/client')} className="p-1.5 hover:bg-secondary rounded-lg">
+        <button onClick={() => navigate(-1)} className="p-1.5 hover:bg-secondary rounded-lg">
           <ChevronLeft className="w-5 h-5" />
         </button>
         <h1 className="font-semibold text-foreground">Confirmar profissional</h1>
@@ -157,6 +168,44 @@ export default function ClientConfirmProvider() {
             )}
           </div>
         )}
+
+        {/* Payment method */}
+        <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
+          <h2 className="font-semibold text-foreground">Como você vai pagar?</h2>
+          <p className="text-xs text-muted-foreground -mt-1">
+            O pagamento é feito diretamente ao profissional, sem intermediação do ServiLocal.
+          </p>
+          <div className="space-y-2">
+            {PAYMENT_OPTIONS.map(({ value, label, icon: Icon, desc }) => (
+              <button
+                key={value}
+                onClick={() => setPaymentMethod(value)}
+                className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl border transition-all text-left ${
+                  paymentMethod === value
+                    ? 'border-primary bg-primary/5'
+                    : 'border-border bg-background hover:border-primary/30'
+                }`}
+              >
+                <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${
+                  paymentMethod === value ? 'bg-primary text-primary-foreground' : 'bg-secondary text-muted-foreground'
+                }`}>
+                  <Icon className="w-4 h-4" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className={`text-sm font-semibold ${paymentMethod === value ? 'text-primary' : 'text-foreground'}`}>
+                    {label}
+                  </p>
+                  <p className="text-xs text-muted-foreground">{desc}</p>
+                </div>
+                <div className={`w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center ${
+                  paymentMethod === value ? 'border-primary bg-primary' : 'border-border'
+                }`}>
+                  {paymentMethod === value && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
 
         {/* Actions */}
         <div className="space-y-3 pt-2">
