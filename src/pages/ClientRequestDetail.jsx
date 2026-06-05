@@ -504,6 +504,13 @@ export default function ClientRequestDetail({ viewerMode = 'client' }) {
               Editar pedido
             </button>
             <button
+              onClick={() => navigate('/client')}
+              className="w-full flex items-center justify-center gap-2 px-4 py-3.5 text-muted-foreground border border-border rounded-xl hover:bg-secondary/50 transition-colors font-medium"
+            >
+              <Home className="w-4 h-4" />
+              Voltar para home
+            </button>
+            <button
               onClick={() => setShowCancelModal(true)}
               disabled={cancelMutation.isPending}
               className="w-full px-4 py-3.5 text-red-600 border border-red-200 rounded-xl hover:bg-red-50 transition-colors font-medium disabled:opacity-50"

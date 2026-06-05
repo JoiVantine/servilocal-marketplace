@@ -13,6 +13,7 @@ export default function NewServiceRequestModal({ category, request, onClose, onU
   const [scheduledAt, setScheduledAt] = useState(request?.scheduledAt ?? '');
   const [photos, setPhotos] = useState(request?.photos ?? []);
   const [photoLoading, setPhotoLoading] = useState(false);
+  const [photoError, setPhotoError] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 
   const hasChanged = isEdit && (
@@ -40,12 +41,18 @@ export default function NewServiceRequestModal({ category, request, onClose, onU
   const handlePhotoAdd = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      setPhotoError(true);
+      e.target.value = '';
+      return;
+    }
     setPhotoLoading(true);
+    setPhotoError(false);
     try {
       const url = await api.uploadFile(file);
       setPhotos(prev => [...prev, url]);
     } catch {
-      // upload failed silently
+      setPhotoError(true);
     } finally {
       setPhotoLoading(false);
       e.target.value = '';
@@ -170,6 +177,9 @@ export default function NewServiceRequestModal({ category, request, onClose, onU
               )}
             </div>
             <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoAdd} />
+            {photoError && (
+              <p className="text-xs text-red-500 mt-1.5">Falha ao enviar foto. Tente novamente.</p>
+            )}
           </div>
 
           {/* When */}

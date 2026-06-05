@@ -100,7 +100,7 @@ export default function ClientNotifications() {
   return (
     <div className="min-h-screen bg-secondary/30 pb-20">
       <div className="flex items-center gap-3 px-4 py-4 bg-card border-b border-border">
-        <button onClick={() => navigate(-1)} className="p-1.5 hover:bg-secondary rounded-lg">
+        <button onClick={() => navigate('/client')} className="p-1.5 hover:bg-secondary rounded-lg">
           <ChevronLeft className="w-5 h-5" />
         </button>
         <h1 className="font-semibold text-foreground">Notificações</h1>

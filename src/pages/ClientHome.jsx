@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/api/apiClient';
-import { Search, ChevronRight, MapPin, ShieldCheck, LogOut, X, ArrowLeft } from 'lucide-react';
+import { ChevronRight, MapPin, ShieldCheck, LogOut, X, ArrowLeft } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import ClientBottomNav from '../components/ClientBottomNav';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
@@ -50,7 +50,6 @@ function formatDate(dateStr) {
 
 export default function ClientHome() {
   const navigate = useNavigate();
-  const [searchQuery, setSearchQuery] = useState('');
   const [selectedCat, setSelectedCat] = useState(null);
   const [showOthersModal, setShowOthersModal] = useState(false);
   const [modalCat, setModalCat] = useState(null);
@@ -118,12 +117,6 @@ export default function ClientHome() {
                     <span className="text-xs text-muted-foreground truncate">{user.city}</span>
                   </div>
                 )}
-                <button
-                  onClick={() => navigate('/client/profile')}
-                  className="flex items-center gap-0.5 mt-1 text-xs text-primary font-medium"
-                >
-                  Editar dados <ChevronRight className="w-3 h-3" />
-                </button>
               </div>
               <button
                 onClick={() => api.auth.logout('/')}
@@ -132,20 +125,6 @@ export default function ClientHome() {
               >
                 <LogOut className="w-4 h-4" />
               </button>
-            </div>
-          </div>
-
-          {/* Search */}
-          <div className="px-4 pb-4">
-            <div className="relative">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <input
-                type="text"
-                placeholder="Buscar serviço ou profissional..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 border border-border rounded-xl bg-card focus:outline-none focus:ring-2 focus:ring-primary/30 text-sm placeholder-muted-foreground"
-              />
             </div>
           </div>
 
@@ -260,7 +239,6 @@ export default function ClientHome() {
                 <p className="font-semibold text-sm text-foreground">Profissionais verificados</p>
                 <p className="text-xs text-muted-foreground mt-0.5">Mais segurança e qualidade para você.</p>
               </div>
-              <ChevronRight className="w-4 h-4 text-primary shrink-0" />
             </div>
           </div>
 

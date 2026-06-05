@@ -39,6 +39,11 @@ export default function ClientProfile() {
   const handlePhotoChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      setPhotoError(true);
+      e.target.value = '';
+      return;
+    }
     setPhotoLoading(true);
     setPhotoError(false);
     try {
