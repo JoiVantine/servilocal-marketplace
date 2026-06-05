@@ -188,7 +188,7 @@ export default function NewServiceRequest() {
       description: description.trim(),
       category: selectedCategory,
       subcategory: selectedSubcategory,
-      city: editAddress ? normalizeCityState(addressData.city, addressData.state) : (userCache.city || ''),
+      city: editAddress ? addressData.city : ((userCache.city || '').split(' - ')[0].trim()),
       neighborhood: editAddress ? addressData.neighborhood : (profileCache?.neighborhood || ''),
       address: editAddress ? fullAddress : (savedAddress || profileCache?.address || ''),
       zipCode: editAddress ? onlyDigits(addressData.cep) : onlyDigits(profileCache?.cep),

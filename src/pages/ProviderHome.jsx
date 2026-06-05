@@ -88,12 +88,8 @@ export default function ProviderHome() {
   };
 
   const { data: rawRequests = [], isLoading } = useQuery({
-    queryKey: ['provider-requests', user?.city],
-    queryFn: async () => {
-      const query = { status: 'open' };
-      if (user?.city) query.city = user.city;
-      return api.entities.ServiceRequest.filter(query, '-created_date', 50);
-    },
+    queryKey: ['provider-requests'],
+    queryFn: () => api.entities.ServiceRequest.filter({ status: 'open' }, '-created_date', 100),
     enabled: !!user,
     refetchInterval: 30000,
   });
@@ -105,9 +101,13 @@ export default function ProviderHome() {
     refetchInterval: 15000,
   });
 
-  const requests = providerSpecialties.length > 0
-    ? rawRequests.filter(r => !r.subcategory || providerSpecialties.includes(r.subcategory))
-    : rawRequests;
+  const providerCity = (user?.city || '').split(' - ')[0].trim().toLowerCase();
+  const requests = rawRequests.filter(r => {
+    const reqCity = (r.city || '').split(' - ')[0].trim().toLowerCase();
+    const cityMatch = !providerCity || !reqCity || reqCity === providerCity;
+    const specMatch = !providerSpecialties.length || !r.subcategory || providerSpecialties.includes(r.subcategory);
+    return cityMatch && specMatch;
+  });
 
   const visibleRequests = requests.filter(r => !dismissed.has(r.id));
 
