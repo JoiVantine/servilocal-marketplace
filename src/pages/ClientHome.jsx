@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/api/apiClient';
-import { ChevronRight, MapPin, ShieldCheck, LogOut, X, ArrowLeft } from 'lucide-react';
+import { ChevronRight, MapPin, ShieldCheck, LogOut, X, ArrowLeft, Users, Star } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import ClientBottomNav from '../components/ClientBottomNav';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
@@ -48,9 +48,17 @@ function formatDate(dateStr) {
   return `Solicitado em ${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
 }
 
+function matchesCategory(provider, categoryName) {
+  if (!categoryName) return true;
+  const name = categoryName.toLowerCase();
+  return provider.specialties?.some(s =>
+    s.toLowerCase().includes(name) || name.includes(s.toLowerCase())
+  );
+}
+
 export default function ClientHome() {
   const navigate = useNavigate();
-  const [selectedCat, setSelectedCat] = useState(null);
+  const [categorySheet, setCategorySheet] = useState(null);
   const [showOthersModal, setShowOthersModal] = useState(false);
   const [modalCat, setModalCat] = useState(null);
 
@@ -63,17 +71,35 @@ export default function ClientHome() {
     enabled: !!user?.id,
   });
 
+  const { data: cityProviders = [] } = useQuery({
+    queryKey: ['city-providers-active', user?.city],
+    queryFn: () => api.entities.ProviderProfile.filter({ city: user?.city, active: true }),
+    enabled: !!user?.city,
+    staleTime: 5 * 60 * 1000,
+  });
+
   const firstName = (user?.fullName || user?.full_name)?.split(' ')[0] || '';
+  const availableCount = cityProviders.length;
+
+  const ratingsWithValue = cityProviders.filter(p => p.rating && parseFloat(p.rating) > 0);
+  const avgRating = ratingsWithValue.length > 0
+    ? (ratingsWithValue.reduce((sum, p) => sum + parseFloat(p.rating), 0) / ratingsWithValue.length).toFixed(1)
+    : null;
 
   const getSubcategories = (name) => categories.find(c => c.name === name)?.subcategories || [];
-  const selectedSubs = selectedCat ? getSubcategories(selectedCat) : [];
 
   const handleQuickCatClick = (cat) => {
     if (!cat.name) {
       setShowOthersModal(true);
       setModalCat(null);
     } else {
-      setSelectedCat(prev => prev === cat.name ? null : cat.name);
+      const subs = getSubcategories(cat.name);
+      const provCount = cityProviders.filter(p => matchesCategory(p, cat.name)).length;
+      const catRatings = cityProviders.filter(p => matchesCategory(p, cat.name) && p.rating && parseFloat(p.rating) > 0);
+      const catAvg = catRatings.length > 0
+        ? (catRatings.reduce((sum, p) => sum + parseFloat(p.rating), 0) / catRatings.length).toFixed(1)
+        : null;
+      setCategorySheet({ ...cat, subcategories: subs, providerCount: provCount, avgRating: catAvg });
     }
   };
 
@@ -129,49 +155,73 @@ export default function ClientHome() {
           </div>
 
           {/* Categorias */}
-          <div className="px-4 mb-5">
+          <div className="px-4 mb-4">
             <p className="text-base font-bold text-foreground mb-3">O que você precisa hoje?</p>
             <div className="grid grid-cols-3 gap-3">
-              {QUICK_CATEGORIES.map((cat) => {
-                const isSelected = selectedCat === cat.name;
-                return (
-                  <button
-                    key={cat.label}
-                    onClick={() => handleQuickCatClick(cat)}
-                    className={`flex flex-col items-center gap-2 py-3 px-2 rounded-2xl border transition-all ${
-                      isSelected
-                        ? 'border-primary bg-primary/5'
-                        : 'border-border bg-card hover:border-primary/30 hover:bg-primary/5'
-                    }`}
-                  >
-                    <div className={`w-12 h-12 rounded-full ${cat.bg} flex items-center justify-center shrink-0`}>
-                      <span className="text-2xl leading-none">{cat.icon}</span>
-                    </div>
-                    <span className={`text-xs font-medium text-center leading-tight ${isSelected ? 'text-primary' : 'text-foreground'}`}>
-                      {cat.label}
-                    </span>
-                  </button>
-                );
-              })}
+              {QUICK_CATEGORIES.map((cat) => (
+                <button
+                  key={cat.label}
+                  onClick={() => handleQuickCatClick(cat)}
+                  className="flex flex-col items-center gap-2 py-3 px-2 rounded-2xl border border-border bg-card hover:border-primary/30 hover:bg-primary/5 transition-all"
+                >
+                  <div className={`w-12 h-12 rounded-full ${cat.bg} flex items-center justify-center shrink-0`}>
+                    <span className="text-2xl leading-none">{cat.icon}</span>
+                  </div>
+                  <span className="text-xs font-medium text-center leading-tight text-foreground">
+                    {cat.label}
+                  </span>
+                </button>
+              ))}
             </div>
+          </div>
 
-            {/* Subcategories inline */}
-            {selectedCat && selectedSubs.length > 0 && (
-              <div className="mt-3">
-                <p className="text-xs text-muted-foreground mb-2 font-medium">Selecione o tipo:</p>
-                <div className="flex flex-wrap gap-2">
-                  {selectedSubs.map((sub) => (
-                    <button
-                      key={sub}
-                      onClick={() => navigate('/client/new-request', { state: { category: selectedCat, subcategory: sub } })}
-                      className="px-3 py-2 rounded-full border border-border bg-background text-xs font-medium text-foreground hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all"
-                    >
-                      {sub}
-                    </button>
-                  ))}
+          {/* Profissionais disponíveis na sua região */}
+          {user.city && availableCount > 0 && (
+            <div className="px-4 mb-4">
+              <div className="bg-primary/5 border border-primary/15 rounded-2xl p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <Users className="w-4 h-4 text-primary" />
+                  <p className="text-sm font-bold text-foreground">Profissionais na sua região</p>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-primary text-sm font-semibold">✓</span>
+                    <span className="text-sm text-foreground">
+                      <span className="font-bold text-primary">{availableCount}</span> disponíveis em {user.city}
+                    </span>
+                  </div>
+                  {avgRating && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-primary text-sm font-semibold">✓</span>
+                      <div className="flex items-center gap-1">
+                        <span className="text-sm text-foreground">
+                          Avaliação média de
+                        </span>
+                        <Star className="w-3.5 h-3.5 text-yellow-400 fill-yellow-400" />
+                        <span className="text-sm font-bold text-foreground">{avgRating}</span>
+                      </div>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2">
+                    <span className="text-primary text-sm font-semibold">✓</span>
+                    <span className="text-sm text-foreground">Atende por chat ou telefone</span>
+                  </div>
                 </div>
               </div>
-            )}
+            </div>
+          )}
+
+          {/* Profissionais verificados */}
+          <div className="px-4 mb-5">
+            <div className="bg-card border border-border rounded-xl p-4 flex items-center gap-3">
+              <div className="w-11 h-11 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                <ShieldCheck className="w-5 h-5 text-primary" />
+              </div>
+              <div className="flex-1">
+                <p className="font-semibold text-sm text-foreground">Profissionais verificados</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Mais segurança e qualidade para você.</p>
+              </div>
+            </div>
           </div>
 
           {/* Seus pedidos */}
@@ -229,26 +279,109 @@ export default function ClientHome() {
             )}
           </div>
 
-          {/* Profissionais verificados */}
-          <div className="px-4 mb-6">
-            <div className="bg-primary/10 border border-primary/20 rounded-xl p-4 flex items-center gap-3">
-              <div className="w-11 h-11 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
-                <ShieldCheck className="w-5 h-5 text-primary" />
-              </div>
-              <div className="flex-1">
-                <p className="font-semibold text-sm text-foreground">Profissionais verificados</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Mais segurança e qualidade para você.</p>
-              </div>
-            </div>
-          </div>
-
         </div>
       </div>
+
+      {/* Category bottom sheet */}
+      {categorySheet && (
+        <div className="fixed inset-0 z-50 flex flex-col justify-end">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setCategorySheet(null)} />
+          <div className="relative bg-background rounded-t-3xl max-h-[85vh] flex flex-col overflow-hidden shadow-2xl">
+            {/* Handle */}
+            <div className="flex justify-center pt-3 pb-1 shrink-0">
+              <div className="w-10 h-1 rounded-full bg-border" />
+            </div>
+
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-3 shrink-0">
+              <div className="flex items-center gap-3">
+                <div className={`w-11 h-11 rounded-full ${categorySheet.bg} flex items-center justify-center`}>
+                  <span className="text-2xl leading-none">{categorySheet.icon}</span>
+                </div>
+                <div>
+                  <p className="font-bold text-foreground text-base">{categorySheet.label}</p>
+                  {categorySheet.providerCount > 0 ? (
+                    <p className="text-xs text-muted-foreground">
+                      {categorySheet.providerCount} profissional{categorySheet.providerCount !== 1 ? 'is' : ''} disponível{categorySheet.providerCount !== 1 ? 'is' : ''} na sua região
+                    </p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">Serviço disponível</p>
+                  )}
+                </div>
+              </div>
+              <button
+                onClick={() => setCategorySheet(null)}
+                className="p-2 rounded-xl hover:bg-secondary transition-colors"
+              >
+                <X className="w-5 h-5 text-muted-foreground" />
+              </button>
+            </div>
+
+            {/* Stats row */}
+            {(categorySheet.providerCount > 0 || categorySheet.avgRating) && (
+              <div className="px-5 pb-3 shrink-0">
+                <div className="bg-primary/5 border border-primary/10 rounded-xl px-4 py-3 flex items-center gap-4">
+                  {categorySheet.providerCount > 0 && (
+                    <div className="flex items-center gap-1.5">
+                      <Users className="w-3.5 h-3.5 text-primary" />
+                      <span className="text-sm font-semibold text-foreground">{categorySheet.providerCount}</span>
+                      <span className="text-xs text-muted-foreground">disponíveis</span>
+                    </div>
+                  )}
+                  {categorySheet.avgRating && (
+                    <div className="flex items-center gap-1.5">
+                      <Star className="w-3.5 h-3.5 text-yellow-400 fill-yellow-400" />
+                      <span className="text-sm font-semibold text-foreground">{categorySheet.avgRating}</span>
+                      <span className="text-xs text-muted-foreground">média</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <div className="px-5 pb-2 shrink-0">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                Selecione o tipo de serviço
+              </p>
+            </div>
+
+            {/* Subcategories */}
+            <div className="overflow-y-auto flex-1 px-5 pb-6">
+              {categorySheet.subcategories.length > 0 ? (
+                <div className="space-y-2">
+                  {categorySheet.subcategories.map((sub) => (
+                    <button
+                      key={sub}
+                      onClick={() => {
+                        navigate('/client/new-request', { state: { category: categorySheet.name, subcategory: sub } });
+                        setCategorySheet(null);
+                      }}
+                      className="w-full flex items-center justify-between px-4 py-3.5 bg-card border border-border rounded-xl hover:border-primary/40 hover:bg-primary/5 transition-all text-left"
+                    >
+                      <span className="text-sm font-medium text-foreground">{sub}</span>
+                      <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <button
+                  onClick={() => {
+                    navigate('/client/new-request', { state: { category: categorySheet.name } });
+                    setCategorySheet(null);
+                  }}
+                  className="w-full py-4 bg-primary text-primary-foreground rounded-xl font-semibold hover:opacity-90 transition-opacity"
+                >
+                  Solicitar atendimento
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal: Outros — todos os serviços */}
       {showOthersModal && (
         <div className="fixed inset-0 z-50 flex flex-col bg-background">
-          {/* Header */}
           <div className="bg-card border-b border-border px-4 h-14 flex items-center justify-between shrink-0">
             {modalCat ? (
               <button
@@ -273,7 +406,6 @@ export default function ClientHome() {
 
           <div className="flex-1 overflow-y-auto p-4 max-w-md mx-auto w-full">
             {!modalCat ? (
-              // Todos as categorias em grid de ícones
               <div className="grid grid-cols-3 gap-3">
                 {categories.map((cat) => {
                   const Icon = cat.icon;
@@ -292,7 +424,6 @@ export default function ClientHome() {
                 })}
               </div>
             ) : (
-              // Subcategorias da categoria selecionada
               <div>
                 <p className="text-sm text-muted-foreground mb-4">Selecione o tipo de serviço:</p>
                 <div className="flex flex-wrap gap-2">
