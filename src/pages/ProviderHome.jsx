@@ -58,22 +58,25 @@ export default function ProviderHome() {
   const [dismissed, setDismissed] = useState(new Set());
 
   useEffect(() => {
-    api.auth.me().then(async (u) => {
-      setUser(u);
-      const provProfiles = await api.entities.ProviderProfile.filter({ created_by_id: u.id });
-      if (provProfiles.length === 0) { navigate('/provider/onboarding'); return; }
-      setProviderSpecialties(provProfiles[0].specialties || []);
-
-      const userProfiles = await api.entities.UserProfile.filter({ userId: u.id });
-      const up = userProfiles.find(p => p.role === 'provider') || userProfiles[0];
-      if (up) {
-        setUserProfileId(up.id);
-        setAccepting(up.active !== false);
-      }
-
-      const services = await api.entities.ProviderService.filter({ providerId: u.id });
-      setHasProviderServices(services.length > 0);
-    }).catch(() => navigate('/provider/onboarding'));
+    api.auth.me()
+      .then(async (u) => {
+        setUser(u);
+        try {
+          const provProfiles = await api.entities.ProviderProfile.filter({ created_by_id: u.id });
+          if (provProfiles.length === 0) { navigate('/provider/onboarding'); return; }
+          setProviderSpecialties(provProfiles[0].specialties || []);
+        } catch { /* mantém home sem redirecionar */ }
+        try {
+          const userProfiles = await api.entities.UserProfile.filter({ userId: u.id });
+          const up = userProfiles.find(p => p.role === 'provider') || userProfiles[0];
+          if (up) { setUserProfileId(up.id); setAccepting(up.active !== false); }
+        } catch { /* ignora */ }
+        try {
+          const services = await api.entities.ProviderService.filter({ providerId: u.id });
+          setHasProviderServices(services.length > 0);
+        } catch { /* ignora */ }
+      })
+      .catch(() => navigate('/'));
   }, []);
 
   const handleToggleAccepting = async () => {

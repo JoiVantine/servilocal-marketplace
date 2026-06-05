@@ -46,7 +46,6 @@ export default function NewServiceRequest() {
   const [selectedCategory, setSelectedCategory] = useState(state?.category || '');
   const [selectedSubcategory, setSelectedSubcategory] = useState(state?.subcategory || '');
   const [categoryExpanded, setCategoryExpanded] = useState(false);
-  const [expandedCat, setExpandedCat] = useState(null);
   const [photos, setPhotos] = useState([]);
   const [photoLoading, setPhotoLoading] = useState(false);
   const [photoError, setPhotoError] = useState(false);
@@ -236,52 +235,65 @@ export default function NewServiceRequest() {
           <button
             onClick={() => setCategoryExpanded(!categoryExpanded)}
             className={`w-full flex items-center justify-between px-4 py-3 border rounded-lg text-sm transition-colors ${
-              selectedSubcategory
+              selectedCategory
                 ? 'border-primary bg-primary/5 text-foreground'
                 : 'border-border bg-card text-muted-foreground'
             }`}
           >
-            <span>{selectedSubcategory || 'Selecione a categoria'}</span>
+            <span>{selectedCategory || 'Selecione a categoria'}</span>
             <ChevronDown className={`w-4 h-4 transition-transform ${categoryExpanded ? 'rotate-180' : ''}`} />
           </button>
 
           {categoryExpanded && (
-            <div className="mt-2 border border-border rounded-xl overflow-hidden bg-card shadow-sm max-h-72 overflow-y-auto">
+            <div className="mt-2 border border-border rounded-xl overflow-hidden bg-card shadow-sm max-h-56 overflow-y-auto">
               {categories.map(cat => {
                 const Icon = cat.icon;
-                const isExp = expandedCat === cat.name;
                 return (
-                  <div key={cat.name}>
-                    <button
-                      onClick={() => setExpandedCat(isExp ? null : cat.name)}
-                      className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-secondary/20 border-b border-border last:border-0 text-sm"
-                    >
-                      <Icon className="w-4 h-4 text-muted-foreground shrink-0" />
-                      <span className="flex-1 font-medium text-foreground">{cat.name}</span>
-                      <ChevronDown className={`w-3.5 h-3.5 text-muted-foreground transition-transform ${isExp ? 'rotate-180' : ''}`} />
-                    </button>
-                    {isExp && (
-                      <div className="p-3 flex flex-wrap gap-2 bg-secondary/10 border-b border-border">
-                        {cat.subcategories.map(sub => (
-                          <button
-                            key={sub}
-                            onClick={() => {
-                              setSelectedCategory(cat.name);
-                              setSelectedSubcategory(sub);
-                              setCategoryExpanded(false);
-                            }}
-                            className="px-3 py-1.5 rounded-full text-xs font-medium border border-border bg-background text-foreground hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all"
-                          >
-                            {sub}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                  <button
+                    key={cat.name}
+                    onClick={() => {
+                      setSelectedCategory(cat.name);
+                      setSelectedSubcategory('');
+                      setCategoryExpanded(false);
+                    }}
+                    className={`w-full flex items-center gap-3 px-4 py-3 text-left border-b border-border last:border-0 text-sm transition-colors ${
+                      selectedCategory === cat.name
+                        ? 'bg-primary/5 text-primary'
+                        : 'hover:bg-secondary/20 text-foreground'
+                    }`}
+                  >
+                    <Icon className="w-4 h-4 shrink-0" />
+                    <span className="font-medium">{cat.name}</span>
+                  </button>
                 );
               })}
             </div>
           )}
+
+          {selectedCategory && (() => {
+            const cat = categories.find(c => c.name === selectedCategory);
+            if (!cat?.subcategories?.length) return null;
+            return (
+              <div className="mt-3">
+                <p className="text-xs text-muted-foreground mb-2">Selecione o serviço específico:</p>
+                <div className="flex flex-wrap gap-2">
+                  {cat.subcategories.map(sub => (
+                    <button
+                      key={sub}
+                      onClick={() => setSelectedSubcategory(sub === selectedSubcategory ? '' : sub)}
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                        selectedSubcategory === sub
+                          ? 'bg-primary text-primary-foreground border-primary'
+                          : 'border-border bg-card text-foreground hover:border-primary/50 hover:bg-primary/5'
+                      }`}
+                    >
+                      {sub}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
         </div>
 
         <div>

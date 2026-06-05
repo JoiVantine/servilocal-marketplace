@@ -108,7 +108,7 @@ export default function ProviderOnboarding() {
       .then(data => {
         ibgeCities.current = data.map(m => ({
           nome: m.nome,
-          uf: m.microrregiao.mesorregiao.UF.sigla,
+          uf: m.microrregiao?.mesorregiao?.UF?.sigla || '',
         }));
       })
       .catch(() => {});
