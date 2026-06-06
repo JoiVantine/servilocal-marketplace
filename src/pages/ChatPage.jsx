@@ -318,9 +318,16 @@ export default function ChatPage() {
                 {(message.text || message.content) && (
                   <p className="text-sm whitespace-pre-wrap">{message.text || message.content}</p>
                 )}
-                <p className={`text-[10px] mt-1 ${isRight ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
-                  {new Date(message.created_date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                </p>
+                <div className={`flex items-center gap-1 justify-end mt-1`}>
+                  <p className={`text-[10px] ${isRight ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
+                    {new Date(message.created_date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                  </p>
+                  {message.senderId === user?.id && (
+                    <span className={`text-[10px] font-bold leading-none ${message.read ? 'text-blue-400' : (isRight ? 'text-primary-foreground/50' : 'text-muted-foreground')}`}>
+                      {message.read ? '✓✓' : '✓'}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           );

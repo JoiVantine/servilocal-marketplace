@@ -70,7 +70,7 @@ export default function ClientProfile() {
         birthDate: birthDate || undefined,
       });
       refreshUser();
-      setShowSuccessModal(true);
+      navigate('/client');
     } catch {
       setSaveError(true);
     } finally {

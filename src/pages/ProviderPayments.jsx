@@ -36,7 +36,7 @@ export default function ProviderPayments() {
       if (provProfiles.length > 0) {
         await api.entities.ProviderProfile.update(provProfiles[0].id, { pixKey, pixKeyType });
       }
-      setShowSuccessModal(true);
+      navigate('/provider');
     } catch {
       setSaveError(true);
     } finally {

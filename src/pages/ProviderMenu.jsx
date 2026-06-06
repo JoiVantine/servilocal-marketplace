@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '@/api/apiClient';
-import { User, Briefcase, Bell, Headphones, Info, LogOut, ChevronRight, AlertCircle, ArrowLeft, Wallet } from 'lucide-react';
+import { User, Briefcase, Bell, Headphones, Info, LogOut, ChevronRight, AlertCircle, ArrowLeft, Wallet, ClipboardList } from 'lucide-react';
 import ProviderBottomNav from '@/components/ProviderBottomNav';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 
@@ -22,12 +22,13 @@ export default function ProviderMenu() {
   const city = user?.city || '';
 
   const menuItems = [
-    { icon: User,       label: 'Meus dados',           path: '/provider/profile' },
-    { icon: Briefcase,  label: 'Meus serviços',        path: '/provider/services' },
-    { icon: Wallet,     label: 'Formas de pagamento',  path: '/provider/payments' },
-    { icon: Bell,       label: 'Notificações',         path: '/provider/notifications' },
-    { icon: Headphones, label: 'Ajuda e suporte',      path: '/provider/support' },
-    { icon: Info,       label: 'Sobre o aplicativo',   path: '/client/about' },
+    { icon: User,          label: 'Meus dados',           path: '/provider/profile' },
+    { icon: ClipboardList, label: 'Meus pedidos',          path: '/provider/orders' },
+    { icon: Briefcase,     label: 'Meus serviços',        path: '/provider/services' },
+    { icon: Wallet,        label: 'Formas de pagamento',  path: '/provider/payments' },
+    { icon: Bell,          label: 'Notificações',         path: '/provider/notifications' },
+    { icon: Headphones,    label: 'Ajuda e suporte',      path: '/provider/support' },
+    { icon: Info,          label: 'Sobre o aplicativo',   path: '/client/about' },
   ];
 
   return (

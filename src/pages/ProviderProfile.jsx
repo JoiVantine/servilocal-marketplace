@@ -110,7 +110,7 @@ export default function ProviderProfile() {
         await api.entities.ProviderProfile.update(provProfiles[0].id, { name, phone, city: firstCity, serviceAreas });
       }
 
-      setShowSuccessModal(true);
+      navigate('/provider');
     } catch {
       setSaveError(true);
     } finally {
