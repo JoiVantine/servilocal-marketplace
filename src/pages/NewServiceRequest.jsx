@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { useServices } from '@/hooks/useServices';
 
-const LOGO_URL = '/logo.png';
+const LOGO_URL = '/onboarding-city.png';
 
 const emptyScheduleOption = () => ({
   date: '',

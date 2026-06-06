@@ -7,7 +7,7 @@ import HeroSection from "../components/HeroSection";
 import HowItWorks from "../components/HowItWorks";
 import Benefits from "../components/Benefits";
 
-const LOGO_URL = "/logo.png";
+const LOGO_URL = "/onboarding-city.png";
 
 export default function Home() {
   const navigate = useNavigate();

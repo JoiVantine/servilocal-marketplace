@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 
 const SLIDES = [
   {
-    img: '/logo.png',
+    img: '/onboarding-city.png',
     title: 'Bem-vindo ao ServiLocal',
     subtitle: 'Encontre profissionais da sua cidade para resolver o que você precisa.',
   },
@@ -13,7 +13,7 @@ const SLIDES = [
     subtitle: 'Encontre profissionais da sua região em poucos minutos.',
   },
   {
-    img: '/onboarding-chat.png',
+    img: '/onboarding.chat.png',
     title: 'Converse antes de contratar',
     subtitle: 'Receba propostas, tire dúvidas e escolha o melhor profissional.',
   },
@@ -57,7 +57,7 @@ export default function ClientWelcome() {
           src={slide.img}
           alt={slide.title}
           className="w-64 h-64 object-contain drop-shadow-md transition-opacity duration-300"
-          onError={(e) => { e.currentTarget.src = '/logo.png'; }}
+          onError={(e) => { e.currentTarget.src = '/onboarding-city.png'; }}
         />
 
         <div className="space-y-3">

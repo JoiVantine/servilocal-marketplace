@@ -155,7 +155,7 @@ export default function ProviderRequestsMap() {
           <ArrowLeft className="w-5 h-5" />
         </button>
         <div className="flex items-center gap-2 flex-1">
-          <img src="/logo.png" alt="ServiLocal" className="w-5 h-5 object-contain" />
+          <img src="/onboarding-city.png" alt="ServiLocal" className="w-5 h-5 object-contain" />
           <h1 className="font-semibold text-foreground text-sm">Pedidos no mapa</h1>
         </div>
         <button

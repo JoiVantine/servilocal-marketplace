@@ -7,7 +7,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useServices } from '@/hooks/useServices';
 import { CATEGORY_GROUPS } from '@/lib/categories';
 
-const LOGO_URL = "/logo.png";
+const LOGO_URL = "/onboarding-city.png";
 
 export default function CityServices() {
   const navigate = useNavigate();

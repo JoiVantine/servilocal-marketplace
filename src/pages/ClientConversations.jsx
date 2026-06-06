@@ -51,7 +51,7 @@ export default function ClientConversations() {
     <div className="min-h-screen bg-background pb-20">
       <div className="px-4 pt-4 pb-4 bg-card border-b border-border">
         <div className="flex items-center gap-2 mb-3">
-          <img src="/logo.png" alt="ServiLocal" className="w-6 h-6 object-contain" />
+          <img src="/onboarding-city.png" alt="ServiLocal" className="w-6 h-6 object-contain" />
           <span className="text-sm font-semibold text-foreground">Servi<span className="text-primary font-bold">Local</span></span>
         </div>
         <h1 className="font-heading text-2xl font-bold text-foreground">Conversas</h1>

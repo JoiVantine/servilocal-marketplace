@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { X, ChevronRight } from 'lucide-react';
 
-const LOGO_URL = "/logo.png";
+const LOGO_URL = "/onboarding-city.png";
 
 export default function ProviderServiceModal({ subcategory, category, onClose, onSave, initialData }) {
   const [price, setPrice] = useState(initialData?.price || '');

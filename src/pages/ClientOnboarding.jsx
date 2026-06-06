@@ -256,7 +256,7 @@ export default function ClientOnboarding() {
       {/* Header — oculto no step 0 */}
       {step > 0 && (
         <div className="border-b border-border bg-card px-4 py-3 flex items-center gap-2">
-          <img src="/logo.png" alt="ServiLocal" className="w-6 h-6" />
+          <img src="/onboarding-city.png" alt="ServiLocal" className="w-6 h-6" />
           <span className="text-sm font-semibold text-foreground">
             Servi<span className="text-primary font-bold">Local</span>
           </span>
@@ -304,7 +304,7 @@ export default function ClientOnboarding() {
                   src="/onboarding-city.png"
                   alt="ServiLocal"
                   className="w-48 h-48 object-contain drop-shadow-md"
-                  onError={(e) => { e.currentTarget.src = '/logo.png'; }}
+                  onError={(e) => { e.currentTarget.src = '/onboarding-city.png'; }}
                 />
                 <div className="space-y-1">
                   <p className="text-sm font-medium text-primary">Olá!</p>

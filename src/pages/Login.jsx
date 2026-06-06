@@ -4,7 +4,7 @@ import { api } from '@/api/apiClient';
 import { Lock, Mail, Phone, Eye, EyeOff, Loader2, MapPin, Search, Building2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
-const LOGO_URL = '/logo.png';
+const LOGO_URL = '/onboarding-city.png';
 
 export default function Login() {
   const navigate = useNavigate();

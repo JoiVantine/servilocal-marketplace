@@ -4,7 +4,7 @@ import { ChevronLeft, Clock, X, ShieldCheck } from 'lucide-react';
 import { api } from '@/api/apiClient';
 import GoogleIcon from '../components/GoogleIcon';
 
-const LOGO_URL = '/logo.png';
+const LOGO_URL = '/onboarding-city.png';
 
 const TERMS_HTML = `
 TERMOS DE USO — SERVILOCAL

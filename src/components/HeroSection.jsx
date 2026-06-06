@@ -2,7 +2,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 
-const LOGO_URL = "/logo.png";
+const LOGO_URL = "/onboarding-city.png";
 
 export default function HeroSection() {
   const navigate = useNavigate();

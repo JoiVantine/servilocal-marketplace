@@ -5,7 +5,7 @@ import { ChevronLeft, ChevronRight, X, User, FileText, Lock, Shield } from 'luci
 import { TERMS_TEXT, PRIVACY_TEXT } from '@/lib/legalContent';
 import ClientBottomNav from '@/components/ClientBottomNav';
 
-const LOGO_URL = '/logo.png';
+const LOGO_URL = '/onboarding-city.png';
 
 const ABOUT_TEXT = `O ServiLocal é uma plataforma digital que conecta clientes a prestadores de serviços locais da sua cidade.
 

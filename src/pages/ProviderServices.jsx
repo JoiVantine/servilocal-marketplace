@@ -4,7 +4,7 @@ import { api } from '@/api/apiClient';
 import { Home, Briefcase, MessageCircle, Pencil, Trash2, Plus, MapPin, Clock, DollarSign } from 'lucide-react';
 import ProviderServiceModal from '@/components/ProviderServiceModal';
 
-const LOGO_URL = "/logo.png";
+const LOGO_URL = "/onboarding-city.png";
 
 export default function ProviderServices() {
   const navigate = useNavigate();
