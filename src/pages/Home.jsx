@@ -51,7 +51,9 @@ export default function Home() {
   if (authUser && hasProfile) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6">
-        <img src={LOGO_URL} alt="ServiLocal" className="w-20 h-20 object-contain mb-6" />
+        <span className="text-2xl font-heading font-bold tracking-tight text-foreground mb-6">
+          Servi<span className="text-primary">Local</span>
+        </span>
         <h2 className="font-heading text-2xl font-bold text-foreground mb-1 text-center">
           Bem-vindo de volta!<br />
           <span className="text-primary">{authUser.full_name?.split(' ')[0]}</span>
