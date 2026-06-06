@@ -58,8 +58,6 @@ router.post('/send-otp', otpLimiter, async (req, res) => {
   try {
     const { email, fullName, phone, role } = req.body;
     if (!email) return res.status(400).json({ error: 'E-mail é obrigatório' });
-    const isProvider = role === 'provider';
-    if (isProvider && !phone) return res.status(400).json({ error: 'Telefone é obrigatório para prestadores' });
 
     let user = await User.findOne({ email });
     if (!user) {
@@ -75,9 +73,9 @@ router.post('/send-otp', otpLimiter, async (req, res) => {
     user.otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
     await user.save();
 
-    if (isProvider) {
+    const phoneToSend = phone || user.phone;
+    if (phoneToSend) {
       const { sendWhatsApp } = require('../utils/whatsapp');
-      const phoneToSend = phone || user.phone;
       await sendWhatsApp(phoneToSend, `🔐 *ServiLocal* — seu código de verificação:\n\n*${otp}*\n\nEle expira em 10 minutos. Não compartilhe com ninguém.`);
     } else {
       await sendMail(email, 'account_token', { email, fullName: user.fullName, otp, role: user.role }, {
