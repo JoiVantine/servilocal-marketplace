@@ -659,6 +659,58 @@ app.post('/api/service-requests/:id/confirm-provider', requireAuth, async (req, 
   }
 });
 
+// ─── Editar pedido + marcar propostas para revisão ───────────────────────────
+app.post('/api/service-requests/:id/submit-edit', requireAuth, async (req, res) => {
+  try {
+    const updated = await ServiceRequest.findByIdAndUpdate(
+      req.params.id,
+      { $set: req.body },
+      { new: true }
+    );
+    if (!updated) return res.status(404).json({ error: 'Pedido não encontrado' });
+
+    setImmediate(async () => {
+      try {
+        const toReview = await ServiceRequestInterest.find({
+          serviceRequestId: req.params.id,
+          status: { $in: ['pending', 'in_conversation'] },
+        }).lean();
+
+        for (const interest of toReview) {
+          await ServiceRequestInterest.findByIdAndUpdate(interest._id, { status: 'needs_review' });
+
+          await Notification.create({
+            userId: interest.providerId,
+            type: 'request_updated',
+            title: 'Pedido atualizado',
+            body: `O cliente atualizou o pedido de ${updated.category || 'serviço'}. Revise seu orçamento.`,
+            relatedId: updated._id,
+            read: false,
+          });
+
+          const provider = await User.findById(interest.providerId).lean();
+          const phone = provider?.phone || interest.providerPhone;
+          if (phone) {
+            const firstName = (provider?.fullName || interest.providerName || 'Profissional').split(' ')[0];
+            await sendWhatsApp(phone,
+              `Olá ${firstName}! 👋\n\n` +
+              `O cliente atualizou o pedido de *${updated.category || 'serviço'}*.\n\n` +
+              `Acesse o app para revisar o orçamento que você enviou. 📋`
+            ).catch(() => {});
+          }
+        }
+      } catch (e) {
+        console.error('[submit-edit] notify error:', e.message);
+      }
+    });
+
+    res.json({ ok: true, id: updated._id.toString() });
+  } catch (e) {
+    console.error('[submit-edit] error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ─── Admin: Pedidos em Risco ─────────────────────────────────────────────────
 app.get('/api/admin/at-risk-requests', requireAuth, requireAdmin, async (req, res) => {
   try {

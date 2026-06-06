@@ -84,6 +84,7 @@ const progress = {
   verifyCompletion: (requestId, code) => request('POST', `/api/service-requests/${requestId}/verify-completion`, { code }),
   notifyMessage: (conversationId, preview) => request('POST', `/api/conversations/${conversationId}/notify-message`, { preview }).catch(() => {}),
   confirmProvider: (requestId, data) => request('POST', `/api/service-requests/${requestId}/confirm-provider`, data),
+  submitEdit: (requestId, data) => request('POST', `/api/service-requests/${requestId}/submit-edit`, data),
 };
 
 const support = {

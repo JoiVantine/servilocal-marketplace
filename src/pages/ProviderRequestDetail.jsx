@@ -81,6 +81,14 @@ export default function ProviderRequestDetail() {
     enabled: !!requestId,
   });
 
+  const { data: myInterests = [], refetch: refetchMyInterests } = useQuery({
+    queryKey: ['provider-my-interest', requestId, user?.id],
+    queryFn: () => api.entities.ServiceRequestInterest.filter({ serviceRequestId: requestId, providerId: user.id }),
+    enabled: !!requestId && !!user?.id,
+  });
+  const myInterest = myInterests[0] || null;
+  const needsReview = myInterest?.status === 'needs_review';
+
   const serviceVal = parseMoney(quotePrice);
   const freightVal = parseMoney(quoteFreight);
   const totalVal = serviceVal + freightVal;
@@ -109,7 +117,7 @@ export default function ProviderRequestDetail() {
         ? new Date(`${slotInfo.scheduledDate}T00:00:00`).toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' })
         : '';
 
-      await api.entities.ServiceRequestInterest.create({
+      const interestPayload = {
         serviceRequestId: requestId,
         providerId: user.id,
         providerName: user.fullName || user.full_name || '',
@@ -122,7 +130,14 @@ export default function ProviderRequestDetail() {
         observations: quoteObs,
         message: quoteObs || 'Orçamento enviado.',
         ...slotInfo,
-      });
+      };
+
+      if (needsReview && myInterest?.id) {
+        await api.entities.ServiceRequestInterest.update(myInterest.id, { ...interestPayload, status: 'pending' });
+      } else {
+        await api.entities.ServiceRequestInterest.create(interestPayload);
+      }
+      refetchMyInterests();
 
       const existing = await api.entities.Conversation.filter({
         serviceRequestId: requestId,
@@ -237,6 +252,25 @@ export default function ProviderRequestDetail() {
         <div className="text-center py-12 text-muted-foreground text-sm">Pedido não encontrado.</div>
       ) : (
         <div className="max-w-lg mx-auto px-4 py-5 space-y-4">
+
+          {needsReview && (
+            <div className="bg-orange-50 border border-orange-200 rounded-2xl p-4 flex items-start gap-3">
+              <span className="text-xl shrink-0">📋</span>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-orange-800 text-sm">Pedido atualizado pelo cliente</p>
+                <p className="text-xs text-orange-700 mt-0.5 leading-relaxed">
+                  Revise os detalhes abaixo e reenvie seu orçamento se necessário.
+                </p>
+                <button
+                  onClick={() => setShowQuoteForm(true)}
+                  className="mt-2 text-xs font-semibold text-orange-700 underline underline-offset-2"
+                >
+                  Revisar orçamento
+                </button>
+              </div>
+            </div>
+          )}
+
           <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
             <div className="p-4 space-y-4">
               <div>

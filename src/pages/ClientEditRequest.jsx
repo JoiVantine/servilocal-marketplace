@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/api/apiClient';
 import { useServices } from '@/hooks/useServices';
-import { ChevronLeft, Camera, X, Loader2 } from 'lucide-react';
+import { ChevronLeft, Camera, X, Loader2, AlertTriangle } from 'lucide-react';
 
 const S_SERVICE = 0;
 const S_DESCRIPTION = 1;
@@ -29,6 +29,7 @@ export default function ClientEditRequest() {
   const [step, setStep] = useState(S_SERVICE);
   const [errors, setErrors] = useState({});
   const [ready, setReady] = useState(false);
+  const [warningDismissed, setWarningDismissed] = useState(false);
 
   const [category, setCategory] = useState('');
   const [subcategory, setSubcategory] = useState('');
@@ -59,6 +60,16 @@ export default function ClientEditRequest() {
     queryKey: ['request', requestId],
     queryFn: () => api.entities.ServiceRequest.get(requestId),
   });
+
+  const { data: interests = [] } = useQuery({
+    queryKey: ['interests', requestId],
+    queryFn: () => api.entities.ServiceRequestInterest.filter({ serviceRequestId: requestId }),
+    enabled: !!requestId,
+  });
+
+  const activeInterests = interests.filter(i => ['pending', 'in_conversation'].includes(i.status));
+  const hasActiveProposals = activeInterests.length > 0;
+  const showWarning = hasActiveProposals && !warningDismissed;
 
   useEffect(() => {
     if (!request || ready) return;
@@ -155,9 +166,10 @@ export default function ClientEditRequest() {
   };
 
   const saveMutation = useMutation({
-    mutationFn: () => api.entities.ServiceRequest.update(requestId, buildPayload()),
+    mutationFn: () => api.progress.submitEdit(requestId, buildPayload()),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['request', requestId] });
+      queryClient.invalidateQueries({ queryKey: ['interests', requestId] });
       navigate(`/client/request/${requestId}`);
     },
     onError: (err) => setErrors({ submit: err.message || 'Erro ao salvar. Tente novamente.' }),
@@ -197,6 +209,39 @@ export default function ClientEditRequest() {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="w-8 h-8 border-4 border-border border-t-primary rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (showWarning) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center px-4">
+        <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-sm text-center space-y-4">
+          <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mx-auto">
+            <AlertTriangle className="w-6 h-6 text-orange-500" />
+          </div>
+          <div>
+            <h2 className="font-bold text-foreground text-lg">Atenção</h2>
+            <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+              Você já recebeu {activeInterests.length} proposta{activeInterests.length !== 1 ? 's' : ''}.
+              Alterações podem impactar os orçamentos já recebidos e os prestadores serão avisados para revisar.
+            </p>
+          </div>
+          <div className="flex flex-col gap-2">
+            <button
+              onClick={() => setWarningDismissed(true)}
+              className="w-full py-3 bg-primary text-primary-foreground rounded-xl font-semibold hover:opacity-90 transition-opacity"
+            >
+              Continuar edição
+            </button>
+            <button
+              onClick={() => navigate(`/client/request/${requestId}`)}
+              className="w-full py-2.5 border border-border rounded-xl text-sm font-medium text-foreground hover:bg-secondary/50 transition-colors"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
