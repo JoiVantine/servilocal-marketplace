@@ -79,7 +79,6 @@ export default function NewServiceRequest() {
         city: profile?.addressCity || user.city?.split(' - ')[0] || '',
         state: profile?.addressState || user.city?.split(' - ')[1] || '',
       });
-      if (!profile?.address && !profile?.addressStreet) setEditAddress(true);
     }).catch(() => navigate('/'));
   }, []);
 

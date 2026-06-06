@@ -56,6 +56,7 @@ export default function ProviderHome() {
   const [userProfileId, setUserProfileId] = useState(null);
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [dismissed, setDismissed] = useState(new Set());
+  const [providerServiceAreas, setProviderServiceAreas] = useState([]);
 
   useEffect(() => {
     api.auth.me()
@@ -65,6 +66,7 @@ export default function ProviderHome() {
           const provProfiles = await api.entities.ProviderProfile.filter({ created_by_id: u.id });
           if (provProfiles.length === 0) { navigate('/provider/onboarding'); return; }
           setProviderSpecialties(provProfiles[0].specialties || []);
+          setProviderServiceAreas(provProfiles[0].serviceAreas || []);
         } catch { /* mantém home sem redirecionar */ }
         try {
           const userProfiles = await api.entities.UserProfile.filter({ userId: u.id });
@@ -101,10 +103,13 @@ export default function ProviderHome() {
     refetchInterval: 15000,
   });
 
-  const providerCity = (user?.city || '').split(' - ')[0].trim().toLowerCase();
+  const norm = (s) => (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+  const providerCities = providerServiceAreas.length
+    ? providerServiceAreas.map(a => norm(a.city.split(' - ')[0]))
+    : [norm((user?.city || '').split(' - ')[0])];
   const requests = rawRequests.filter(r => {
-    const reqCity = (r.city || '').split(' - ')[0].trim().toLowerCase();
-    const cityMatch = !providerCity || !reqCity || reqCity === providerCity;
+    const reqCity = norm((r.city || '').split(' - ')[0]);
+    const cityMatch = !providerCities.some(c => c) || !reqCity || providerCities.includes(reqCity);
     const specMatch = !providerSpecialties.length || !r.subcategory || providerSpecialties.includes(r.subcategory);
     return cityMatch && specMatch;
   });

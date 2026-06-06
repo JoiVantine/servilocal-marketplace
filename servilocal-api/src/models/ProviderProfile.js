@@ -33,6 +33,8 @@ const providerProfileSchema = new mongoose.Schema({
     neighborhoods: [String],
   }],
   servicePricing: { type: mongoose.Schema.Types.Mixed, default: {} },
+  pixKey: String,
+  pixKeyType: { type: String, default: 'ALEATORIA' },
 }, { timestamps: true });
 
 providerProfileSchema.set('toJSON', {

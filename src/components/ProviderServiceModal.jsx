@@ -4,15 +4,11 @@ import { X, ChevronRight } from 'lucide-react';
 const LOGO_URL = "/logo.png";
 
 export default function ProviderServiceModal({ subcategory, category, onClose, onSave, initialData }) {
-  const [description, setDescription] = useState(initialData?.description || '');
   const [price, setPrice] = useState(initialData?.price || '');
   const [duration, setDuration] = useState(initialData?.duration || '');
-  const [homeCare, setHomeCare] = useState(initialData?.homeCare || 'sim');
-  const [freight, setFreight] = useState(initialData?.freight || '');
-  const [materials, setMaterials] = useState(initialData?.materials || 'provider');
 
   const handleSave = () => {
-    onSave({ specialty: subcategory, description, price, duration, homeCare, freight, materials });
+    onSave({ specialty: subcategory, price, duration });
   };
 
   const canSave = price.trim().length > 0;
@@ -35,8 +31,6 @@ export default function ProviderServiceModal({ subcategory, category, onClose, o
   };
 
   const priceValue = parseMoneyValue(price);
-  const freightValue = homeCare === 'sim' ? parseMoneyValue(freight) : 0;
-  const totalValue = priceValue + freightValue;
   const formatTotal = (val) => {
     if (val === 0) return 'R$ 0,00';
     return `R$ ${val.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.')},00`;
@@ -102,102 +96,13 @@ export default function ProviderServiceModal({ subcategory, category, onClose, o
             />
           </div>
 
-          {/* Descrição */}
-          <div>
-            <label className="block text-sm font-semibold text-foreground mb-2">
-              Descrição do serviço
-            </label>
-            <div className="relative">
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value.slice(0, 150))}
-                placeholder="Detalhe o que você oferece..."
-                rows={4}
-                className="w-full px-4 py-3 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm resize-none bg-card"
-              />
-              <span className="absolute bottom-3 right-3 text-xs text-muted-foreground">
-                {description.length}/150
-              </span>
-            </div>
-          </div>
-
-          {/* Atendimento a domicílio */}
-          <div>
-            <label className="block text-sm font-semibold text-foreground mb-3">
-              Atende a domicílio?
-            </label>
-            <div className="grid grid-cols-2 gap-3">
-              {['sim', 'nao'].map((opt) => (
-                <button
-                  key={opt}
-                  onClick={() => setHomeCare(opt)}
-                  className={`py-3 rounded-lg border text-sm font-medium transition-colors ${
-                    homeCare === opt
-                      ? 'bg-primary text-primary-foreground border-primary'
-                      : 'bg-card border-border text-foreground hover:bg-secondary/30'
-                  }`}
-                >
-                  {opt === 'sim' ? 'Sim' : 'Não'}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Frete */}
-          {homeCare === 'sim' && (
-            <div>
-              <label className="block text-sm font-semibold text-foreground mb-2">
-                Valor do frete
-              </label>
-              <div className="flex items-center gap-2 px-4 py-3 border border-border rounded-lg bg-card focus-within:ring-2 focus-within:ring-primary/50">
-                <span className="text-sm text-muted-foreground font-medium">R$</span>
-                <input
-                  type="text"
-                  value={freight}
-                  onChange={(e) => setFreight(handleMoneyInput(e.target.value))}
-                  onBlur={(e) => setFreight(formatMoneyOnBlur(e.target.value))}
-                  placeholder="0,00"
-                  className="flex-1 focus:outline-none text-sm bg-transparent"
-                />
-              </div>
-            </div>
-          )}
-
-          {/* Materiais */}
-          <div>
-            <label className="block text-sm font-semibold text-foreground mb-3">
-              Quem fornece os materiais?
-            </label>
-            <div className="grid grid-cols-2 gap-3">
-              {['client', 'provider'].map((opt) => (
-                <button
-                  key={opt}
-                  onClick={() => setMaterials(opt)}
-                  className={`py-3 rounded-lg border text-sm font-medium transition-colors ${
-                    materials === opt
-                      ? 'bg-primary text-primary-foreground border-primary'
-                      : 'bg-card border-border text-foreground hover:bg-secondary/30'
-                  }`}
-                >
-                  {opt === 'client' ? 'Cliente' : 'Você'}
-                </button>
-              ))}
-            </div>
-          </div>
-
           {/* Total bar */}
           {price && (
             <div className="bg-primary/5 border border-primary/20 rounded-xl p-4">
               <div className="flex items-center justify-between">
-                <span className="text-sm text-primary font-medium">Valor total para o cliente:</span>
-                <span className="text-xl font-bold text-primary">{formatTotal(totalValue)}</span>
+                <span className="text-sm text-primary font-medium">Valor para o cliente:</span>
+                <span className="text-xl font-bold text-primary">{formatTotal(priceValue)}</span>
               </div>
-              {homeCare === 'sim' && freight && (
-                <div className="text-xs text-muted-foreground mt-2 flex justify-between">
-                  <span>Serviço: R$ {price}</span>
-                  <span>Frete: R$ {freight}</span>
-                </div>
-              )}
             </div>
           )}
 

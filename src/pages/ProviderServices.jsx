@@ -96,9 +96,6 @@ export default function ProviderServices() {
                     <p className="font-semibold text-foreground text-sm leading-snug">
                       {svc.serviceName || svc.specialty || '—'}
                     </p>
-                    {svc.description && (
-                      <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{svc.description}</p>
-                    )}
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
                     <button
@@ -126,11 +123,6 @@ export default function ProviderServices() {
                   {svc.duration && (
                     <span className="flex items-center gap-1 text-xs bg-secondary text-foreground px-2.5 py-1 rounded-full">
                       <Clock className="w-3 h-3 text-muted-foreground" /> {svc.duration}
-                    </span>
-                  )}
-                  {svc.homeCare === 'sim' && (
-                    <span className="flex items-center gap-1 text-xs bg-secondary text-foreground px-2.5 py-1 rounded-full">
-                      <MapPin className="w-3 h-3 text-muted-foreground" /> Atende domicílio
                     </span>
                   )}
                 </div>

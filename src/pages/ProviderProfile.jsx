@@ -18,14 +18,11 @@ const normalize = (s) =>
 
 export default function ProviderProfile() {
   const navigate = useNavigate();
-  const fileRef = useRef(null);
   const { data: user, isLoading } = useCurrentUser();
   const refreshUser = useRefreshUser();
 
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
-  const [pixKey, setPixKey] = useState('');
-  const [pixKeyType, setPixKeyType] = useState('ALEATORIA');
   const [initialized, setInitialized] = useState(false);
 
   const [serviceAreas, setServiceAreas] = useState([]);
@@ -37,8 +34,6 @@ export default function ProviderProfile() {
   const [showCitySuggestions, setShowCitySuggestions] = useState(false);
   const ibgeCities = useRef([]);
 
-  const [photoLoading, setPhotoLoading] = useState(false);
-  const [photoError, setPhotoError] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -63,8 +58,6 @@ export default function ProviderProfile() {
       .then(pp => {
         if (pp.length > 0) {
           if (pp[0].serviceAreas?.length) setServiceAreas(pp[0].serviceAreas);
-          if (pp[0].pixKey) setPixKey(pp[0].pixKey);
-          if (pp[0].pixKeyType) setPixKeyType(pp[0].pixKeyType);
         }
       })
       .catch(() => {});
@@ -104,28 +97,6 @@ export default function ProviderProfile() {
     setNeighborhoodInput('');
   };
 
-  const handlePhotoChange = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    if (file.size > 5 * 1024 * 1024) {
-      setPhotoError(true);
-      e.target.value = '';
-      return;
-    }
-    setPhotoLoading(true);
-    setPhotoError(false);
-    try {
-      const url = await api.uploadFile(file);
-      await api.auth.updateMe({ photo: url });
-      refreshUser();
-    } catch {
-      setPhotoError(true);
-    } finally {
-      setPhotoLoading(false);
-      e.target.value = '';
-    }
-  };
-
   const handleSave = async () => {
     setSaving(true);
     setSaveError(false);
@@ -136,7 +107,7 @@ export default function ProviderProfile() {
       const me = await api.auth.me();
       const provProfiles = await api.entities.ProviderProfile.filter({ userId: me.id });
       if (provProfiles.length > 0) {
-        await api.entities.ProviderProfile.update(provProfiles[0].id, { name, phone, city: firstCity, serviceAreas, pixKey, pixKeyType });
+        await api.entities.ProviderProfile.update(provProfiles[0].id, { name, phone, city: firstCity, serviceAreas });
       }
 
       refreshUser();
@@ -172,7 +143,7 @@ export default function ProviderProfile() {
         {/* Foto */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="relative">
+            <div>
               {user.photo ? (
                 <img src={user.photo} alt="" className="w-16 h-16 rounded-full object-cover" />
               ) : (
@@ -180,25 +151,9 @@ export default function ProviderProfile() {
                   {initials}
                 </div>
               )}
-              {photoLoading && (
-                <div className="absolute inset-0 rounded-full bg-black/30 flex items-center justify-center">
-                  <Loader2 className="w-5 h-5 text-white animate-spin" />
-                </div>
-              )}
             </div>
             <span className="text-sm text-muted-foreground">Foto do perfil</span>
           </div>
-          <div className="flex flex-col items-end gap-1">
-            <button
-              onClick={() => { setPhotoError(false); fileRef.current?.click(); }}
-              disabled={photoLoading}
-              className="text-sm font-semibold text-primary hover:opacity-80 disabled:opacity-50"
-            >
-              Editar
-            </button>
-            {photoError && <span className="text-xs text-red-500">Falha ao enviar foto</span>}
-          </div>
-          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
         </div>
 
         {/* Campos básicos */}
@@ -383,37 +338,6 @@ export default function ProviderProfile() {
               </>
             )}
           </div>
-        </div>
-
-        {/* Chave Pix */}
-        <div className="space-y-3">
-          <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1.5">Tipo de chave Pix</label>
-            <select
-              value={pixKeyType}
-              onChange={e => setPixKeyType(e.target.value)}
-              className="w-full px-4 py-3 border border-border rounded-xl bg-card text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
-            >
-              <option value="ALEATORIA">Chave aleatória (recomendado)</option>
-              <option value="CPF">CPF</option>
-              <option value="CNPJ">CNPJ</option>
-              <option value="EMAIL">E-mail</option>
-              <option value="TELEFONE">Telefone</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1.5">Chave Pix</label>
-            <input
-              type="text"
-              value={pixKey}
-              onChange={e => setPixKey(e.target.value)}
-              placeholder={pixKeyType === 'ALEATORIA' ? 'Ex: a1b2c3d4-...' : pixKeyType === 'CPF' ? '000.000.000-00' : pixKeyType === 'EMAIL' ? 'seu@email.com' : pixKeyType === 'TELEFONE' ? '(DDD) 90000-0000' : ''}
-              className="w-full px-4 py-3 border border-border rounded-xl bg-card text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
-            />
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Sua chave Pix é exibida somente após o cliente contratar você.
-          </p>
         </div>
 
         {saveError && (

@@ -56,6 +56,7 @@ import ProviderOrderProgress from './pages/ProviderOrderProgress';
 import ProviderEarnings from './pages/ProviderEarnings';
 import ProviderMenu from './pages/ProviderMenu';
 import ProviderProfile from './pages/ProviderProfile';
+import ProviderPayments from './pages/ProviderPayments';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -127,6 +128,7 @@ const AuthenticatedApp = () => {
       <Route path="/provider/support/:ticketId" element={<SupportTicketDetail audience="provider" />} />
       <Route path="/provider/menu" element={<ProviderMenu />} />
       <Route path="/provider/profile" element={<ProviderProfile />} />
+      <Route path="/provider/payments" element={<ProviderPayments />} />
       <Route path="/provider/notifications" element={<ClientNotifications />} />
       <Route path="/chat/:conversationId" element={<ChatPage />} />
       <Route path="/setup-password" element={<PasswordSetup />} />
