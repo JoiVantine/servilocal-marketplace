@@ -36,9 +36,20 @@ export default function ProviderOrders() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [search, setSearch] = useState('');
+  const [providerSpecialties, setProviderSpecialties] = useState([]);
+  const [providerServiceAreas, setProviderServiceAreas] = useState([]);
 
   useEffect(() => {
-    api.auth.me().then(setUser).catch(() => navigate('/'));
+    api.auth.me().then(async (u) => {
+      setUser(u);
+      try {
+        const pp = await api.entities.ProviderProfile.filter({ created_by_id: u.id });
+        if (pp[0]) {
+          setProviderSpecialties(pp[0].specialties || []);
+          setProviderServiceAreas(pp[0].serviceAreas || []);
+        }
+      } catch { /* ignora */ }
+    }).catch(() => navigate('/'));
   }, []);
 
   const { data: allRequests = [], isLoading } = useQuery({
@@ -61,8 +72,40 @@ export default function ProviderOrders() {
     refetchInterval: 30000,
   });
 
+  // Aplica filtro de cidade + especialidade nos pedidos abertos/em_conversa (igual ao ProviderHome)
+  const cityFiltered = useMemo(() => {
+    const providerCities = providerServiceAreas.length
+      ? providerServiceAreas.map(a => norm((a.city || '').split(' - ')[0]))
+      : [norm((user?.city || '').split(' - ')[0])];
+    const hasCityFilter = providerCities.some(c => c.length > 0);
+
+    return allRequests.filter(r => {
+      // Pedidos já confirmados/concluídos do próprio prestador — sempre exibir
+      if (r.confirmedProviderId === user?.id) return true;
+      if (r.status === 'completed' || r.status === 'cancelled') return true;
+      // Para abertos/em conversa — aplica filtros
+      if (hasCityFilter) {
+        const reqCity = norm((r.city || '').split(' - ')[0]);
+        if (reqCity && !providerCities.includes(reqCity)) return false;
+      }
+      if (providerSpecialties.length) {
+        const reqCat = norm(r.category || '');
+        const reqSub = norm(r.subcategory || '');
+        const reqTitle = norm(r.title || '');
+        const matches = providerSpecialties.some(sp => {
+          const s = norm(sp);
+          return reqCat.includes(s) || s.includes(reqCat) ||
+                 reqSub.includes(s) || s.includes(reqSub) ||
+                 reqTitle.includes(s) || s.includes(reqTitle);
+        });
+        if (!matches) return false;
+      }
+      return true;
+    });
+  }, [allRequests, user, providerServiceAreas, providerSpecialties]);
+
   const sorted = useMemo(() => {
-    return [...allRequests].sort((a, b) => {
+    return [...cityFiltered].sort((a, b) => {
       const pa = PRIORITY_ORDER.indexOf(a.status);
       const pb = PRIORITY_ORDER.indexOf(b.status);
       if (pa !== pb) return pa - pb;
@@ -124,7 +167,7 @@ export default function ProviderOrders() {
           <div className="text-center py-12">
             <p className="font-semibold text-foreground mb-1">Nenhum pedido encontrado</p>
             <p className="text-sm text-muted-foreground">
-              {search ? 'Tente outro termo de busca.' : 'Pedidos que você receber aparecerão aqui.'}
+              {search ? 'Tente outro termo de busca.' : 'Pedidos compatíveis com sua cidade e especialidades aparecerão aqui.'}
             </p>
           </div>
         ) : (

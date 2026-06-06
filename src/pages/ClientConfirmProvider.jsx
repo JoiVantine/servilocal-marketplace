@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/api/apiClient';
-import { ChevronLeft, Star, Loader2, Banknote, QrCode, CheckCircle2, Copy } from 'lucide-react';
+import { ChevronLeft, Star, Loader2, Banknote, QrCode, CheckCircle2, Copy, Phone } from 'lucide-react';
 
 const PAYMENT_OPTIONS = [
   { value: 'PIX',      label: 'Pix',      icon: QrCode,   desc: 'Transferência para a chave Pix do prestador' },
@@ -56,6 +56,7 @@ export default function ClientConfirmProvider() {
         confirmedProviderPhoto: interest.providerPhoto || providerProfile?.profilePhoto,
         confirmedProviderPixKey: providerProfile?.pixKey || null,
         confirmedProviderPixKeyType: providerProfile?.pixKeyType || null,
+        confirmedProviderPhone: providerProfile?.phone || interest.providerPhone || null,
         agreedPrice: interest.price,
         paymentMethod,
         paymentStatus: 'PENDENTE',
@@ -143,6 +144,16 @@ export default function ClientConfirmProvider() {
                 </div>
                 {providerProfile?.description && (
                   <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{providerProfile.description}</p>
+                )}
+                {providerProfile?.phone && (
+                  <a
+                    href={`tel:${providerProfile.phone.replace(/\D/g, '')}`}
+                    className="mt-2 flex items-center gap-1.5 text-xs text-primary font-semibold hover:opacity-80"
+                    onClick={e => e.stopPropagation()}
+                  >
+                    <Phone className="w-3.5 h-3.5" />
+                    {providerProfile.phone}
+                  </a>
                 )}
               </div>
             </div>

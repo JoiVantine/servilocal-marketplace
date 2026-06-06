@@ -68,7 +68,20 @@ export default function NewServiceRequestModal({ category, request, onClose, onU
     }
   };
 
+  const [dateError, setDateError] = useState('');
+
   const handleSubmit = async () => {
+    if (scheduledAt) {
+      const chosen = new Date(scheduledAt);
+      const minAllowed = new Date();
+      minAllowed.setMinutes(minAllowed.getMinutes() + 30);
+      if (chosen < minAllowed) {
+        setDateError('A data/hora deve ser no mínimo 30 minutos a partir de agora.');
+        return;
+      }
+    }
+    setDateError('');
+
     if (isEdit) {
       mutation.mutate({
         title,
@@ -200,9 +213,10 @@ export default function NewServiceRequestModal({ category, request, onClose, onU
               type="datetime-local"
               value={scheduledAt}
               min={minDateTimeStr}
-              onChange={(e) => setScheduledAt(e.target.value)}
-              className="w-full px-4 py-2.5 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm bg-card"
+              onChange={(e) => { setScheduledAt(e.target.value); setDateError(''); }}
+              className={`w-full px-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm bg-card ${dateError ? 'border-red-400' : 'border-border'}`}
             />
+            {dateError && <p className="text-xs text-red-500 mt-1">{dateError}</p>}
           </div>
 
           {/* Submit */}

@@ -266,6 +266,32 @@ app.post('/api/service-requests/:id/progress', requireAuth, async (req, res) => 
   }
 });
 
+app.post('/api/service-requests/:id/verify-completion', requireAuth, async (req, res) => {
+  try {
+    const request = await ServiceRequest.findById(req.params.id);
+    if (!request) return res.status(404).json({ error: 'Pedido não encontrado' });
+
+    const isClient = request.clientId?.toString() === req.user.id;
+    if (!isClient) return res.status(403).json({ error: 'Apenas o cliente pode confirmar a conclusão' });
+
+    const { code } = req.body;
+    if (!code) return res.status(400).json({ error: 'Código obrigatório' });
+    if (request.completionCode && String(code).trim() !== String(request.completionCode).trim()) {
+      return res.status(400).json({ error: 'Código inválido. Verifique o WhatsApp e tente novamente.' });
+    }
+
+    request.progressStatus = 'completed';
+    request.status = 'completed';
+    request.ratingStatus = 'PENDING';
+    request.completionCode = null;
+    await request.save();
+
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.use('/api/conversations', require('./routes/conversations'));
 
 app.use('/api/messages', require('./routes/messages'));

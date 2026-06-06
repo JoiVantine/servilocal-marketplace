@@ -38,6 +38,7 @@ const serviceRequestSchema = new mongoose.Schema({
   lat: Number,
   lng: Number,
   clientPhone: { type: String, default: '' },
+  confirmedProviderPhone: { type: String, default: '' },
   progressStatus: { type: String },
   progressLog: [{ status: String, time: String }],
   completionCode: { type: String },
@@ -50,6 +51,7 @@ serviceRequestSchema.set('toJSON', {
     obj.created_date = obj.createdAt;
     delete obj._id;
     delete obj.__v;
+    delete obj.completionCode; // nunca expor o código ao frontend
     return obj;
   },
 });

@@ -371,6 +371,26 @@ export default function ClientHome() {
             </div>
           </div>
 
+          {/* Pedidos com proposta recebida — alerta */}
+          {user && requests.some(r => r.status === 'in_conversation') && (
+            <div className="px-4 mb-3">
+              {requests.filter(r => r.status === 'in_conversation').map(r => (
+                <Link
+                  key={r.id}
+                  to={`/client/request/${r.id}/proposals`}
+                  className="flex items-center gap-3 bg-primary/10 border border-primary/30 rounded-2xl px-4 py-3 mb-2"
+                >
+                  <span className="text-xl">📨</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-foreground truncate">{r.title}</p>
+                    <p className="text-xs text-primary font-medium">Você recebeu propostas! Toque para ver</p>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-primary shrink-0" />
+                </Link>
+              ))}
+            </div>
+          )}
+
           {/* Seus pedidos */}
           {user && <div className="px-4 mb-5">
             <div className="flex items-center justify-between mb-3">

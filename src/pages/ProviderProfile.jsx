@@ -30,6 +30,10 @@ export default function ProviderProfile() {
   const [showCitySuggestions, setShowCitySuggestions] = useState(false);
   const ibgeCities = useRef([]);
 
+  const [endereco, setEndereco] = useState('');
+  const [numero, setNumero] = useState('');
+  const [cep, setCep] = useState('');
+
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -53,6 +57,9 @@ export default function ProviderProfile() {
         if (pp.length > 0) {
           setName(pp[0].name || user.fullName || user.full_name || '');
           setPhone(pp[0].phone || '');
+          setEndereco(pp[0].endereco || '');
+          setNumero(pp[0].numero || '');
+          setCep(pp[0].cep || '');
           if (pp[0].serviceAreas?.length) setServiceAreas(pp[0].serviceAreas);
         } else {
           setName(user.fullName || user.full_name || '');
@@ -107,7 +114,10 @@ export default function ProviderProfile() {
       const me = await api.auth.me();
       const provProfiles = await api.entities.ProviderProfile.filter({ created_by_id: me.id });
       if (provProfiles.length > 0) {
-        await api.entities.ProviderProfile.update(provProfiles[0].id, { name, phone, city: firstCity, serviceAreas });
+        await api.entities.ProviderProfile.update(provProfiles[0].id, {
+          name, phone, city: firstCity, serviceAreas,
+          endereco, numero, cep: cep.replace(/\D/g, ''),
+        });
       }
 
       navigate('/provider');
@@ -186,6 +196,43 @@ export default function ProviderProfile() {
               placeholder="(DDD) 90000-0000"
               className="w-full px-4 py-3 border border-border rounded-xl bg-card text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
             />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-muted-foreground mb-1.5">Endereço (rua / avenida)</label>
+            <input
+              type="text"
+              value={endereco}
+              onChange={e => setEndereco(e.target.value)}
+              placeholder="Ex: Rua das Flores"
+              className="w-full px-4 py-3 border border-border rounded-xl bg-card text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+            />
+          </div>
+
+          <div className="flex gap-3">
+            <div className="w-1/3">
+              <label className="block text-xs font-medium text-muted-foreground mb-1.5">Número</label>
+              <input
+                type="text"
+                value={numero}
+                onChange={e => setNumero(e.target.value)}
+                placeholder="123"
+                className="w-full px-4 py-3 border border-border rounded-xl bg-card text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+              />
+            </div>
+            <div className="flex-1">
+              <label className="block text-xs font-medium text-muted-foreground mb-1.5">CEP</label>
+              <input
+                type="text"
+                value={cep}
+                onChange={e => {
+                  const d = e.target.value.replace(/\D/g, '').slice(0, 8);
+                  setCep(d.length > 5 ? `${d.slice(0, 5)}-${d.slice(5)}` : d);
+                }}
+                placeholder="00000-000"
+                className="w-full px-4 py-3 border border-border rounded-xl bg-card text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+              />
+            </div>
           </div>
         </div>
 

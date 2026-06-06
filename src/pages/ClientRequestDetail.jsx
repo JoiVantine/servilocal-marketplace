@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/api/apiClient';
-import { ChevronLeft, Home, LifeBuoy, MessageCircle, CheckCircle2, Circle, XCircle, AlertTriangle, Banknote, CreditCard, QrCode } from 'lucide-react';
+import { ChevronLeft, Home, LifeBuoy, MessageCircle, CheckCircle2, Circle, XCircle, AlertTriangle, Banknote, CreditCard, QrCode, Phone } from 'lucide-react';
 import NewServiceRequestModal from '../components/NewServiceRequestModal';
 import { buildRequestSupportDraft, buildSupportComposerState } from '@/lib/support';
 
@@ -57,7 +57,7 @@ function getCurrentStep(request, interests) {
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
-function StatusHero({ currentStep, request, interests, conversation, onConfirm, confirmPending, navigate }) {
+function StatusHero({ currentStep, request, interests, conversation, onConfirm, confirmPending, navigate, codeValue, onCodeChange, codeError }) {
   const providerName = request.confirmedProviderName || 'O profissional';
   const proposalCount = interests.length;
   const departureTime = request.progressLog?.find(l => l.status === 'on_the_way')?.time;
@@ -133,9 +133,20 @@ function StatusHero({ currentStep, request, interests, conversation, onConfirm, 
       {/* Actions */}
       {currentStep === 'provider_done' ? (
         <div className="mt-4 space-y-2">
+          <p className="text-xs text-muted-foreground">Digite o código enviado ao seu WhatsApp para confirmar:</p>
+          <input
+            type="text"
+            inputMode="numeric"
+            maxLength={6}
+            value={codeValue}
+            onChange={e => onCodeChange(e.target.value.replace(/\D/g, '').slice(0, 6))}
+            placeholder="000000"
+            className={`w-full px-4 py-3 border rounded-xl text-center text-2xl font-bold tracking-[0.4em] bg-card focus:outline-none focus:ring-2 focus:ring-primary/40 ${codeError ? 'border-red-400' : 'border-border'}`}
+          />
+          {codeError && <p className="text-xs text-red-500 text-center">{codeError}</p>}
           <button
             onClick={onConfirm}
-            disabled={confirmPending}
+            disabled={confirmPending || !codeValue}
             className="w-full py-3 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
           >
             {confirmPending ? 'Confirmando...' : 'Confirmar conclusão'}
@@ -211,6 +222,7 @@ function ConfirmedProviderCard({ request, conversation, navigate, onMarkPaid, ma
   const name = request.confirmedProviderName;
   const pixKey = request.confirmedProviderPixKey;
   const pixKeyType = request.confirmedProviderPixKeyType;
+  const provPhone = request.confirmedProviderPhone;
   const paymentMethod = request.paymentMethod;
   const paymentStatus = request.paymentStatus;
   if (!name) return null;
@@ -235,6 +247,14 @@ function ConfirmedProviderCard({ request, conversation, navigate, onMarkPaid, ma
             <p className="text-xs text-muted-foreground">
               R$ {parseFloat(request.agreedPrice).toFixed(2).replace('.', ',')} acordado
             </p>
+          )}
+          {provPhone && (
+            <a
+              href={`tel:${provPhone.replace(/\D/g, '')}`}
+              className="mt-1 flex items-center gap-1 text-xs text-primary font-medium hover:opacity-80"
+            >
+              <Phone className="w-3 h-3" />{provPhone}
+            </a>
           )}
         </div>
         {conversation && (
@@ -304,6 +324,8 @@ export default function ClientRequestDetail({ viewerMode = 'client' }) {
   const [showEdit, setShowEdit] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [undoVisible, setUndoVisible] = useState(false);
+  const [completionCode, setCompletionCode] = useState('');
+  const [codeError, setCodeError] = useState('');
   const undoTimerRef = useRef(null);
 
   useEffect(() => {
@@ -341,14 +363,13 @@ export default function ClientRequestDetail({ viewerMode = 'client' }) {
   const confirmedConversation = conversations.find(c => c.providerId === request?.confirmedProviderId);
 
   const confirmMutation = useMutation({
-    mutationFn: () => api.entities.ServiceRequest.update(requestId, {
-      progressStatus: 'completed',
-      status: 'completed',
-      ratingStatus: 'PENDING',
-    }),
+    mutationFn: () => api.progress.verifyCompletion(requestId, completionCode),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['request', requestId] });
       navigate(`/client/request/${requestId}/rate`);
+    },
+    onError: (err) => {
+      setCodeError(err.message || 'Código inválido.');
     },
   });
 
@@ -480,6 +501,9 @@ export default function ClientRequestDetail({ viewerMode = 'client' }) {
             onConfirm={() => confirmMutation.mutate()}
             confirmPending={confirmMutation.isPending}
             navigate={navigate}
+            codeValue={completionCode}
+            onCodeChange={(v) => { setCompletionCode(v); setCodeError(''); }}
+            codeError={codeError}
           />
         )}
 

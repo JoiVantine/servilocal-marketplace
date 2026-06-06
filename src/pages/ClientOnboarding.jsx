@@ -232,6 +232,7 @@ export default function ClientOnboarding() {
           neighborhood: bairro,
           address: [rua, semNumero ? 'S/N' : numero].filter(Boolean).join(', '),
           cep: cep.replace(/\D/g, ''),
+          city: cityState,
           role: 'client',
           onboardingCompleted: true,
           firstAccess: false,
