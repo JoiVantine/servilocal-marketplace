@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { api } from '@/api/apiClient';
 import { Check, Eye, EyeOff, CheckCircle2, Circle, ShieldCheck, Phone } from 'lucide-react';
 
@@ -32,9 +32,6 @@ function Rule({ ok, label }) {
 
 export default function ClientOnboarding() {
   const navigate = useNavigate();
-  const location = useLocation();
-  const returnTo = location.state?.returnTo;
-  const returnState = location.state?.returnState;
 
   const [step, setStep] = useState(0);
   const [editMode, setEditMode] = useState(false);
@@ -238,11 +235,7 @@ export default function ClientOnboarding() {
       } else {
         await api.entities.UserProfile.create(profileData);
       }
-      if (returnTo) {
-        navigate(returnTo, returnState ? { state: returnState } : undefined);
-      } else {
-        navigate('/client');
-      }
+      navigate('/client');
     } catch (err) {
       setErrors({ submit: err.message || 'Erro ao finalizar cadastro. Tente novamente.' });
     } finally {
