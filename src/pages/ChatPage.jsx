@@ -1,7 +1,7 @@
 ﻿import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Send, CheckCircle, LifeBuoy, Image as ImageIcon, Mic, X, Loader2 } from 'lucide-react';
+import { ArrowLeft, Send, CheckCircle, LifeBuoy, Image as ImageIcon, Mic, X, Loader2, Lock } from 'lucide-react';
 import { io } from 'socket.io-client';
 import { api, API_URL } from '@/api/apiClient';
 import ReviewModal from '@/components/ReviewModal';
@@ -350,6 +350,15 @@ export default function ChatPage() {
             </div>
           );
         })}
+        {conversation.status === 'closed' && (
+          <div className="mx-2 my-2 p-4 bg-secondary/60 border border-border rounded-xl text-center">
+            <Lock className="w-5 h-5 text-muted-foreground mx-auto mb-2" />
+            <p className="text-sm font-semibold text-foreground">Conversa encerrada</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              O cliente já escolheu outro profissional para este serviço.
+            </p>
+          </div>
+        )}
         {isClient && conversation.status === 'completed' && existingReviews.length === 0 && (
           <div className="mx-2 my-2 p-4 bg-card border border-border rounded-xl text-center">
             <p className="text-sm font-semibold text-foreground mb-1">Serviço concluído!</p>
@@ -370,6 +379,11 @@ export default function ChatPage() {
       {conversation.status === 'completed' ? (
         <div className="sticky bottom-0 bg-background border-t border-border px-4 py-4 text-center">
           <p className="text-sm text-muted-foreground">Este serviço foi concluído.</p>
+        </div>
+      ) : conversation.status === 'closed' ? (
+        <div className="sticky bottom-0 bg-background border-t border-border px-4 py-4 text-center flex items-center justify-center gap-2">
+          <Lock className="w-4 h-4 text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">Conversa encerrada</p>
         </div>
       ) : (
         <div className="sticky bottom-0 bg-background border-t border-border px-4 py-3">

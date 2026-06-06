@@ -54,6 +54,7 @@ export default function NewServiceRequest() {
   const [step, setStep] = useState(S_SERVICE);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
+  const [published, setPublished] = useState(false);
 
   // Service data
   const [category, setCategory] = useState(state?.category || '');
@@ -289,7 +290,7 @@ export default function NewServiceRequest() {
       setLoading(true);
       try {
         await api.entities.ServiceRequest.create(buildPayload());
-        navigate('/client');
+        setPublished(true);
       } catch (err) {
         setErrors({ submit: err.message || 'Erro ao publicar pedido. Tente novamente.' });
       } finally {
@@ -392,6 +393,26 @@ export default function NewServiceRequest() {
     return (
       <div className="fixed inset-0 flex items-center justify-center">
         <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (published) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6 text-center gap-6">
+        <img src="/pedido-feito.png" alt="Pedido publicado" className="w-48 h-48 object-contain" />
+        <div className="space-y-2">
+          <h1 className="text-2xl font-bold text-foreground">Pedido publicado!</h1>
+          <p className="text-sm text-muted-foreground max-w-xs leading-relaxed">
+            Profissionais da sua região serão notificados e vão enviar propostas em breve.
+          </p>
+        </div>
+        <button
+          onClick={() => navigate('/client')}
+          className="w-full max-w-xs py-4 bg-primary text-primary-foreground rounded-xl font-semibold text-base hover:opacity-90 transition-opacity"
+        >
+          Ver meu pedido
+        </button>
       </div>
     );
   }

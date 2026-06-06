@@ -116,10 +116,8 @@ export default function ClientConfirmProvider() {
         </div>
         <div className="flex-1 max-w-lg mx-auto w-full px-4 py-6 space-y-5">
           <div className="flex flex-col items-center gap-3 py-4">
-            <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center">
-              <CheckCircle2 className="w-9 h-9 text-green-600" />
-            </div>
-            <p className="font-bold text-foreground text-lg text-center">Proposta aceita!</p>
+            <img src="/ok.png" alt="Confirmado" className="w-36 h-36 object-contain" />
+            <p className="font-bold text-foreground text-xl text-center">Proposta aceita!</p>
             <p className="text-sm text-muted-foreground text-center max-w-xs">
               O profissional foi notificado e entrará em contato em breve.
             </p>

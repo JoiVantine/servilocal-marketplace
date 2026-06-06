@@ -129,8 +129,14 @@ export default function ClientProposals() {
             <div className="w-7 h-7 border-4 border-border border-t-primary rounded-full animate-spin" />
           </div>
         ) : interests.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-sm text-muted-foreground">Nenhuma proposta recebida ainda.</p>
+          <div className="flex flex-col items-center py-10 gap-4 text-center">
+            <img src="/proposta.png" alt="Aguardando propostas" className="w-40 h-40 object-contain" />
+            <div className="space-y-1">
+              <p className="font-semibold text-foreground">Aguardando propostas</p>
+              <p className="text-sm text-muted-foreground max-w-xs">
+                Profissionais da sua área vão enviar propostas em breve.
+              </p>
+            </div>
           </div>
         ) : (
           <div className="space-y-3">

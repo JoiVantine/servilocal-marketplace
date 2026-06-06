@@ -302,14 +302,14 @@ export default function ProviderOnboarding() {
 
   if (step === 5) {
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6 text-center">
-        <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mb-6">
-          <CheckCircle2 className="w-10 h-10 text-green-600" />
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6 text-center gap-4">
+        <img src="/comemoração 1.png" alt="Perfil criado" className="w-48 h-48 object-contain" />
+        <div className="space-y-2">
+          <h2 className="font-heading text-2xl font-bold text-foreground">Perfil criado!</h2>
+          <p className="text-sm text-muted-foreground max-w-xs leading-relaxed">
+            Agora você pode receber pedidos da sua região. Fique de olho nas notificações.
+          </p>
         </div>
-        <h2 className="font-heading text-2xl font-bold text-foreground mb-2">Perfil criado!</h2>
-        <p className="text-sm text-muted-foreground max-w-xs leading-relaxed mb-8">
-          Agora você pode receber pedidos da sua região. Fique de olho nas notificações.
-        </p>
         <button
           onClick={() => navigate('/provider')}
           className="w-full max-w-xs py-4 bg-primary text-primary-foreground rounded-xl font-semibold text-base hover:opacity-90 transition-opacity"

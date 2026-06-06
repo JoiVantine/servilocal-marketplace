@@ -248,9 +248,7 @@ export default function ProviderOrderProgress() {
           {ps === 'provider_done' && (
             <>
               <div className="bg-card border border-border rounded-2xl p-6 text-center space-y-3">
-                <div className="w-20 h-20 rounded-full bg-primary flex items-center justify-center mx-auto shadow-lg">
-                  <CheckCircle2 className="w-10 h-10 text-white" />
-                </div>
+                <img src="/comemoração 2.png" alt="Serviço concluído" className="w-32 h-32 object-contain mx-auto" />
                 <h2 className="font-heading text-xl font-bold text-foreground">Serviço concluído!</h2>
                 <p className="text-sm text-muted-foreground leading-relaxed">
                   Aguarde a confirmação do cliente.
@@ -526,9 +524,7 @@ export default function ProviderOrderProgress() {
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
           <div className="absolute inset-0 bg-black/60" />
           <div className="relative bg-background rounded-2xl p-6 w-full max-w-sm space-y-4 text-center">
-            <div className="w-14 h-14 rounded-full bg-green-100 flex items-center justify-center mx-auto">
-              <CheckCircle2 className="w-8 h-8 text-green-600" />
-            </div>
+            <img src="/comemoração 2.png" alt="Concluído" className="w-32 h-32 object-contain mx-auto" />
             <div>
               <p className="font-bold text-foreground text-lg">Atendimento concluído!</p>
               <p className="text-sm text-muted-foreground mt-1">

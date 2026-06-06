@@ -101,6 +101,45 @@ app.use('/api/service-requests', createCrudRouter(ServiceRequest, {
     } catch (err) {
       console.error('[mail] service_request_created:', err.message);
     }
+
+    // Matching automático: notifica prestadores elegíveis na área
+    setImmediate(async () => {
+      try {
+        const requestCity = (doc.city || '').split(' - ')[0].trim();
+        if (!requestCity) return;
+        const cityRegex = new RegExp(requestCity.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+        const eligibleProfiles = await ProviderProfile.find({
+          active: true,
+          available: { $ne: false },
+          serviceAreas: { $elemMatch: { city: cityRegex } },
+        }).lean();
+
+        for (const profile of eligibleProfiles) {
+          await Notification.create({
+            userId: profile.userId,
+            type: 'new_request_nearby',
+            title: 'Novo pedido na sua área!',
+            body: `Pedido de ${doc.category || doc.title || 'serviço'} perto de você. Envie uma proposta!`,
+            relatedId: doc._id,
+            data: { relatedId: doc._id },
+            read: false,
+          });
+          const provider = await User.findById(profile.userId).lean();
+          const phone = provider?.phone || profile.phone;
+          if (phone) {
+            const firstName = (profile.name || provider?.fullName || '').split(' ')[0] || 'você';
+            await sendWhatsApp(phone,
+              `Olá ${firstName}! 🔔\n\n` +
+              `Novo pedido de *${doc.category || doc.title || 'serviço'}* na sua área!\n\n` +
+              `📍 ${doc.neighborhood ? doc.neighborhood + ', ' : ''}${doc.city || ''}\n\n` +
+              `Acesse o ServiLocal e envie sua proposta! 🚀`
+            ).catch(() => {});
+          }
+        }
+      } catch (e) {
+        console.error('[matching] notify providers error:', e.message);
+      }
+    });
   },
   afterUpdate: async (doc, req) => {
     if (req.body.status !== 'completed') return;
@@ -626,6 +665,11 @@ app.post('/api/service-requests/:id/confirm-provider', requireAuth, async (req, 
 
         for (const interest of rejected) {
           await ServiceRequestInterest.findByIdAndUpdate(interest._id, { status: 'rejected' });
+
+          await Conversation.findOneAndUpdate(
+            { serviceRequestId: requestId, providerId: interest.providerId },
+            { status: 'closed' }
+          );
 
           await Notification.create({
             userId: interest.providerId,
