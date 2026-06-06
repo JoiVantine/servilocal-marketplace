@@ -307,7 +307,7 @@ app.post('/api/service-requests/:id/progress', requireAuth, async (req, res) => 
         }
       });
 
-      return res.json({ success: true, status: 'provider_done', code });
+      return res.json({ success: true, status: 'provider_done' });
     }
 
     return res.status(400).json({ error: 'Ação inválida' });

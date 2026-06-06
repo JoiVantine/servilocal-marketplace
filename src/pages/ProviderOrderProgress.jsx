@@ -91,7 +91,7 @@ export default function ProviderOrderProgress() {
   const [user, setUser] = useState(null);
   const [showOnTheWayConfirm, setShowOnTheWayConfirm] = useState(false);
   const [showDoneConfirm, setShowDoneConfirm] = useState(false);
-  const [completionCode, setCompletionCode] = useState(null);
+  const [doneConfirmed, setDoneConfirmed] = useState(false);
 
   useEffect(() => {
     api.auth.me().then(setUser).catch(() => navigate('/'));
@@ -124,8 +124,8 @@ export default function ProviderOrderProgress() {
         action: status,
         conversationId: conversation?.id,
       });
-      if (status === 'provider_done' && result.code) {
-        setCompletionCode(result.code);
+      if (status === 'provider_done') {
+        setDoneConfirmed(true);
       }
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['provider-progress', requestId] }),
@@ -409,7 +409,7 @@ export default function ProviderOrderProgress() {
               </button>
             )}
 
-            {ps === 'provider_done' && !completionCode && (
+            {ps === 'provider_done' && (
               <button
                 onClick={() => navigate(`/chat/${conversation?.id}`)}
                 disabled={!conversation}
@@ -474,8 +474,8 @@ export default function ProviderOrderProgress() {
         );
       })()}
 
-      {/* ── Modal: concluir atendimento + código ─────────────────────────────── */}
-      {showDoneConfirm && !completionCode && (
+      {/* ── Modal: concluir atendimento ──────────────────────────────────────── */}
+      {showDoneConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
           <div className="absolute inset-0 bg-black/50" onClick={() => setShowDoneConfirm(false)} />
           <div className="relative bg-background rounded-2xl p-6 w-full max-w-sm space-y-4">
@@ -510,8 +510,8 @@ export default function ProviderOrderProgress() {
         </div>
       )}
 
-      {/* ── Código de conclusão ────────────────────────────────────────────── */}
-      {completionCode && (
+      {/* ── Feedback: atendimento marcado como concluído ─────────────────────── */}
+      {doneConfirmed && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
           <div className="absolute inset-0 bg-black/60" />
           <div className="relative bg-background rounded-2xl p-6 w-full max-w-sm space-y-4 text-center">
@@ -520,15 +520,13 @@ export default function ProviderOrderProgress() {
             </div>
             <div>
               <p className="font-bold text-foreground text-lg">Atendimento concluído!</p>
-              <p className="text-sm text-muted-foreground mt-1">Código enviado ao cliente via WhatsApp:</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Um código de confirmação foi enviado ao cliente via WhatsApp. Aguarde ele confirmar no app.
+              </p>
             </div>
-            <div className="bg-secondary/60 border border-border rounded-xl py-4 px-6">
-              <p className="text-4xl font-black text-foreground tracking-[0.3em]">{completionCode}</p>
-            </div>
-            <p className="text-xs text-muted-foreground">O cliente usará este código para confirmar no app.</p>
             <button
               onClick={() => {
-                setCompletionCode(null);
+                setDoneConfirmed(false);
                 queryClient.invalidateQueries({ queryKey: ['provider-progress', requestId] });
               }}
               className="w-full py-3 bg-primary text-primary-foreground rounded-xl font-semibold hover:opacity-90 transition-opacity"
