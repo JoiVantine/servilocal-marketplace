@@ -89,7 +89,13 @@ export default function ProviderHome() {
 
   const { data: rawRequests = [], isLoading } = useQuery({
     queryKey: ['provider-requests'],
-    queryFn: () => api.entities.ServiceRequest.filter({ status: 'open' }, '-created_date', 100),
+    queryFn: async () => {
+      const [open, inConv] = await Promise.all([
+        api.entities.ServiceRequest.filter({ status: 'open' }, '-created_date', 100),
+        api.entities.ServiceRequest.filter({ status: 'in_conversation' }, '-created_date', 100),
+      ]);
+      return [...open, ...inConv];
+    },
     enabled: !!user,
     refetchInterval: 30000,
   });
@@ -103,13 +109,14 @@ export default function ProviderHome() {
 
   const norm = (s) => (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
   const providerCities = providerServiceAreas.length
-    ? providerServiceAreas.map(a => norm(a.city.split(' - ')[0]))
+    ? providerServiceAreas.map(a => norm((a.city || '').split(' - ')[0]))
     : [norm((user?.city || '').split(' - ')[0])];
+  const hasCityFilter = providerCities.some(c => c.length > 0);
   const requests = rawRequests.filter(r => {
+    if (!hasCityFilter) return true;
     const reqCity = norm((r.city || '').split(' - ')[0]);
-    const cityMatch = !providerCities.some(c => c) || !reqCity || providerCities.includes(reqCity);
-    const specMatch = !providerSpecialties.length || !r.subcategory || providerSpecialties.includes(r.subcategory);
-    return cityMatch && specMatch;
+    if (!reqCity) return true;
+    return providerCities.includes(reqCity);
   });
 
   const visibleRequests = requests.filter(r => !dismissed.has(r.id));

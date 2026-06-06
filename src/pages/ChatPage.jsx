@@ -13,10 +13,12 @@ export default function ChatPage() {
   const queryClient = useQueryClient();
   const bottomRef = useRef(null);
   const imageInputRef = useRef(null);
-  const audioInputRef = useRef(null);
+  const mediaRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
   const [user, setUser] = useState(null);
   const [text, setText] = useState('');
   const [attachment, setAttachment] = useState(null);
+  const [recording, setRecording] = useState(false);
   const [showReview, setShowReview] = useState(false);
 
   useEffect(() => {
@@ -140,6 +142,33 @@ export default function ChatPage() {
       queryClient.invalidateQueries({ queryKey: ['conversation', conversationId] });
     },
   });
+
+  const handleMicClick = async () => {
+    if (recording) {
+      mediaRecorderRef.current?.stop();
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4';
+      const mr = new MediaRecorder(stream, { mimeType });
+      audioChunksRef.current = [];
+      mr.ondataavailable = (e) => { if (e.data.size > 0) audioChunksRef.current.push(e.data); };
+      mr.onstop = () => {
+        stream.getTracks().forEach(t => t.stop());
+        const blob = new Blob(audioChunksRef.current, { type: mimeType });
+        const ext = mimeType.includes('webm') ? 'webm' : 'm4a';
+        const file = new File([blob], `audio.${ext}`, { type: mimeType });
+        setAttachment({ file, type: 'audio', previewUrl: URL.createObjectURL(blob) });
+        setRecording(false);
+      };
+      mediaRecorderRef.current = mr;
+      mr.start();
+      setRecording(true);
+    } catch {
+      alert('Não foi possível acessar o microfone. Verifique as permissões do navegador.');
+    }
+  };
 
   const handleAttachmentSelect = (event, type) => {
     const file = event.target.files?.[0];
@@ -338,15 +367,9 @@ export default function ChatPage() {
                 ref={imageInputRef}
                 type="file"
                 accept="image/*"
+                capture="environment"
                 className="hidden"
                 onChange={(event) => handleAttachmentSelect(event, 'image')}
-              />
-              <input
-                ref={audioInputRef}
-                type="file"
-                accept="audio/*"
-                className="hidden"
-                onChange={(event) => handleAttachmentSelect(event, 'audio')}
               />
               <button
                 onClick={() => imageInputRef.current?.click()}
@@ -356,9 +379,13 @@ export default function ChatPage() {
                 <ImageIcon className="w-5 h-5" />
               </button>
               <button
-                onClick={() => audioInputRef.current?.click()}
-                className="w-11 h-12 rounded-xl border border-border bg-card text-muted-foreground flex items-center justify-center hover:text-foreground"
-                title="Enviar áudio"
+                onClick={handleMicClick}
+                className={`w-11 h-12 rounded-xl border flex items-center justify-center transition-colors ${
+                  recording
+                    ? 'bg-red-500 border-red-500 text-white animate-pulse'
+                    : 'border-border bg-card text-muted-foreground hover:text-foreground'
+                }`}
+                title={recording ? 'Parar gravação' : 'Gravar áudio'}
               >
                 <Mic className="w-5 h-5" />
               </button>
