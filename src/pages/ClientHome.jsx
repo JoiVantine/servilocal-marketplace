@@ -164,8 +164,16 @@ export default function ClientHome() {
         <div className="flex-1 overflow-y-auto pb-20">
 
           {/* Logo topo */}
-          <div className="flex items-center justify-center pt-4 pb-1">
+          <div className="flex flex-col items-center pt-4 pb-1">
             <img src="/onboarding-city.png" alt="ServiLocal" className="w-14 h-14 object-contain" />
+            {(user?.city || !user) && (
+              <div className="flex items-center gap-1 mt-1.5">
+                <MapPin className="w-3 h-3 text-primary" />
+                <span className="text-xs text-muted-foreground font-medium">
+                  {user?.city || 'Serviços da sua cidade'}
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Greeting card */}
@@ -199,25 +207,31 @@ export default function ClientHome() {
                 </button>
               </div>
             ) : (
-              <div className="flex items-center justify-between bg-card rounded-2xl p-4 border border-border">
+              <div className="bg-card rounded-2xl p-4 border border-border space-y-3">
                 <div>
-                  <p className="font-bold text-foreground">Bem-vindo!</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">Entre ou crie sua conta para publicar pedidos</p>
+                  <p className="font-bold text-foreground">Precisa de ajuda hoje?</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Encontre profissionais da sua cidade em poucos minutos.</p>
                 </div>
                 <div className="flex gap-2">
                   <button
                     onClick={() => navigate('/login?role=client')}
-                    className="px-3 py-1.5 border border-border rounded-lg text-xs font-semibold text-foreground hover:bg-secondary transition-colors"
+                    className="flex-1 py-2 border border-border rounded-lg text-xs font-semibold text-foreground hover:bg-secondary transition-colors"
                   >
                     Entrar
                   </button>
                   <button
                     onClick={() => navigate('/client/welcome')}
-                    className="px-3 py-1.5 bg-primary text-primary-foreground rounded-lg text-xs font-semibold hover:opacity-90 transition-opacity"
+                    className="flex-1 py-2 bg-primary text-primary-foreground rounded-lg text-xs font-semibold hover:opacity-90 transition-opacity"
                   >
                     Criar conta
                   </button>
                 </div>
+                <p className="text-center text-[11px] text-muted-foreground">
+                  É prestador?{' '}
+                  <button onClick={() => navigate('/provider/welcome')} className="text-primary font-semibold hover:underline">
+                    Cadastre-se aqui
+                  </button>
+                </p>
               </div>
             )}
           </div>
@@ -230,7 +244,7 @@ export default function ClientHome() {
                 type="text"
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                placeholder="O que você precisa hoje?"
+                placeholder="Qual serviço você procura?"
                 className="w-full pl-10 pr-4 py-3 rounded-xl border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
               />
               {searchQuery && (
@@ -322,6 +336,25 @@ export default function ClientHome() {
           </div>
           )}
 
+          {/* CTA: Não encontrou o serviço? */}
+          {!searchQuery && (
+            <div className="px-4 mb-4">
+              <button
+                onClick={() => requireAuth(null)}
+                className="w-full flex items-center gap-3 bg-primary/5 border border-primary/20 rounded-2xl px-4 py-3.5 hover:bg-primary/10 transition-colors text-left"
+              >
+                <span className="text-xl shrink-0">📍</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-foreground">Não encontrou o serviço?</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Descreva o que você precisa e receba propostas de profissionais locais.</p>
+                </div>
+                <span className="shrink-0 px-3 py-1.5 bg-primary text-primary-foreground rounded-lg text-xs font-semibold">
+                  Solicitar
+                </span>
+              </button>
+            </div>
+          )}
+
           {/* Profissionais disponíveis na sua região */}
           {user?.city && availableCount > 0 && (
             <div className="px-4 mb-4">
@@ -358,15 +391,40 @@ export default function ClientHome() {
             </div>
           )}
 
-          {/* Profissionais verificados */}
+          {/* Serviços mais procurados */}
+          {!searchQuery && (
+            <div className="px-4 mb-5">
+              <p className="text-sm font-bold text-foreground mb-3">Serviços mais procurados</p>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { label: 'Eletricista', emoji: '⚡', cat: 'Elétrica', sub: 'Instalação elétrica' },
+                  { label: 'Encanador', emoji: '🚿', cat: 'Hidráulica', sub: 'Vazamento' },
+                  { label: 'Diarista', emoji: '🧹', cat: 'Limpeza', sub: 'Limpeza residencial' },
+                  { label: 'Pintor', emoji: '🎨', cat: 'Pintura', sub: 'Pintura interna' },
+                  { label: 'Jardineiro', emoji: '🌿', cat: 'Jardinagem', sub: 'Corte de grama' },
+                ].map(({ label, emoji, cat, sub }) => (
+                  <button
+                    key={label}
+                    onClick={() => requireAuth({ category: cat, subcategory: sub })}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-full border border-border bg-card text-xs font-medium text-foreground hover:border-primary/40 hover:bg-primary/5 transition-all"
+                  >
+                    <span>{emoji}</span>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Profissionais locais */}
           <div className="px-4 mb-5">
             <div className="bg-card border border-border rounded-xl p-4 flex items-center gap-3">
               <div className="w-11 h-11 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
                 <ShieldCheck className="w-5 h-5 text-primary" />
               </div>
               <div className="flex-1">
-                <p className="font-semibold text-sm text-foreground">Profissionais verificados</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Mais segurança e qualidade para você.</p>
+                <p className="font-semibold text-sm text-foreground">Profissionais da sua região</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Conheça prestadores locais e converse antes de contratar.</p>
               </div>
             </div>
           </div>

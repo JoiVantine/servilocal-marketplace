@@ -1,11 +1,8 @@
 ﻿import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
 import { api } from '@/api/apiClient';
 import { useAuth } from '@/lib/AuthContext';
 import { Search, Building2, ChevronRight } from 'lucide-react';
-import HeroSection from "../components/HeroSection";
-import HowItWorks from "../components/HowItWorks";
-import Benefits from "../components/Benefits";
 
 const LOGO_URL = "/onboarding-city.png";
 
@@ -47,6 +44,10 @@ export default function Home() {
     );
   }
 
+  if (!authUser) {
+    return <Navigate to="/client" replace />;
+  }
+
   if (authUser && hasProfile) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6">
@@ -82,13 +83,5 @@ export default function Home() {
     );
   }
 
-  return (
-    <div className="min-h-screen bg-background font-body">
-      <div className="max-w-lg mx-auto pb-16">
-        <HeroSection />
-        <HowItWorks />
-        <Benefits />
-      </div>
-    </div>
-  );
+  return <Navigate to="/client/onboarding" replace />;
 }

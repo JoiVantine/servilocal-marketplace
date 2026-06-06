@@ -1,18 +1,18 @@
 const STEPS = [
   {
     number: 1,
-    title: "Publique o que você precisa",
-    description: "Conte qual serviço está procurando na sua cidade.",
+    title: "Publique seu pedido",
+    description: "Conte o que você precisa em poucos cliques.",
   },
   {
     number: 2,
-    title: "Converse pelo chat",
-    description: "Fale diretamente com profissionais interessados.",
+    title: "Receba propostas",
+    description: "Profissionais da região entram em contato com orçamentos.",
   },
   {
     number: 3,
-    title: "Combine o atendimento",
-    description: "Acerte os detalhes com quem puder resolver seu problema.",
+    title: "Escolha quem contratar",
+    description: "Converse pelo chat e combine os detalhes diretamente.",
   },
 ];
 

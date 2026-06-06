@@ -75,21 +75,22 @@ export default function HeroSection() {
         </button>
 
         {/* Já possuo conta */}
-        <div className="pt-1 text-center text-sm text-muted-foreground">
-          Já possuo conta:{' '}
-          <button
-            onClick={() => navigate('/login?role=client')}
-            className="text-primary font-medium hover:underline"
-          >
-            Entrar como Cliente
-          </button>
-          {' '}ou{' '}
-          <button
-            onClick={() => navigate('/login?role=provider')}
-            className="text-primary font-medium hover:underline"
-          >
-            Entrar como Prestador
-          </button>
+        <div className="pt-1 space-y-2">
+          <p className="text-center text-xs text-muted-foreground">Já possui conta?</p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => navigate('/login?role=client')}
+              className="flex-1 py-2.5 border border-border rounded-xl text-xs font-semibold text-foreground hover:bg-secondary transition-colors"
+            >
+              Entrar como Cliente
+            </button>
+            <button
+              onClick={() => navigate('/login?role=provider')}
+              className="flex-1 py-2.5 border border-border rounded-xl text-xs font-semibold text-foreground hover:bg-secondary transition-colors"
+            >
+              Entrar como Prestador
+            </button>
+          </div>
         </div>
       </div>
     </section>
