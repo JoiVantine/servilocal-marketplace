@@ -13,7 +13,7 @@ const SLIDES = [
     subtitle: 'Encontre profissionais da sua região em poucos minutos.',
   },
   {
-    img: '/onboarding.chat.png',
+    img: '/onboarding-chat.png',
     title: 'Converse antes de contratar',
     subtitle: 'Receba propostas, tire dúvidas e escolha o melhor profissional.',
   },
