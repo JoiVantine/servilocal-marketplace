@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { api } from '@/api/apiClient';
 import { Check, Eye, EyeOff, CheckCircle2, Circle, ShieldCheck, Phone } from 'lucide-react';
 
@@ -32,6 +32,8 @@ function Rule({ ok, label }) {
 
 export default function ClientOnboarding() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const serviceContext = location.state?.returnState;
 
   const [step, setStep] = useState(0);
   const [editMode, setEditMode] = useState(false);
@@ -58,6 +60,7 @@ export default function ClientOnboarding() {
   const [showConfirm, setShowConfirm] = useState(false);
 
   // Step 3 — Endereço
+  const [saveAddress, setSaveAddress] = useState(true);
   const [cep, setCep] = useState('');
   const [rua, setRua] = useState('');
   const [numero, setNumero] = useState('');
@@ -222,7 +225,7 @@ export default function ClientOnboarding() {
       const cityState = uf ? `${cidade} - ${uf}` : cidade;
       await api.auth.updateMe({ city: cityState }).catch(() => {});
 
-      if (userId) {
+      if (userId && saveAddress) {
         const existing = await api.entities.UserProfile.filter({ userId }).catch(() => []);
         const profileData = {
           userId,
@@ -238,11 +241,27 @@ export default function ClientOnboarding() {
         } else {
           await api.entities.UserProfile.create(profileData).catch(() => {});
         }
+      } else if (userId) {
+        const existing = await api.entities.UserProfile.filter({ userId }).catch(() => []);
+        const base = { userId, role: 'client', onboardingCompleted: true, firstAccess: false };
+        if (existing.length > 0) {
+          await api.entities.UserProfile.update(existing[0].id, base).catch(() => {});
+        } else {
+          await api.entities.UserProfile.create(base).catch(() => {});
+        }
       }
     } catch { /* silent */ } finally {
       setLoading(false);
     }
-    window.location.href = '/client';
+
+    if (serviceContext?.category) {
+      const params = new URLSearchParams();
+      if (serviceContext.category) params.set('category', serviceContext.category);
+      if (serviceContext.subcategory) params.set('subcategory', serviceContext.subcategory);
+      window.location.href = `/client/new-request?${params.toString()}`;
+    } else {
+      window.location.href = '/client';
+    }
   };
 
   return (
@@ -547,8 +566,8 @@ export default function ClientOnboarding() {
           {step === 3 && (
             <div className="space-y-4">
               <div>
-                <h2 className="text-xl font-bold text-foreground">Seu endereço</h2>
-                <p className="text-sm text-muted-foreground mt-1">Usamos para conectar você a profissionais próximos</p>
+                <h2 className="text-xl font-bold text-foreground">Endereço para realização do serviço</h2>
+                <p className="text-sm text-muted-foreground mt-1">Onde o profissional irá atender você</p>
               </div>
 
               <div>
@@ -665,6 +684,16 @@ export default function ClientOnboarding() {
                 </div>
               </div>
 
+              <label className="flex items-center gap-3 cursor-pointer select-none p-3 bg-secondary/40 rounded-xl">
+                <input
+                  type="checkbox"
+                  checked={saveAddress}
+                  onChange={(e) => setSaveAddress(e.target.checked)}
+                  className="w-4 h-4 rounded accent-primary shrink-0"
+                />
+                <span className="text-sm text-foreground">Salvar endereço no meu perfil</span>
+              </label>
+
               <button
                 onClick={handleStep3}
                 className="w-full py-3.5 bg-primary text-primary-foreground rounded-xl font-semibold hover:opacity-90 transition-opacity mt-2"
@@ -685,32 +714,27 @@ export default function ClientOnboarding() {
           {step === 4 && (
             <div className="space-y-5">
               <div>
-                <h2 className="text-xl font-bold text-foreground">Confirme seus dados</h2>
-                <p className="text-sm text-muted-foreground mt-1">Revise as informações antes de finalizar</p>
+                <h2 className="text-xl font-bold text-foreground">Resumo do pedido</h2>
+                <p className="text-sm text-muted-foreground mt-1">Confira antes de finalizar</p>
               </div>
 
-              {/* Dados pessoais */}
-              <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <p className="text-xs font-semibold text-muted-foreground tracking-widest">DADOS PESSOAIS</p>
-                  <button onClick={() => { setEditMode(true); setStep(0); }} className="text-xs text-primary font-medium">Editar</button>
+              {/* Serviço solicitado */}
+              {serviceContext?.category && (
+                <div className="bg-primary/5 border border-primary/15 rounded-2xl p-4 space-y-2">
+                  <p className="text-xs font-semibold text-muted-foreground tracking-widest">SERVIÇO</p>
+                  <p className="text-sm font-bold text-foreground">{serviceContext.category}</p>
+                  {serviceContext.subcategory && (
+                    <span className="inline-block text-xs bg-primary/10 text-primary font-medium px-2.5 py-1 rounded-full">
+                      {serviceContext.subcategory}
+                    </span>
+                  )}
                 </div>
-                <div className="space-y-1.5">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground w-16 shrink-0">Nome</span>
-                    <span className="text-sm text-foreground font-medium">{name}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground w-16 shrink-0">E-mail</span>
-                    <span className="text-sm text-foreground">{email}</span>
-                  </div>
-                </div>
-              </div>
+              )}
 
-              {/* Endereço */}
+              {/* Endereço do serviço */}
               <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
                 <div className="flex items-center justify-between">
-                  <p className="text-xs font-semibold text-muted-foreground tracking-widest">ENDEREÇO</p>
+                  <p className="text-xs font-semibold text-muted-foreground tracking-widest">LOCAL DO SERVIÇO</p>
                   <button onClick={() => { setEditMode(true); setStep(3); }} className="text-xs text-primary font-medium">Editar</button>
                 </div>
                 <div className="space-y-0.5">
@@ -722,6 +746,13 @@ export default function ClientOnboarding() {
                   <p className="text-sm text-muted-foreground">{cidade}{uf ? ` - ${uf}` : ''}</p>
                   {cep && <p className="text-xs text-muted-foreground">CEP {cep}</p>}
                 </div>
+              </div>
+
+              {/* Conta criada */}
+              <div className="bg-card border border-border rounded-2xl p-4 space-y-2">
+                <p className="text-xs font-semibold text-muted-foreground tracking-widest">SUA CONTA</p>
+                <p className="text-sm text-foreground font-medium">{name}</p>
+                <p className="text-xs text-muted-foreground">{email}</p>
               </div>
 
               {errors.submit && <p className="text-xs text-red-500 text-center">{errors.submit}</p>}

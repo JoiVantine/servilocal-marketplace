@@ -42,10 +42,11 @@ export default function NewServiceRequest() {
   const { categories } = useServices();
   const fileRef = useRef(null);
 
+  const qp = new URLSearchParams(window.location.search);
   const [description, setDescription] = useState('');
   const [scheduleOptions, setScheduleOptions] = useState([emptyScheduleOption()]);
-  const [selectedCategory, setSelectedCategory] = useState(state?.category || '');
-  const [selectedSubcategory, setSelectedSubcategory] = useState(state?.subcategory || '');
+  const [selectedCategory, setSelectedCategory] = useState(state?.category || qp.get('category') || '');
+  const [selectedSubcategory, setSelectedSubcategory] = useState(state?.subcategory || qp.get('subcategory') || '');
   const [categoryExpanded, setCategoryExpanded] = useState(false);
   const [photos, setPhotos] = useState([]);
   const [photoLoading, setPhotoLoading] = useState(false);
