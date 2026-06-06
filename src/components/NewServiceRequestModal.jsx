@@ -10,7 +10,16 @@ export default function NewServiceRequestModal({ category, request, onClose, onU
   const isEdit = !!request;
   const [title, setTitle] = useState(request?.title ?? category?.label ?? '');
   const [description, setDescription] = useState(request?.description ?? '');
-  const [scheduledAt, setScheduledAt] = useState(request?.scheduledAt ?? '');
+
+  const initialScheduledAt = (() => {
+    const raw = request?.scheduledAt
+      || (request?.scheduleOptions?.[0]
+        ? `${request.scheduleOptions[0].date}T${request.scheduleOptions[0].startTime}`
+        : '');
+    if (!raw) return '';
+    return raw.slice(0, 16);
+  })();
+  const [scheduledAt, setScheduledAt] = useState(initialScheduledAt);
   const [photos, setPhotos] = useState(request?.photos ?? []);
   const [photoLoading, setPhotoLoading] = useState(false);
   const [photoError, setPhotoError] = useState(false);
