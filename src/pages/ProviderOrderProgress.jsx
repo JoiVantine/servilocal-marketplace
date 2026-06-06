@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/api/apiClient';
 import {
   ChevronLeft, MessageCircle, CheckCircle2, Circle,
-  Navigation, Star, MapPin,
+  Navigation, Star, MapPin, AlertCircle,
 } from 'lucide-react';
 
 // Steps visible on the Em execução screen
@@ -89,6 +89,9 @@ export default function ProviderOrderProgress() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [user, setUser] = useState(null);
+  const [showOnTheWayConfirm, setShowOnTheWayConfirm] = useState(false);
+  const [showDoneConfirm, setShowDoneConfirm] = useState(false);
+  const [completionCode, setCompletionCode] = useState(null);
 
   useEffect(() => {
     api.auth.me().then(setUser).catch(() => navigate('/'));
@@ -116,14 +119,24 @@ export default function ProviderOrderProgress() {
   const latestReview = reviews[reviews.length - 1];
 
   const updateProgress = useMutation({
-    mutationFn: async ({ status, extraLogs = [] }) => {
-      const t = now();
-      const currentLog = request?.progressLog || [];
-      const newLog = [...currentLog, ...extraLogs, { status, time: t }];
-      await api.entities.ServiceRequest.update(requestId, {
-        progressStatus: status,
-        progressLog: newLog,
-      });
+    mutationFn: async ({ status }) => {
+      if (status === 'on_the_way' || status === 'provider_done') {
+        const result = await api.progress.notify(requestId, {
+          action: status,
+          conversationId: conversation?.id,
+        });
+        if (status === 'provider_done' && result.code) {
+          setCompletionCode(result.code);
+        }
+      } else {
+        const t = now();
+        const currentLog = request?.progressLog || [];
+        const newLog = [...currentLog, { status, time: t }];
+        await api.entities.ServiceRequest.update(requestId, {
+          progressStatus: status,
+          progressLog: newLog,
+        });
+      }
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['provider-progress', requestId] }),
   });
@@ -391,14 +404,13 @@ export default function ProviderOrderProgress() {
       {!isLoading && request && ps !== 'completed' && (
         <div className="fixed bottom-0 left-0 right-0 px-4 py-4 bg-background border-t border-border">
           <div className="max-w-lg mx-auto">
-            {/* Confirmed but not started yet */}
             {!ps && isConfirmedProvider && (
               <button
-                onClick={() => updateProgress.mutate({ status: 'on_the_way' })}
+                onClick={() => setShowOnTheWayConfirm(true)}
                 disabled={updateProgress.isPending}
                 className="w-full py-4 bg-primary text-primary-foreground rounded-xl font-semibold text-base hover:opacity-90 transition-opacity disabled:opacity-50"
               >
-                {updateProgress.isPending ? 'Atualizando...' : 'Estou a caminho'}
+                Estou a caminho
               </button>
             )}
 
@@ -424,23 +436,125 @@ export default function ProviderOrderProgress() {
 
             {ps === 'in_progress' && (
               <button
-                onClick={() => updateProgress.mutate({ status: 'provider_done' })}
+                onClick={() => setShowDoneConfirm(true)}
                 disabled={updateProgress.isPending}
                 className="w-full py-4 bg-primary text-primary-foreground rounded-xl font-semibold text-base hover:opacity-90 transition-opacity disabled:opacity-50"
               >
-                {updateProgress.isPending ? 'Finalizando...' : 'Finalizar serviço'}
+                Concluir atendimento
               </button>
             )}
 
-            {ps === 'provider_done' && (
+            {ps === 'provider_done' && !completionCode && (
               <button
                 onClick={() => navigate(`/chat/${conversation?.id}`)}
                 disabled={!conversation}
                 className="w-full py-4 border border-border rounded-xl font-semibold text-base text-foreground hover:bg-secondary/50 transition-colors disabled:opacity-40 flex items-center justify-center gap-2"
               >
-                <MessageCircle className="w-5 h-5" /> Ver resumo no chat
+                <MessageCircle className="w-5 h-5" /> Ver conversa
               </button>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal: confirmar "estou a caminho" ──────────────────────────────── */}
+      {showOnTheWayConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setShowOnTheWayConfirm(false)} />
+          <div className="relative bg-background rounded-2xl p-6 w-full max-w-sm space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                <Navigation className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <p className="font-bold text-foreground">Estou a caminho</p>
+                <p className="text-sm text-muted-foreground">O cliente será notificado que você está a caminho.</p>
+              </div>
+            </div>
+            <p className="text-sm text-foreground">Confirma a ação?</p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowOnTheWayConfirm(false)}
+                className="flex-1 py-3 border border-border rounded-xl font-medium text-foreground hover:bg-secondary/50 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => {
+                  setShowOnTheWayConfirm(false);
+                  updateProgress.mutate({ status: 'on_the_way' });
+                }}
+                disabled={updateProgress.isPending}
+                className="flex-1 py-3 bg-primary text-primary-foreground rounded-xl font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
+              >
+                {updateProgress.isPending ? 'Enviando...' : 'Confirmar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal: concluir atendimento + código ─────────────────────────────── */}
+      {showDoneConfirm && !completionCode && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setShowDoneConfirm(false)} />
+          <div className="relative bg-background rounded-2xl p-6 w-full max-w-sm space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+                <CheckCircle2 className="w-5 h-5 text-green-600" />
+              </div>
+              <div>
+                <p className="font-bold text-foreground">Concluir atendimento</p>
+                <p className="text-sm text-muted-foreground">Um código será enviado ao cliente via WhatsApp para confirmar a conclusão.</p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowDoneConfirm(false)}
+                className="flex-1 py-3 border border-border rounded-xl font-medium text-foreground hover:bg-secondary/50 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => {
+                  setShowDoneConfirm(false);
+                  updateProgress.mutate({ status: 'provider_done' });
+                }}
+                disabled={updateProgress.isPending}
+                className="flex-1 py-3 bg-primary text-primary-foreground rounded-xl font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
+              >
+                {updateProgress.isPending ? 'Enviando...' : 'Concluir'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Código de conclusão ────────────────────────────────────────────── */}
+      {completionCode && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <div className="absolute inset-0 bg-black/60" />
+          <div className="relative bg-background rounded-2xl p-6 w-full max-w-sm space-y-4 text-center">
+            <div className="w-14 h-14 rounded-full bg-green-100 flex items-center justify-center mx-auto">
+              <CheckCircle2 className="w-8 h-8 text-green-600" />
+            </div>
+            <div>
+              <p className="font-bold text-foreground text-lg">Atendimento concluído!</p>
+              <p className="text-sm text-muted-foreground mt-1">Código enviado ao cliente via WhatsApp:</p>
+            </div>
+            <div className="bg-secondary/60 border border-border rounded-xl py-4 px-6">
+              <p className="text-4xl font-black text-foreground tracking-[0.3em]">{completionCode}</p>
+            </div>
+            <p className="text-xs text-muted-foreground">O cliente usará este código para confirmar no app.</p>
+            <button
+              onClick={() => {
+                setCompletionCode(null);
+                queryClient.invalidateQueries({ queryKey: ['provider-progress', requestId] });
+              }}
+              className="w-full py-3 bg-primary text-primary-foreground rounded-xl font-semibold hover:opacity-90 transition-opacity"
+            >
+              OK
+            </button>
           </div>
         </div>
       )}

@@ -147,6 +147,125 @@ app.use('/api/service-request-interests', createCrudRouter(ServiceRequestInteres
   },
 }));
 
+// ─── Progress notifications ─────────────────────────────────────────────────
+const Message = require('./models/Message');
+const { sendWhatsApp } = require('./utils/whatsapp');
+
+app.post('/api/service-requests/:id/progress', requireAuth, async (req, res) => {
+  try {
+    const request = await ServiceRequest.findById(req.params.id);
+    if (!request) return res.status(404).json({ error: 'Pedido não encontrado' });
+
+    const isProvider = request.confirmedProviderId?.toString() === req.user.id;
+    if (!isProvider) return res.status(403).json({ error: 'Apenas o prestador confirmado pode atualizar o progresso' });
+
+    const { action, conversationId } = req.body;
+    const timeStr = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const currentLog = request.progressLog || [];
+
+    if (action === 'on_the_way') {
+      request.progressStatus = 'on_the_way';
+      request.progressLog = [...currentLog, { status: 'on_the_way', time: timeStr }];
+      await request.save();
+
+      const systemText = `🚗 ${request.confirmedProviderName || 'O prestador'} está a caminho!`;
+      if (conversationId) {
+        const conv = await Conversation.findById(conversationId);
+        if (conv) {
+          const msg = await Message.create({
+            conversationId: conv._id,
+            senderId: req.user.id,
+            senderName: 'ServiLocal',
+            senderType: 'system',
+            text: systemText,
+            content: systemText,
+            read: false,
+            attachments: [],
+          });
+          await Conversation.findByIdAndUpdate(conv._id, {
+            lastMessage: systemText,
+            lastMessageTime: msg.createdAt,
+            unreadCount: (conv.unreadCount || 0) + 1,
+          });
+          req.app.get('io').to(`conversation:${conv.id}`).emit('new-message', msg);
+        }
+      }
+
+      setImmediate(async () => {
+        try {
+          const client = await User.findById(request.clientId);
+          const phone = client?.phone || request.clientPhone;
+          const providerName = request.confirmedProviderName || 'O profissional';
+          const clientName = client?.fullName || 'Cliente';
+          if (phone) {
+            await sendWhatsApp(phone,
+              `Olá ${clientName}! 🚗 ${providerName} está a caminho para atender seu pedido de "${request.title}". Fique atento(a)!`
+            );
+          }
+        } catch (err) {
+          console.error('[whatsapp] on_the_way:', err.message);
+        }
+      });
+
+      return res.json({ success: true, status: 'on_the_way' });
+    }
+
+    if (action === 'provider_done') {
+      const code = String(Math.floor(100000 + Math.random() * 900000));
+      request.progressStatus = 'provider_done';
+      request.progressLog = [...currentLog, { status: 'provider_done', time: timeStr }];
+      request.completionCode = code;
+      await request.save();
+
+      const systemText = `✅ Atendimento concluído pelo prestador. Confirme a conclusão no app.`;
+      if (conversationId) {
+        const conv = await Conversation.findById(conversationId);
+        if (conv) {
+          const msg = await Message.create({
+            conversationId: conv._id,
+            senderId: req.user.id,
+            senderName: 'ServiLocal',
+            senderType: 'system',
+            text: systemText,
+            content: systemText,
+            read: false,
+            attachments: [],
+          });
+          await Conversation.findByIdAndUpdate(conv._id, {
+            lastMessage: systemText,
+            lastMessageTime: msg.createdAt,
+            unreadCount: (conv.unreadCount || 0) + 1,
+          });
+          req.app.get('io').to(`conversation:${conv.id}`).emit('new-message', msg);
+        }
+      }
+
+      setImmediate(async () => {
+        try {
+          const client = await User.findById(request.clientId);
+          const phone = client?.phone || request.clientPhone;
+          const providerName = request.confirmedProviderName || 'O profissional';
+          const clientName = client?.fullName || 'Cliente';
+          if (phone) {
+            await sendWhatsApp(phone,
+              `Olá ${clientName}! ✅ ${providerName} concluiu o atendimento de "${request.title}".\n\nSeu código de confirmação é: *${code}*\n\nAcesse o app para confirmar e finalizar o pedido.`
+            );
+          }
+        } catch (err) {
+          console.error('[whatsapp] provider_done:', err.message);
+        }
+      });
+
+      return res.json({ success: true, status: 'provider_done', code });
+    }
+
+    return res.status(400).json({ error: 'Ação inválida' });
+  } catch (err) {
+    console.error('[progress]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.use('/api/conversations', require('./routes/conversations'));
 
 app.use('/api/messages', require('./routes/messages'));

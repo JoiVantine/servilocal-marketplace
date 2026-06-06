@@ -79,6 +79,10 @@ const auth = {
   },
 };
 
+const progress = {
+  notify: (requestId, data) => request('POST', `/api/service-requests/${requestId}/progress`, data),
+};
+
 const support = {
   list: (query = {}) => {
     const params = new URLSearchParams(
@@ -135,6 +139,7 @@ function createEntity(path) {
 export const api = {
   auth,
   support,
+  progress,
 
   uploadFile: async (file) => {
     const token = localStorage.getItem('token');

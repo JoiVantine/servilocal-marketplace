@@ -38,6 +38,9 @@ const serviceRequestSchema = new mongoose.Schema({
   lat: Number,
   lng: Number,
   clientPhone: { type: String, default: '' },
+  progressStatus: { type: String },
+  progressLog: [{ status: String, time: String }],
+  completionCode: { type: String },
 }, { timestamps: true });
 
 serviceRequestSchema.set('toJSON', {
