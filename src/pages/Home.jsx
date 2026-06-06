@@ -36,7 +36,7 @@ export default function Home() {
     );
   };
 
-  if (isLoadingAuth || checkingProfile) {
+  if (isLoadingAuth || checkingProfile || (authUser && hasProfile === null)) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin" />
