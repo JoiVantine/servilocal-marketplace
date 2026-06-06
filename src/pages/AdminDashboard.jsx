@@ -31,20 +31,27 @@ function MetricCard({ label, value, icon: Icon, iconBg }) {
   );
 }
 
-function Shortcut({ label, description, icon: Icon, onClick, urgent }) {
+function Shortcut({ label, description, icon: Icon, onClick, urgent, badge }) {
   return (
     <button
       onClick={onClick}
-      className={`w-full flex items-center gap-3 px-4 py-4 transition-colors text-left ${urgent ? 'bg-red-50 hover:bg-red-100' : 'hover:bg-secondary/30'}`}
+      className={`w-full flex items-center gap-3 px-4 py-4 transition-colors text-left ${urgent && badge ? 'bg-red-50 hover:bg-red-100' : 'hover:bg-secondary/30'}`}
     >
-      <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${urgent ? 'bg-red-100' : 'bg-primary/10'}`}>
-        <Icon className={`w-5 h-5 ${urgent ? 'text-red-600' : 'text-primary'}`} />
+      <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${urgent && badge ? 'bg-red-100' : 'bg-primary/10'}`}>
+        <Icon className={`w-5 h-5 ${urgent && badge ? 'text-red-600' : 'text-primary'}`} />
       </div>
       <div className="flex-1 min-w-0">
-        <p className={`text-sm font-medium ${urgent ? 'text-red-800' : 'text-foreground'}`}>{label}</p>
-        <p className={`text-xs ${urgent ? 'text-red-600' : 'text-muted-foreground'}`}>{description}</p>
+        <div className="flex items-center gap-2">
+          <p className={`text-sm font-medium ${urgent && badge ? 'text-red-800' : 'text-foreground'}`}>{label}</p>
+          {badge != null && badge > 0 && (
+            <span className="min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+              {badge > 99 ? '99+' : badge}
+            </span>
+          )}
+        </div>
+        <p className={`text-xs ${urgent && badge ? 'text-red-600' : 'text-muted-foreground'}`}>{description}</p>
       </div>
-      <ChevronRight className={`w-4 h-4 shrink-0 ${urgent ? 'text-red-400' : 'text-muted-foreground'}`} />
+      <ChevronRight className={`w-4 h-4 shrink-0 ${urgent && badge ? 'text-red-400' : 'text-muted-foreground'}`} />
     </button>
   );
 }
@@ -64,11 +71,22 @@ export default function AdminDashboard() {
     staleTime: 30_000,
   });
 
+  const { data: atRiskData } = useQuery({
+    queryKey: ['admin-at-risk'],
+    queryFn: () => api.admin.atRisk(),
+    staleTime: 2 * 60_000,
+    refetchInterval: 2 * 60_000,
+  });
+
+  const riskTotal = (atRiskData?.no_proposals?.length ?? 0)
+    + (atRiskData?.ignored_proposals?.length ?? 0)
+    + (atRiskData?.stalled?.length ?? 0);
+
   const openCount = stats?.operations?.ticketsOpen ?? 0;
   const badgeCount = openCount > 0 ? (openCount > 99 ? '99+' : String(openCount)) : null;
 
   const shortcuts = [
-    { label: 'Pedidos em Risco', description: 'Sem proposta, ignorados ou parados', icon: AlertTriangle, to: '/admin/at-risk', urgent: true },
+    { label: 'Pedidos em Risco', description: 'Sem proposta, ignorados ou parados', icon: AlertTriangle, to: '/admin/at-risk', urgent: true, badge: riskTotal },
     { label: 'Ver todos os chamados', description: 'Acompanhe e gerencie', icon: MessageSquare, to: '/admin/support' },
     { label: 'Usuários', description: 'Gerencie usuários da plataforma', icon: Users, to: '/admin/users' },
     { label: 'Prestadores', description: 'Gerencie prestadores', icon: UserCheck, to: '/admin/users' },
@@ -97,6 +115,31 @@ export default function AdminDashboard() {
       </div>
 
       <div className="max-w-md mx-auto px-4 py-5 space-y-5">
+        {/* Alerta pedidos em risco */}
+        {riskTotal > 0 && (
+          <button
+            onClick={() => navigate('/admin/at-risk')}
+            className="w-full flex items-center gap-3 bg-red-50 border border-red-200 rounded-2xl px-4 py-3.5 text-left hover:bg-red-100 transition-colors"
+          >
+            <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center shrink-0">
+              <AlertTriangle className="w-5 h-5 text-red-600" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-red-800">
+                {riskTotal} pedido{riskTotal > 1 ? 's' : ''} em risco
+              </p>
+              <p className="text-xs text-red-600 mt-0.5">
+                {atRiskData.no_proposals.length > 0 && `${atRiskData.no_proposals.length} sem proposta`}
+                {atRiskData.no_proposals.length > 0 && atRiskData.ignored_proposals.length > 0 && ' • '}
+                {atRiskData.ignored_proposals.length > 0 && `${atRiskData.ignored_proposals.length} proposta${atRiskData.ignored_proposals.length > 1 ? 's' : ''} ignorada${atRiskData.ignored_proposals.length > 1 ? 's' : ''}`}
+                {(atRiskData.no_proposals.length > 0 || atRiskData.ignored_proposals.length > 0) && atRiskData.stalled.length > 0 && ' • '}
+                {atRiskData.stalled.length > 0 && `${atRiskData.stalled.length} conversa${atRiskData.stalled.length > 1 ? 's' : ''} parada${atRiskData.stalled.length > 1 ? 's' : ''}`}
+              </p>
+            </div>
+            <ChevronRight className="w-4 h-4 text-red-400 shrink-0" />
+          </button>
+        )}
+
         {/* Metric cards */}
         <div className="grid grid-cols-2 gap-3">
           <MetricCard
@@ -136,6 +179,7 @@ export default function AdminDashboard() {
                 description={s.description}
                 icon={s.icon}
                 urgent={s.urgent}
+                badge={s.badge}
                 onClick={() => navigate(s.to)}
               />
             ))}
