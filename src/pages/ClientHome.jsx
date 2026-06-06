@@ -113,6 +113,14 @@ export default function ClientHome() {
   });
 
   const firstName = (user?.fullName || user?.full_name)?.split(' ')[0] || '';
+
+  const isReturning = user?.id ? (() => {
+    const key = `visited_${user.id}`;
+    const seen = !!localStorage.getItem(key);
+    if (!seen) localStorage.setItem(key, '1');
+    return seen;
+  })() : false;
+
   const availableCount = cityProviders.length;
   const communityProviderCount = user?.city ? availableCount : allActiveProviders.length;
 
@@ -193,7 +201,7 @@ export default function ClientHome() {
                 </button>
                 <div className="flex-1 min-w-0">
                   <p className="font-bold text-foreground">Olá, {firstName} 👋</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">Bem-vindo de volta</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{isReturning ? 'Bem-vindo de volta' : 'Bem-vindo ao ServiLocal!'}</p>
                 </div>
                 <button
                   onClick={() => api.auth.logout('/')}
