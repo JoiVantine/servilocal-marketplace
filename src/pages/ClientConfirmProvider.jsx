@@ -58,6 +58,8 @@ export default function ClientConfirmProvider() {
         confirmedProviderPixKeyType: providerProfile?.pixKeyType || null,
         confirmedProviderPhone: providerProfile?.phone || interest.providerPhone || null,
         agreedPrice: interest.price,
+        agreedScheduledDate: interest.scheduledDate || null,
+        agreedScheduledTime: interest.scheduledTime || null,
         paymentMethod,
         paymentStatus: 'PENDENTE',
         paymentAmount: !isNaN(priceNum) ? priceNum : null,

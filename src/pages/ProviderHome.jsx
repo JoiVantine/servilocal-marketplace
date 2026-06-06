@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '@/api/apiClient';
 import {
   Star, Inbox, MapPin, Clock,
-  Navigation, LogOut, MessageCircle,
+  Navigation, LogOut, MessageCircle, ChevronRight,
 } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import ProviderBottomNav from '@/components/ProviderBottomNav';
@@ -123,6 +123,14 @@ export default function ProviderHome() {
     refetchInterval: 15000,
   });
 
+  const { data: myInterests = [] } = useQuery({
+    queryKey: ['provider-my-interests', user?.id],
+    queryFn: () => api.entities.ServiceRequestInterest.filter({ providerId: user.id }),
+    enabled: !!user?.id,
+    refetchInterval: 30000,
+  });
+  const myInterestRequestIds = new Set(myInterests.map(i => i.serviceRequestId));
+
   const norm = (s) => (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
   const providerCities = providerServiceAreas.length
     ? providerServiceAreas.map(a => norm((a.city || '').split(' - ')[0]))
@@ -149,7 +157,9 @@ export default function ProviderHome() {
   });
 
   const openRequests = specialtyFiltered.filter(r => r.status === 'open');
-  const inConvRequests = specialtyFiltered.filter(r => r.status === 'in_conversation');
+  const inConvRequests = specialtyFiltered.filter(r =>
+    r.status === 'in_conversation' && myInterestRequestIds.has(r.id)
+  );
 
   const visibleOpenRequests = openRequests.filter(r => !dismissed.has(r.id));
 
@@ -165,6 +175,7 @@ export default function ProviderHome() {
 
   const completed = agreedRequests.filter(r => r.status === 'completed').length;
   const activeOrders = agreedRequests.filter(r => r.status === 'agreed');
+  const newlyAgreed = activeOrders.filter(r => !r.progressStatus);
 
   const handleLogout = () => api.auth.logout('/');
   const firstName = providerName.split(' ')[0] || (user?.fullName || user?.full_name)?.split(' ')[0] || '';
@@ -234,6 +245,23 @@ export default function ProviderHome() {
           </div>
         </div>
 
+
+        {/* Proposta aceita — notificação */}
+        {newlyAgreed.map(req => (
+          <button
+            key={req.id}
+            onClick={() => navigate(`/provider/request/${req.id}/progress`)}
+            className="w-full flex items-start gap-3 bg-green-50 border border-green-200 rounded-2xl px-4 py-3 text-left"
+          >
+            <span className="text-xl mt-0.5">🎉</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-green-800">Sua proposta foi aceita!</p>
+              <p className="text-xs text-green-700 mt-0.5 leading-snug">
+                {req.title || req.category} — Entre em contato com o cliente para os últimos detalhes.
+              </p>
+            </div>
+          </button>
+        ))}
 
         {/* Tabs */}
         <div className="flex gap-2">

@@ -1,7 +1,20 @@
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/api/apiClient';
-import { ChevronLeft, Star, Home, ClipboardList, UserCircle2, Lock, Clock } from 'lucide-react';
+import { ChevronLeft, Star, Home, ClipboardList, UserCircle2, Lock, Clock, Calendar } from 'lucide-react';
+
+function fmtScheduledDate(dateStr) {
+  if (!dateStr) return null;
+  const d = new Date(`${dateStr}T00:00:00`);
+  return d.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit' });
+}
+
+function fmtBRLfromString(v) {
+  if (!v) return null;
+  const n = parseFloat(String(v).replace(',', '.'));
+  if (isNaN(n) || n === 0) return null;
+  return `R$ ${n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
 
 const PROPOSAL_TTL_MS = 72 * 60 * 60 * 1000;
 
@@ -116,6 +129,8 @@ export default function ClientProposals() {
               const professionalLabel = getProfessionalLabel(interest, request?.category);
 
               const expiry = getExpiryInfo(interest.created_date);
+              const freightNum = parseFloat(String(interest.freight || '').replace(/\D/g, '')) / 100 || 0;
+              const scheduledDateLabel = fmtScheduledDate(interest.scheduledDate);
 
               return (
                 <div key={interest.id} className={`bg-card border rounded-2xl p-4 shadow-sm ${expiry.expired ? 'border-border opacity-60' : 'border-border'}`}>
@@ -128,7 +143,7 @@ export default function ClientProposals() {
                           <span className="text-xs bg-gray-100 text-gray-500 border border-gray-200 px-2 py-0.5 rounded-full font-medium shrink-0">
                             Expirada
                           </span>
-                        ) : idx === 0 ? (
+                        ) : interests.length > 1 && idx === 0 ? (
                           <span className="text-xs bg-yellow-50 text-yellow-700 border border-yellow-200 px-2 py-0.5 rounded-full font-medium shrink-0">
                             Melhor proposta
                           </span>
@@ -148,31 +163,48 @@ export default function ClientProposals() {
                     </div>
                   </div>
 
-                  {(hasPrice || interest.arrivalTime || interest.message) && (
-                    <div className="mb-4 space-y-1.5">
-                      {hasPrice && (
-                        <p className="text-xl font-bold text-foreground">
-                          R$ {priceNum.toFixed(2).replace('.', ',')}
-                        </p>
-                      )}
-                      {interest.arrivalTime && (
+                  <div className="mb-4 space-y-2">
+                    {hasPrice && (
+                      <p className="text-xl font-bold text-foreground">
+                        R$ {priceNum.toFixed(2).replace('.', ',')}
+                      </p>
+                    )}
+
+                    {/* Detalhes inline */}
+                    <div className="space-y-1">
+                      {freightNum > 0 && (
                         <p className="text-xs text-muted-foreground">
-                          Chega até {interest.arrivalTime}
+                          + Frete: R$ {freightNum.toFixed(2).replace('.', ',')}
                         </p>
                       )}
-                      {expiry.label && (
-                        <p className={`text-xs flex items-center gap-1 ${expiry.expired ? 'text-red-500' : 'text-muted-foreground'}`}>
-                          <Clock className="w-3 h-3" />
-                          {expiry.label}
+                      {interest.materials && (
+                        <p className="text-xs text-muted-foreground">
+                          Materiais: {interest.materials === 'client' ? 'cliente fornece' : 'prestador fornece'}
                         </p>
                       )}
-                      {interest.message && (
-                        <p className="text-sm text-muted-foreground leading-relaxed border-t border-border pt-2 mt-2">
-                          "{interest.message}"
-                        </p>
+                      {interest.term && (
+                        <p className="text-xs text-muted-foreground">Prazo: {interest.term}</p>
+                      )}
+                      {scheduledDateLabel && (
+                        <div className="flex items-center gap-1 text-xs text-primary font-medium mt-1">
+                          <Calendar className="w-3.5 h-3.5 shrink-0" />
+                          <span>{scheduledDateLabel}{interest.scheduledTime ? ` · ${interest.scheduledTime}` : ''}</span>
+                        </div>
                       )}
                     </div>
-                  )}
+
+                    {expiry.label && (
+                      <p className={`text-xs flex items-center gap-1 ${expiry.expired ? 'text-red-500' : 'text-muted-foreground'}`}>
+                        <Clock className="w-3 h-3" />
+                        {expiry.label}
+                      </p>
+                    )}
+                    {interest.observations && interest.observations !== interest.message && (
+                      <p className="text-sm text-muted-foreground leading-relaxed border-t border-border pt-2 mt-2">
+                        "{interest.observations}"
+                      </p>
+                    )}
+                  </div>
 
                   <div className="flex gap-2">
                     {conversation && (

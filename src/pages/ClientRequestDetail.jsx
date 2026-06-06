@@ -12,17 +12,33 @@ const TIMELINE_STEPS = [
   { key: 'created',   emoji: '✅', label: 'Pedido criado',           desc: 'Seu pedido foi publicado com sucesso.' },
   { key: 'proposals', emoji: '⏳', label: 'Recebendo propostas',     desc: 'Profissionais da região estão analisando seu pedido.' },
   { key: 'confirmed', emoji: '👷', label: 'Profissional contratado', desc: 'Você escolheu um profissional para realizar o serviço.' },
+  { key: 'on_the_way',    emoji: '🚗', label: 'A caminho',              desc: 'O profissional está indo até você.' },
+  { key: 'in_progress',   emoji: '🛠️', label: 'Em execução',            desc: 'O profissional está realizando o serviço.' },
+  { key: 'provider_done', emoji: '🔑', label: 'Aguardando confirmação', desc: 'Confirme a conclusão com o código enviado pelo WhatsApp.' },
   { key: 'completed', emoji: '🎉', label: 'Serviço concluído',       desc: 'Atendimento finalizado.' },
 ];
+
+const EXEC_STEP_ORDER = ['on_the_way', 'in_progress', 'provider_done', 'completed'];
 
 function stepDone(stepKey, request, interests) {
   switch (stepKey) {
     case 'created':   return true;
     case 'proposals': return interests.length > 0 || ['in_conversation', 'agreed', 'completed'].includes(request.status);
     case 'confirmed': return ['agreed', 'completed'].includes(request.status);
+    case 'on_the_way':    return EXEC_STEP_ORDER.indexOf(request.progressStatus) >= EXEC_STEP_ORDER.indexOf('on_the_way') || request.status === 'completed';
+    case 'in_progress':   return EXEC_STEP_ORDER.indexOf(request.progressStatus) >= EXEC_STEP_ORDER.indexOf('in_progress') || request.status === 'completed';
+    case 'provider_done': return request.progressStatus === 'provider_done' || request.status === 'completed';
     case 'completed': return request.status === 'completed';
     default: return false;
   }
+}
+
+function showExecStep(stepKey, request) {
+  if (!['agreed', 'completed'].includes(request.status)) return false;
+  if (stepKey === 'on_the_way') return !!request.progressStatus;
+  if (stepKey === 'in_progress') return ['in_progress', 'arrived', 'provider_done', 'completed'].includes(request.progressStatus) || request.status === 'completed';
+  if (stepKey === 'provider_done') return ['provider_done'].includes(request.progressStatus) || request.status === 'completed';
+  return false;
 }
 
 function getCurrentStep(request, interests) {
@@ -150,13 +166,18 @@ function StatusHero({ currentStep, request, interests, onConfirm, confirmPending
 }
 
 function StatusTimeline({ request, interests }) {
+  const visibleSteps = TIMELINE_STEPS.filter(step => {
+    const execKeys = ['on_the_way', 'in_progress', 'provider_done'];
+    if (execKeys.includes(step.key)) return showExecStep(step.key, request);
+    return true;
+  });
   return (
     <div className="bg-card border border-border rounded-2xl p-4 mb-4">
       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-4">Progresso do pedido</p>
       <div className="flex flex-col">
-        {TIMELINE_STEPS.map((step, idx) => {
+        {visibleSteps.map((step, idx) => {
           const done = stepDone(step.key, request, interests);
-          const isLast = idx === TIMELINE_STEPS.length - 1;
+          const isLast = idx === visibleSteps.length - 1;
           return (
             <div key={step.key} className="flex gap-3">
               <div className="flex flex-col items-center">

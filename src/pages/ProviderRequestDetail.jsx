@@ -66,6 +66,10 @@ export default function ProviderRequestDetail() {
   const [quoteFreight, setQuoteFreight] = useState('');
   const [quoteTerm, setQuoteTerm] = useState('');
   const [quoteObs, setQuoteObs] = useState('');
+  const [selectedSlot, setSelectedSlot] = useState(null); // index | 'custom'
+  const [customDate, setCustomDate] = useState('');
+  const [customStart, setCustomStart] = useState('');
+  const [customEnd, setCustomEnd] = useState('');
 
   useEffect(() => {
     api.auth.me().then(setUser).catch(() => navigate('/'));
@@ -91,6 +95,12 @@ export default function ProviderRequestDetail() {
       const provProfiles = await api.entities.ProviderProfile.filter({ userId: user.id });
       const pp = provProfiles[0];
 
+      const slotInfo = selectedSlot === 'custom'
+        ? { scheduledDate: customDate, scheduledTime: customStart && customEnd ? `${customStart}–${customEnd}` : customStart }
+        : selectedSlot !== null && request?.scheduleOptions?.[selectedSlot]
+        ? { scheduledDate: request.scheduleOptions[selectedSlot].date, scheduledTime: `${request.scheduleOptions[selectedSlot].startTime}–${request.scheduleOptions[selectedSlot].endTime}` }
+        : {};
+
       await api.entities.ServiceRequestInterest.create({
         serviceRequestId: requestId,
         providerId: user.id,
@@ -100,8 +110,10 @@ export default function ProviderRequestDetail() {
         servicePrice: String(serviceVal),
         freight: quoteFreight,
         materials: quoteMaterials,
+        term: quoteTerm,
         observations: quoteObs,
         message: quoteObs || 'Orçamento enviado.',
+        ...slotInfo,
       });
 
       const existing = await api.entities.Conversation.filter({
@@ -123,6 +135,10 @@ export default function ProviderRequestDetail() {
       }
 
       const materialsLabel = quoteMaterials === 'client' ? 'Cliente fornece' : 'Prestador fornece';
+      const slotLabel = slotInfo.scheduledDate
+        ? `• Data: ${new Date(`${slotInfo.scheduledDate}T00:00:00`).toLocaleDateString('pt-BR')}${slotInfo.scheduledTime ? ` — ${slotInfo.scheduledTime}` : ''}`
+        : null;
+
       const quoteLines = [
         `💼 Orçamento para: ${request.title || request.category}`,
         ``,
@@ -130,6 +146,7 @@ export default function ProviderRequestDetail() {
         freightVal > 0 ? `• Frete: ${fmtBRL(freightVal)}` : null,
         `• Materiais: ${materialsLabel}`,
         quoteTerm ? `• Prazo estimado: ${quoteTerm}` : null,
+        slotLabel,
         `• Total: ${fmtBRL(totalVal)}`,
         quoteObs ? `\n📝 ${quoteObs}` : null,
       ].filter(Boolean).join('\n');
@@ -408,6 +425,61 @@ export default function ProviderRequestDetail() {
                 />
               </div>
             </div>
+
+            {/* Horário */}
+            {(request?.scheduleOptions?.length > 0 || request?.when === 'scheduled') && (
+              <div>
+                <label className="block text-sm font-semibold text-foreground mb-2">Horário disponível</label>
+                <div className="space-y-2">
+                  {(request.scheduleOptions || []).map((opt, i) => {
+                    const dateLabel = opt.date
+                      ? new Date(`${opt.date}T00:00:00`).toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' })
+                      : '';
+                    return (
+                      <button key={i} type="button" onClick={() => setSelectedSlot(i)}
+                        className={`w-full flex items-center gap-3 px-4 py-3 border rounded-xl text-left transition-colors ${selectedSlot === i ? 'border-primary bg-primary/5' : 'border-border bg-card hover:bg-secondary/20'}`}>
+                        <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${selectedSlot === i ? 'border-primary' : 'border-muted-foreground'}`}>
+                          {selectedSlot === i && <div className="w-2 h-2 rounded-full bg-primary" />}
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-foreground">{dateLabel}</p>
+                          {opt.startTime && <p className="text-xs text-muted-foreground">Das {opt.startTime} às {opt.endTime}</p>}
+                        </div>
+                      </button>
+                    );
+                  })}
+                  <button type="button" onClick={() => setSelectedSlot('custom')}
+                    className={`w-full flex items-center gap-3 px-4 py-3 border rounded-xl text-left transition-colors ${selectedSlot === 'custom' ? 'border-primary bg-primary/5' : 'border-border bg-card hover:bg-secondary/20'}`}>
+                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${selectedSlot === 'custom' ? 'border-primary' : 'border-muted-foreground'}`}>
+                      {selectedSlot === 'custom' && <div className="w-2 h-2 rounded-full bg-primary" />}
+                    </div>
+                    <p className="text-sm font-medium text-foreground">Tenho outra disponibilidade</p>
+                  </button>
+                  {selectedSlot === 'custom' && (
+                    <div className="space-y-3 p-4 bg-card border border-border rounded-xl">
+                      <div>
+                        <label className="block text-xs font-medium text-muted-foreground mb-1.5">Data</label>
+                        <input type="date" value={customDate} onChange={e => setCustomDate(e.target.value)}
+                          className="w-full px-4 py-3 border border-border rounded-lg text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                      </div>
+                      <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-2">
+                        <div>
+                          <label className="block text-xs font-medium text-muted-foreground mb-1.5">Das</label>
+                          <input type="time" value={customStart} onChange={e => setCustomStart(e.target.value)}
+                            className="w-full px-4 py-3 border border-border rounded-lg text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                        </div>
+                        <span className="text-xs text-muted-foreground pb-3.5">até</span>
+                        <div>
+                          <label className="block text-xs font-medium text-muted-foreground mb-1.5">Às</label>
+                          <input type="time" value={customEnd} onChange={e => setCustomEnd(e.target.value)}
+                            className="w-full px-4 py-3 border border-border rounded-lg text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Prazo estimado */}
             <div>

@@ -66,9 +66,10 @@ export default function NewServiceRequest() {
 
   // Schedule
   const [whenChoice, setWhenChoice] = useState('flexible');
-  const [schedDate, setSchedDate] = useState('');
-  const [schedStart, setSchedStart] = useState('');
-  const [schedEnd, setSchedEnd] = useState('');
+  const [schedSlots, setSchedSlots] = useState([]);
+  const [draftDate, setDraftDate] = useState('');
+  const [draftStart, setDraftStart] = useState('');
+  const [draftEnd, setDraftEnd] = useState('');
 
   // Address
   const [addrCep, setAddrCep] = useState('');
@@ -207,8 +208,8 @@ export default function NewServiceRequest() {
     const numStr = addrNoNum ? 'S/N' : addrNumber;
     const addressLine = [addrStreet, numStr].filter(Boolean).join(', ');
     const fullAddress = [addressLine, addrComplement, addrNeighborhood, [addrCity, addrState].filter(Boolean).join(' - ')].filter(Boolean).join(' - ');
-    const scheduleOptions = (whenChoice === 'scheduled' && schedDate && schedStart && schedEnd)
-      ? [{ date: schedDate, startTime: schedStart, endTime: schedEnd, label: `${schedDate} entre ${schedStart} e ${schedEnd}` }]
+    const scheduleOptions = whenChoice === 'scheduled' && schedSlots.length > 0
+      ? schedSlots.map(s => ({ date: s.date, startTime: s.start, endTime: s.end, label: `${s.date} entre ${s.start} e ${s.end}` }))
       : [];
     return {
       title: subcategory || category,
@@ -547,13 +548,13 @@ export default function NewServiceRequest() {
             <div className="space-y-5">
               <div>
                 <h2 className="text-xl font-bold text-foreground">Quando você precisa?</h2>
-                <p className="text-sm text-muted-foreground mt-1">Opcional — você pode informar depois</p>
+                <p className="text-sm text-muted-foreground mt-1">Você pode sugerir até 3 opções de horário</p>
               </div>
 
               <div className="space-y-3">
                 {[
                   { value: 'flexible', title: 'O mais rápido possível', sub: 'Sem data específica' },
-                  { value: 'scheduled', title: 'Em uma data específica', sub: 'Escolha dia e horário' },
+                  { value: 'scheduled', title: 'Tenho preferência de horário', sub: 'Informe até 3 opções' },
                 ].map(({ value, title, sub }) => (
                   <button key={value} onClick={() => setWhenChoice(value)}
                     className={`w-full flex items-center gap-3 px-4 py-4 border rounded-xl text-left transition-colors ${whenChoice === value ? 'border-primary bg-primary/5' : 'border-border bg-card hover:bg-secondary/20'}`}>
@@ -569,31 +570,63 @@ export default function NewServiceRequest() {
               </div>
 
               {whenChoice === 'scheduled' && (
-                <div className="space-y-3 bg-card border border-border rounded-xl p-4">
-                  <div>
-                    <label className="block text-xs font-medium text-muted-foreground mb-1.5">Data</label>
-                    <input type="date" value={schedDate} min={minDate} onChange={(e) => setSchedDate(e.target.value)}
-                      className="w-full px-4 py-3 border border-border rounded-lg text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/30" />
-                  </div>
-                  <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-2">
-                    <div>
-                      <label className="block text-xs font-medium text-muted-foreground mb-1.5">Das</label>
-                      <input type="time" value={schedStart} onChange={(e) => setSchedStart(e.target.value)}
-                        className="w-full px-4 py-3 border border-border rounded-lg text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                <div className="space-y-3">
+                  {/* Slots adicionados */}
+                  {schedSlots.map((slot, i) => (
+                    <div key={i} className="flex items-center justify-between bg-primary/5 border border-primary/20 rounded-xl px-4 py-3">
+                      <div>
+                        <p className="text-sm font-medium text-foreground">{fmtDate(slot.date)}</p>
+                        <p className="text-xs text-muted-foreground">Das {slot.start} às {slot.end}</p>
+                      </div>
+                      <button onClick={() => setSchedSlots(prev => prev.filter((_, j) => j !== i))}
+                        className="p-1.5 hover:bg-primary/10 rounded-lg transition-colors">
+                        <X className="w-4 h-4 text-primary" />
+                      </button>
                     </div>
-                    <span className="text-xs text-muted-foreground pb-3.5">até</span>
-                    <div>
-                      <label className="block text-xs font-medium text-muted-foreground mb-1.5">Às</label>
-                      <input type="time" value={schedEnd} onChange={(e) => setSchedEnd(e.target.value)}
-                        className="w-full px-4 py-3 border border-border rounded-lg text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                  ))}
+
+                  {/* Formulário de novo slot */}
+                  {schedSlots.length < 3 && (
+                    <div className="space-y-3 bg-card border border-border rounded-xl p-4">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                        {schedSlots.length === 0 ? 'Opção 1' : `Opção ${schedSlots.length + 1}`}
+                      </p>
+                      <div>
+                        <label className="block text-xs font-medium text-muted-foreground mb-1.5">Data</label>
+                        <input type="date" value={draftDate} min={minDate} onChange={e => setDraftDate(e.target.value)}
+                          className="w-full px-4 py-3 border border-border rounded-lg text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                      </div>
+                      <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-2">
+                        <div>
+                          <label className="block text-xs font-medium text-muted-foreground mb-1.5">Das</label>
+                          <input type="time" value={draftStart} onChange={e => setDraftStart(e.target.value)}
+                            className="w-full px-4 py-3 border border-border rounded-lg text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                        </div>
+                        <span className="text-xs text-muted-foreground pb-3.5">até</span>
+                        <div>
+                          <label className="block text-xs font-medium text-muted-foreground mb-1.5">Às</label>
+                          <input type="time" value={draftEnd} onChange={e => setDraftEnd(e.target.value)}
+                            className="w-full px-4 py-3 border border-border rounded-lg text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                        </div>
+                      </div>
+                      {draftDate && draftStart && draftEnd && (
+                        <button
+                          onClick={() => {
+                            setSchedSlots(prev => [...prev, { date: draftDate, start: draftStart, end: draftEnd }]);
+                            setDraftDate(''); setDraftStart(''); setDraftEnd('');
+                          }}
+                          className="w-full py-2.5 border border-primary text-primary rounded-xl text-sm font-semibold hover:bg-primary/5 transition-colors">
+                          + Adicionar opção
+                        </button>
+                      )}
                     </div>
-                  </div>
+                  )}
                 </div>
               )}
 
               <button onClick={handleWhenNext}
                 className="w-full py-3.5 bg-primary text-primary-foreground rounded-xl font-semibold hover:opacity-90 transition-opacity">
-                {whenChoice === 'flexible' ? 'Próximo' : 'Confirmar data'}
+                {whenChoice === 'flexible' ? 'Próximo' : schedSlots.length > 0 ? 'Confirmar opções' : 'Pular'}
               </button>
             </div>
           )}
@@ -717,14 +750,17 @@ export default function NewServiceRequest() {
                 },
                 {
                   label: 'QUANDO', goTo: S_WHEN,
-                  content: (
-                    <p className="text-sm text-foreground">
-                      {whenChoice === 'flexible' ? 'O mais rápido possível'
-                        : schedDate && schedStart && schedEnd
-                        ? `${fmtDate(schedDate)} — das ${schedStart} às ${schedEnd}`
-                        : 'Não definido'}
-                    </p>
-                  ),
+                  content: whenChoice === 'flexible' || schedSlots.length === 0
+                    ? <p className="text-sm text-foreground">O mais rápido possível</p>
+                    : (
+                      <div className="space-y-1">
+                        {schedSlots.map((s, i) => (
+                          <p key={i} className="text-sm text-foreground">
+                            {fmtDate(s.date)} — das {s.start} às {s.end}
+                          </p>
+                        ))}
+                      </div>
+                    ),
                 },
                 {
                   label: 'ENDEREÇO', goTo: S_ADDRESS,

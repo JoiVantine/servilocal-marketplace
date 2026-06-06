@@ -120,22 +120,12 @@ export default function ProviderOrderProgress() {
 
   const updateProgress = useMutation({
     mutationFn: async ({ status }) => {
-      if (status === 'on_the_way' || status === 'provider_done') {
-        const result = await api.progress.notify(requestId, {
-          action: status,
-          conversationId: conversation?.id,
-        });
-        if (status === 'provider_done' && result.code) {
-          setCompletionCode(result.code);
-        }
-      } else {
-        const t = now();
-        const currentLog = request?.progressLog || [];
-        const newLog = [...currentLog, { status, time: t }];
-        await api.entities.ServiceRequest.update(requestId, {
-          progressStatus: status,
-          progressLog: newLog,
-        });
+      const result = await api.progress.notify(requestId, {
+        action: status,
+        conversationId: conversation?.id,
+      });
+      if (status === 'provider_done' && result.code) {
+        setCompletionCode(result.code);
       }
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['provider-progress', requestId] }),
@@ -320,7 +310,7 @@ export default function ProviderOrderProgress() {
           )}
 
           {/* ── EM EXECUÇÃO ───────────────────────────────────────────────── */}
-          {ps === 'in_progress' && (
+          {(ps === 'in_progress' || ps === 'arrived') && (
             <>
               <div className="bg-primary/5 border border-primary/20 rounded-2xl p-4 text-center">
                 <p className="text-sm font-bold text-primary">Serviço em execução</p>
@@ -424,16 +414,6 @@ export default function ProviderOrderProgress() {
               </button>
             )}
 
-            {ps === 'arrived' && (
-              <button
-                onClick={() => updateProgress.mutate({ status: 'in_progress' })}
-                disabled={updateProgress.isPending}
-                className="w-full py-4 bg-primary text-primary-foreground rounded-xl font-semibold text-base hover:opacity-90 transition-opacity disabled:opacity-50"
-              >
-                {updateProgress.isPending ? 'Atualizando...' : 'Iniciar atendimento'}
-              </button>
-            )}
-
             {ps === 'in_progress' && (
               <button
                 onClick={() => setShowDoneConfirm(true)}
@@ -458,41 +438,56 @@ export default function ProviderOrderProgress() {
       )}
 
       {/* ── Modal: confirmar "estou a caminho" ──────────────────────────────── */}
-      {showOnTheWayConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setShowOnTheWayConfirm(false)} />
-          <div className="relative bg-background rounded-2xl p-6 w-full max-w-sm space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                <Navigation className="w-5 h-5 text-primary" />
+      {showOnTheWayConfirm && (() => {
+        const agreedDate = request?.agreedScheduledDate;
+        const today = new Date().toISOString().slice(0, 10);
+        const isWrongDay = agreedDate && agreedDate !== today;
+        const agreedLabel = agreedDate
+          ? new Date(`${agreedDate}T00:00:00`).toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit' })
+          : null;
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+            <div className="absolute inset-0 bg-black/50" onClick={() => setShowOnTheWayConfirm(false)} />
+            <div className="relative bg-background rounded-2xl p-6 w-full max-w-sm space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                  <Navigation className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <p className="font-bold text-foreground">Estou a caminho</p>
+                  <p className="text-sm text-muted-foreground">O cliente será notificado que você está a caminho.</p>
+                </div>
               </div>
-              <div>
-                <p className="font-bold text-foreground">Estou a caminho</p>
-                <p className="text-sm text-muted-foreground">O cliente será notificado que você está a caminho.</p>
+              {isWrongDay && (
+                <div className="flex items-start gap-2 bg-orange-50 border border-orange-200 rounded-xl px-3 py-2.5">
+                  <AlertCircle className="w-4 h-4 text-orange-500 shrink-0 mt-0.5" />
+                  <p className="text-xs text-orange-700 leading-relaxed">
+                    A data acordada é <strong>{agreedLabel}</strong>. Você está confirmando antes do prazo combinado. Tem certeza?
+                  </p>
+                </div>
+              )}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowOnTheWayConfirm(false)}
+                  className="flex-1 py-3 border border-border rounded-xl font-medium text-foreground hover:bg-secondary/50 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={() => {
+                    setShowOnTheWayConfirm(false);
+                    updateProgress.mutate({ status: 'on_the_way' });
+                  }}
+                  disabled={updateProgress.isPending}
+                  className="flex-1 py-3 bg-primary text-primary-foreground rounded-xl font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
+                >
+                  {updateProgress.isPending ? 'Enviando...' : 'Confirmar'}
+                </button>
               </div>
-            </div>
-            <p className="text-sm text-foreground">Confirma a ação?</p>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setShowOnTheWayConfirm(false)}
-                className="flex-1 py-3 border border-border rounded-xl font-medium text-foreground hover:bg-secondary/50 transition-colors"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={() => {
-                  setShowOnTheWayConfirm(false);
-                  updateProgress.mutate({ status: 'on_the_way' });
-                }}
-                disabled={updateProgress.isPending}
-                className="flex-1 py-3 bg-primary text-primary-foreground rounded-xl font-semibold hover:opacity-90 transition-opacity disabled:opacity-50"
-              >
-                {updateProgress.isPending ? 'Enviando...' : 'Confirmar'}
-              </button>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ── Modal: concluir atendimento + código ─────────────────────────────── */}
       {showDoneConfirm && !completionCode && (

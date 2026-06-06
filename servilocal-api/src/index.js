@@ -210,6 +210,57 @@ app.post('/api/service-requests/:id/progress', requireAuth, async (req, res) => 
       return res.json({ success: true, status: 'on_the_way' });
     }
 
+    if (action === 'arrived') {
+      request.progressStatus = 'in_progress';
+      request.progressLog = [
+        ...currentLog,
+        { status: 'arrived', time: timeStr },
+        { status: 'in_progress', time: timeStr },
+      ];
+      await request.save();
+
+      const systemText = `📍 ${request.confirmedProviderName || 'O prestador'} chegou ao local e iniciou o atendimento!`;
+      if (conversationId) {
+        const conv = await Conversation.findById(conversationId);
+        if (conv) {
+          const msg = await Message.create({
+            conversationId: conv._id,
+            senderId: req.user.id,
+            senderName: 'ServiLocal',
+            senderType: 'system',
+            text: systemText,
+            content: systemText,
+            read: false,
+            attachments: [],
+          });
+          await Conversation.findByIdAndUpdate(conv._id, {
+            lastMessage: systemText,
+            lastMessageTime: msg.createdAt,
+            unreadCount: (conv.unreadCount || 0) + 1,
+          });
+          req.app.get('io').to(`conversation:${conv.id}`).emit('new-message', msg);
+        }
+      }
+
+      setImmediate(async () => {
+        try {
+          const client = await User.findById(request.clientId);
+          const phone = client?.phone || request.clientPhone;
+          const providerName = request.confirmedProviderName || 'O profissional';
+          const clientName = client?.fullName || 'Cliente';
+          if (phone) {
+            await sendWhatsApp(phone,
+              `Olá ${clientName}! 📍 ${providerName} chegou ao local e iniciou o atendimento de "${request.title}". Acompanhe pelo app!`
+            );
+          }
+        } catch (err) {
+          console.error('[whatsapp] arrived:', err.message);
+        }
+      });
+
+      return res.json({ success: true, status: 'in_progress' });
+    }
+
     if (action === 'provider_done') {
       const code = String(Math.floor(100000 + Math.random() * 900000));
       request.progressStatus = 'provider_done';
