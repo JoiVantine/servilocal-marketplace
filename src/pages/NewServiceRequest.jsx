@@ -300,9 +300,20 @@ export default function NewServiceRequest() {
   };
 
   const handleWhenNext = () => {
-    if (schedSlots.length === 0) {
+    const draftComplete = draftDate && draftStart && draftEnd;
+    const nextSlots = draftComplete
+      ? [...schedSlots, { date: draftDate, start: draftStart, end: draftEnd }]
+      : schedSlots;
+
+    if (nextSlots.length === 0) {
       setErrors({ when: 'Informe pelo menos uma data e horário para o serviço.' });
       return;
+    }
+    if (draftComplete) {
+      setSchedSlots(nextSlots);
+      setDraftDate('');
+      setDraftStart('');
+      setDraftEnd('');
     }
     setErrors({});
     setStep(S_ADDRESS);
@@ -681,6 +692,7 @@ export default function NewServiceRequest() {
                           onClick={() => {
                             setSchedSlots(prev => [...prev, { date: draftDate, start: draftStart, end: draftEnd }]);
                             setDraftDate(''); setDraftStart(''); setDraftEnd('');
+                            setErrors((prev) => ({ ...prev, when: undefined }));
                           }}
                           className="w-full py-2.5 border border-primary text-primary rounded-xl text-sm font-semibold hover:bg-primary/5 transition-colors">
                           + Adicionar opção
@@ -694,7 +706,7 @@ export default function NewServiceRequest() {
 
               <button onClick={handleWhenNext}
                 className="w-full py-3.5 bg-primary text-primary-foreground rounded-xl font-semibold hover:opacity-90 transition-opacity">
-                {schedSlots.length > 0 ? 'Confirmar opções' : 'Adicionar data para continuar'}
+                {schedSlots.length > 0 || (draftDate && draftStart && draftEnd) ? 'Próximo' : 'Adicionar data para continuar'}
               </button>
             </div>
           )}

@@ -56,8 +56,12 @@ module.exports = function createCrudRouter(Model, options = {}) {
       const data = { ...req.body };
       if (injectUser) data[injectUser] = req.user.id;
       const doc = await Model.create(data);
-      if (afterCreate) await afterCreate(doc, req);
       res.status(201).json(doc);
+      if (afterCreate) {
+        setImmediate(() => {
+          afterCreate(doc, req).catch(err => console.error('[afterCreate]', err.message));
+        });
+      }
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
