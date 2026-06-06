@@ -87,6 +87,8 @@ export default function ClientHome() {
   const [showOthersModal, setShowOthersModal] = useState(false);
   const [modalCat, setModalCat] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [pendingNav, setPendingNav] = useState(null);
 
   const { data: user, isLoading } = useCurrentUser();
   const { categories } = useServices();
@@ -137,13 +139,22 @@ export default function ClientHome() {
     setModalCat(null);
   };
 
-  if (isLoading || !user) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin" />
       </div>
     );
   }
+
+  const requireAuth = (navState) => {
+    if (user) {
+      navigate('/client/new-request', navState ? { state: navState } : undefined);
+    } else {
+      setPendingNav(navState);
+      setShowAuthModal(true);
+    }
+  };
 
   const activeRequests = requests.filter((r) => r.status !== 'cancelled');
 
@@ -154,33 +165,56 @@ export default function ClientHome() {
 
           {/* Greeting card */}
           <div className="px-4 pt-4 pb-3">
-            <div className="flex items-center gap-3 bg-card rounded-2xl p-4 border border-border">
-              <button onClick={() => navigate('/client/profile')} className="shrink-0">
-                {user.photo ? (
-                  <img src={user.photo} alt="foto" className="w-12 h-12 rounded-full object-cover" />
-                ) : (
-                  <div className="w-12 h-12 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-lg">
-                    {firstName?.[0]?.toUpperCase()}
-                  </div>
-                )}
-              </button>
-              <div className="flex-1 min-w-0">
-                <p className="font-bold text-foreground">Olá, {firstName} 👋</p>
-                {user.city && (
-                  <div className="flex items-center gap-1 mt-0.5">
-                    <MapPin className="w-3 h-3 text-muted-foreground shrink-0" />
-                    <span className="text-xs text-muted-foreground truncate">{user.city}</span>
-                  </div>
-                )}
+            {user ? (
+              <div className="flex items-center gap-3 bg-card rounded-2xl p-4 border border-border">
+                <button onClick={() => navigate('/client/profile')} className="shrink-0">
+                  {user.photo ? (
+                    <img src={user.photo} alt="foto" className="w-12 h-12 rounded-full object-cover" />
+                  ) : (
+                    <div className="w-12 h-12 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-lg">
+                      {firstName?.[0]?.toUpperCase() || '?'}
+                    </div>
+                  )}
+                </button>
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-foreground">Olá, {firstName} 👋</p>
+                  {user.city && (
+                    <div className="flex items-center gap-1 mt-0.5">
+                      <MapPin className="w-3 h-3 text-muted-foreground shrink-0" />
+                      <span className="text-xs text-muted-foreground truncate">{user.city}</span>
+                    </div>
+                  )}
+                </div>
+                <button
+                  onClick={() => api.auth.logout('/')}
+                  className="p-2 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-lg transition-colors"
+                  title="Sair"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
               </div>
-              <button
-                onClick={() => api.auth.logout('/')}
-                className="p-2 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-lg transition-colors"
-                title="Sair"
-              >
-                <LogOut className="w-4 h-4" />
-              </button>
-            </div>
+            ) : (
+              <div className="flex items-center justify-between bg-card rounded-2xl p-4 border border-border">
+                <div>
+                  <p className="font-bold text-foreground">Bem-vindo!</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Entre ou crie sua conta para publicar pedidos</p>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => navigate('/login?role=client')}
+                    className="px-3 py-1.5 border border-border rounded-lg text-xs font-semibold text-foreground hover:bg-secondary transition-colors"
+                  >
+                    Entrar
+                  </button>
+                  <button
+                    onClick={() => navigate('/client/welcome')}
+                    className="px-3 py-1.5 bg-primary text-primary-foreground rounded-lg text-xs font-semibold hover:opacity-90 transition-opacity"
+                  >
+                    Criar conta
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Search */}
@@ -218,7 +252,7 @@ export default function ClientHome() {
                         onClick={() => {
                           setSearchQuery('');
                           if (result.subcategory) {
-                            navigate('/client/new-request', { state: { category: result.category, subcategory: result.subcategory } });
+                            requireAuth({ category: result.category, subcategory: result.subcategory });
                           } else {
                             const subs = result.subcategories || [];
                             const provCount = cityProviders.filter(p => matchesCategory(p, result.category)).length;
@@ -284,7 +318,7 @@ export default function ClientHome() {
           )}
 
           {/* Profissionais disponíveis na sua região */}
-          {user.city && availableCount > 0 && (
+          {user?.city && availableCount > 0 && (
             <div className="px-4 mb-4">
               <div className="bg-primary/5 border border-primary/15 rounded-2xl p-4">
                 <div className="flex items-center gap-2 mb-3">
@@ -295,7 +329,7 @@ export default function ClientHome() {
                   <div className="flex items-center gap-2">
                     <span className="text-primary text-sm font-semibold">✓</span>
                     <span className="text-sm text-foreground">
-                      <span className="font-bold text-primary">{availableCount}</span> disponíveis em {user.city}
+                      <span className="font-bold text-primary">{availableCount}</span> disponíveis em {user?.city}
                     </span>
                   </div>
                   {avgRating && (
@@ -333,7 +367,7 @@ export default function ClientHome() {
           </div>
 
           {/* Seus pedidos */}
-          <div className="px-4 mb-5">
+          {user && <div className="px-4 mb-5">
             <div className="flex items-center justify-between mb-3">
               <p className="text-base font-bold text-foreground">Seus pedidos</p>
               {activeRequests.length > 0 && (
@@ -346,7 +380,7 @@ export default function ClientHome() {
               <div className="bg-card border border-dashed border-border rounded-xl p-5 flex flex-col items-center text-center gap-2">
                 <p className="text-sm text-muted-foreground">Você ainda não tem pedidos.</p>
                 <button
-                  onClick={() => navigate('/client/new-request')}
+                  onClick={() => requireAuth(null)}
                   className="text-sm font-semibold text-primary hover:opacity-80"
                 >
                   Criar primeiro pedido
@@ -385,10 +419,40 @@ export default function ClientHome() {
                 })}
               </div>
             )}
-          </div>
+          </div>}
 
         </div>
       </div>
+
+      {/* Modal de autenticação para visitantes */}
+      {showAuthModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-end justify-center p-4">
+          <div className="bg-card rounded-2xl w-full max-w-sm p-6 space-y-4 shadow-xl">
+            <div className="text-center space-y-1">
+              <p className="font-bold text-foreground text-lg">Para continuar</p>
+              <p className="text-sm text-muted-foreground">Entre na sua conta ou crie uma gratuitamente para publicar seu pedido.</p>
+            </div>
+            <button
+              onClick={() => { setShowAuthModal(false); navigate('/login?role=client'); }}
+              className="w-full py-3 bg-primary text-primary-foreground rounded-xl font-semibold hover:opacity-90 transition-opacity"
+            >
+              Entrar na minha conta
+            </button>
+            <button
+              onClick={() => { setShowAuthModal(false); navigate('/client/welcome'); }}
+              className="w-full py-3 border border-border rounded-xl font-semibold text-foreground hover:bg-secondary transition-colors"
+            >
+              Criar conta gratuita
+            </button>
+            <button
+              onClick={() => { setShowAuthModal(false); setPendingNav(null); }}
+              className="w-full py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Category bottom sheet */}
       {categorySheet && (
@@ -463,7 +527,7 @@ export default function ClientHome() {
                     <button
                       key={sub}
                       onClick={() => {
-                        navigate('/client/new-request', { state: { category: categorySheet.name, subcategory: sub } });
+                        requireAuth({ category: categorySheet.name, subcategory: sub });
                         setCategorySheet(null);
                       }}
                       className="w-full flex items-center justify-between px-4 py-3.5 bg-card border border-border rounded-xl hover:border-primary/40 hover:bg-primary/5 transition-all text-left"
@@ -476,7 +540,7 @@ export default function ClientHome() {
               ) : (
                 <button
                   onClick={() => {
-                    navigate('/client/new-request', { state: { category: categorySheet.name } });
+                    requireAuth({ category: categorySheet.name });
                     setCategorySheet(null);
                   }}
                   className="w-full py-4 bg-primary text-primary-foreground rounded-xl font-semibold hover:opacity-90 transition-opacity"
@@ -541,7 +605,7 @@ export default function ClientHome() {
                     <button
                       key={sub}
                       onClick={() => {
-                        navigate('/client/new-request', { state: { category: modalCat.name, subcategory: sub } });
+                        requireAuth({ category: modalCat.name, subcategory: sub });
                         closeModal();
                       }}
                       className="px-4 py-2.5 rounded-full border border-border bg-card text-sm font-medium text-foreground hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all"
