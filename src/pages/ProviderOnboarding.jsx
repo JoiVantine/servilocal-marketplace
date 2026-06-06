@@ -208,16 +208,6 @@ export default function ProviderOnboarding() {
     }
 
     if (step === 3) {
-      if (step2CityValid) {
-        setServiceAreas(prev => [...prev, {
-          city: currentCity.trim(),
-          type: currentAreaType,
-          neighborhoods: [...currentNeighborhoods],
-        }]);
-        setCurrentCity('');
-        setCurrentAreaType('entire_city');
-        setCurrentNeighborhoods([]);
-      }
       setStep(4);
       return;
     }

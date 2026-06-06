@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/api/apiClient';
 import {
-  Star, Inbox, MapPin, Clock,
+  Star, MapPin, Clock,
   Navigation, LogOut, MessageCircle, ChevronRight, CalendarDays,
 } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -451,25 +451,46 @@ export default function ProviderHome() {
                 <div className="w-6 h-6 border-4 border-border border-t-primary rounded-full animate-spin" />
               </div>
             ) : visibleOpenRequests.length === 0 || !accepting ? (
-              <div className="flex flex-col items-center py-10 gap-3 text-center">
-                <Inbox className="w-14 h-14 text-muted-foreground/40" />
-                <p className="font-semibold text-foreground text-base">Nenhum pedido disponível agora</p>
-                {hasProviderServices === false ? (
-                  <p className="text-sm text-muted-foreground leading-relaxed max-w-xs">
-                    Você ainda não cadastrou serviços.{' '}
-                    <button
-                      onClick={() => navigate('/provider/onboarding?step=services')}
-                      className="text-primary underline"
-                    >
-                      Complete seu perfil
-                    </button>{' '}
-                    para receber pedidos.
+              <div className="flex flex-col items-center py-6 gap-4 text-center">
+                <img src="/capivara-lupa.png" alt="" className="w-40 h-40 object-contain" />
+                <div>
+                  <p className="font-bold text-foreground text-base">Nenhum pedido disponível no momento</p>
+                  <p className="text-sm text-muted-foreground leading-relaxed max-w-xs mt-1">
+                    Novos pedidos aparecerão aqui automaticamente quando clientes da sua região precisarem dos seus serviços.
                   </p>
-                ) : (
-                  <p className="text-sm text-muted-foreground leading-relaxed max-w-xs">
-                    Continue visível para receber novas solicitações da sua região.
-                  </p>
+                </div>
+
+                {providerSpecialties.length > 0 && (
+                  <div className="bg-secondary/50 rounded-xl px-4 py-3 text-sm text-left w-full max-w-xs">
+                    <p className="font-medium text-foreground">🔧 Serviços cadastrados</p>
+                    <p className="text-muted-foreground mt-1">
+                      {providerSpecialties.slice(0, 3).join(', ')}
+                      {providerSpecialties.length > 3 ? ` +${providerSpecialties.length - 3}` : ''}
+                    </p>
+                  </div>
                 )}
+
+                <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-left w-full max-w-xs">
+                  <p className="font-medium text-amber-800">💡 Dica</p>
+                  <p className="text-amber-700 mt-1 leading-relaxed">
+                    Mantenha seu perfil ativo para receber notificações assim que surgir uma nova oportunidade.
+                  </p>
+                </div>
+
+                <div className="flex gap-3 w-full max-w-xs">
+                  <button
+                    onClick={() => navigate('/provider/onboarding?step=4')}
+                    className="flex-1 py-2.5 border border-border rounded-xl text-sm font-medium text-foreground hover:bg-secondary/50 transition-colors"
+                  >
+                    Editar serviços
+                  </button>
+                  <button
+                    onClick={() => navigate('/provider/onboarding?step=3')}
+                    className="flex-1 py-2.5 border border-border rounded-xl text-sm font-medium text-foreground hover:bg-secondary/50 transition-colors"
+                  >
+                    Editar área
+                  </button>
+                </div>
               </div>
             ) : (
               <div className="space-y-4">

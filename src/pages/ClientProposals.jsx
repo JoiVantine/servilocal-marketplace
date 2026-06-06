@@ -150,17 +150,25 @@ export default function ClientProposals() {
                           <span className="text-xs bg-yellow-50 text-yellow-700 border border-yellow-200 px-2 py-0.5 rounded-full font-medium shrink-0">
                             Melhor proposta
                           </span>
+                        ) : !interest.reviewCount ? (
+                          <span className="text-xs bg-green-50 text-green-700 border border-green-200 px-2 py-0.5 rounded-full font-medium shrink-0">
+                            ✨ Novo
+                          </span>
                         ) : null}
                       </div>
                       <div className="flex items-center gap-1 mt-0.5">
-                        <Star className="w-3.5 h-3.5 text-yellow-400 fill-yellow-400" />
-                        <span className="text-sm font-medium text-foreground">
-                          {interest.rating ? Number(interest.rating).toFixed(1) : '—'}
-                        </span>
-                        {interest.reviewCount > 0 && (
-                          <span className="text-xs text-muted-foreground">
-                            · {interest.reviewCount} atendimento{interest.reviewCount !== 1 ? 's' : ''}
-                          </span>
+                        {!interest.reviewCount ? (
+                          <span className="text-xs text-muted-foreground">Sem avaliações ainda</span>
+                        ) : (
+                          <>
+                            <Star className="w-3.5 h-3.5 text-yellow-400 fill-yellow-400" />
+                            <span className="text-sm font-medium text-foreground">
+                              {Number(interest.rating).toFixed(1)}
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              · {interest.reviewCount} atendimento{interest.reviewCount !== 1 ? 's' : ''}
+                            </span>
+                          </>
                         )}
                       </div>
                     </div>
