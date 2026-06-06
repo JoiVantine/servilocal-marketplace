@@ -200,12 +200,7 @@ export default function ClientHome() {
                 </button>
                 <div className="flex-1 min-w-0">
                   <p className="font-bold text-foreground">Olá, {firstName} 👋</p>
-                  {user.city && (
-                    <div className="flex items-center gap-1 mt-0.5">
-                      <MapPin className="w-3 h-3 text-muted-foreground shrink-0" />
-                      <span className="text-xs text-muted-foreground truncate">{user.city}</span>
-                    </div>
-                  )}
+                  <p className="text-xs text-muted-foreground mt-0.5">Bem-vindo de volta</p>
                 </div>
                 <button
                   onClick={() => api.auth.logout('/')}
@@ -511,13 +506,21 @@ export default function ClientHome() {
               )}
             </div>
             {activeRequests.length === 0 ? (
-              <div className="bg-card border border-dashed border-border rounded-xl p-5 flex flex-col items-center text-center gap-2">
-                <p className="text-sm text-muted-foreground">Você ainda não tem pedidos.</p>
+              <div className="bg-card border border-dashed border-border rounded-2xl p-6 flex flex-col items-center text-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center">
+                  <span className="text-2xl">📋</span>
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-foreground">Você ainda não possui pedidos</p>
+                  <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                    Solicite um serviço para receber propostas de profissionais da sua cidade.
+                  </p>
+                </div>
                 <button
                   onClick={() => requireAuth(null)}
-                  className="text-sm font-semibold text-primary hover:opacity-80"
+                  className="px-5 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity"
                 >
-                  Criar primeiro pedido
+                  Solicitar serviço
                 </button>
               </div>
             ) : (
@@ -528,26 +531,30 @@ export default function ClientHome() {
                     <Link
                       key={request.id}
                       to={`/client/request/${request.id}`}
-                      className="flex items-center gap-3 p-4 bg-card border border-border rounded-xl hover:bg-secondary/30 transition-colors"
+                      className="flex items-center gap-3 p-4 bg-card border border-border rounded-xl hover:bg-secondary/40 active:scale-[0.99] active:bg-secondary/60 transition-all"
                     >
                       <div className={`w-10 h-10 rounded-full ${catStyle.bg} flex items-center justify-center shrink-0`}>
                         <span className="text-lg leading-none">{catStyle.icon}</span>
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-semibold text-foreground text-sm truncate">{request.title}</p>
-                        {request.city && (
-                          <p className="text-xs text-muted-foreground truncate">{request.city}</p>
-                        )}
                         {request.created_date && (
                           <p className="text-xs text-muted-foreground">{formatDate(request.created_date)}</p>
                         )}
+                        <div className="mt-1.5">
+                          {request.status === 'open' ? (
+                            <div className="inline-flex items-center gap-1.5 bg-orange-50 border border-orange-100 px-2 py-0.5 rounded-full">
+                              <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse shrink-0" />
+                              <span className="text-xs font-medium text-orange-600">Procurando profissional</span>
+                            </div>
+                          ) : (
+                            <span className={`inline-block text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[request.status] || 'bg-secondary text-muted-foreground'}`}>
+                              {STATUS_LABELS[request.status] || request.status}
+                            </span>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${STATUS_COLORS[request.status] || 'bg-secondary text-muted-foreground'}`}>
-                          {STATUS_LABELS[request.status] || request.status}
-                        </span>
-                        <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                      </div>
+                      <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
                     </Link>
                   );
                 })}
