@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '@/api/apiClient';
 import {
   Star, Inbox, MapPin, Clock,
-  ChevronRight, LifeBuoy, Navigation, CalendarDays, LogOut,
+  ChevronRight, LifeBuoy, Navigation, LogOut, MessageCircle,
 } from 'lucide-react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import ProviderBottomNav from '@/components/ProviderBottomNav';
@@ -46,7 +46,7 @@ export default function ProviderHome() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const tabParam = searchParams.get('tab');
-  const initialTab = tabParam === 'active' ? 'active' : tabParam === 'agenda' ? 'agenda' : 'available';
+  const initialTab = tabParam === 'active' ? 'active' : tabParam === 'talking' ? 'talking' : 'available';
   const [activeTab, setActiveTab] = useState(initialTab);
   const [user, setUser] = useState(null);
   const [providerSpecialties, setProviderSpecialties] = useState([]);
@@ -112,14 +112,16 @@ export default function ProviderHome() {
     ? providerServiceAreas.map(a => norm((a.city || '').split(' - ')[0]))
     : [norm((user?.city || '').split(' - ')[0])];
   const hasCityFilter = providerCities.some(c => c.length > 0);
-  const requests = rawRequests.filter(r => {
+  const cityFiltered = rawRequests.filter(r => {
     if (!hasCityFilter) return true;
     const reqCity = norm((r.city || '').split(' - ')[0]);
     if (!reqCity) return true;
     return providerCities.includes(reqCity);
   });
+  const openRequests = cityFiltered.filter(r => r.status === 'open');
+  const inConvRequests = cityFiltered.filter(r => r.status === 'in_conversation');
 
-  const visibleRequests = requests.filter(r => !dismissed.has(r.id));
+  const visibleOpenRequests = openRequests.filter(r => !dismissed.has(r.id));
 
   const { data: reviews = [] } = useQuery({
     queryKey: ['provider-reviews', user?.id],
@@ -210,10 +212,9 @@ export default function ProviderHome() {
         {/* Tabs */}
         <div className="flex gap-2">
           {[
-            { id: 'available', label: 'Disponíveis', count: visibleRequests.length },
-            { id: 'active', label: 'Em andamento', count: activeOrders.length },
-            { id: 'agenda', label: 'Agenda', count: agreedRequests.filter(r => r.status !== 'completed' && r.scheduledAt).length },
-            { id: 'history', label: 'Histórico', count: completed },
+            { id: 'available', label: 'Disponíveis', count: visibleOpenRequests.length },
+            { id: 'talking',   label: 'Em conversa', count: inConvRequests.length },
+            { id: 'active',    label: 'Em andamento', count: activeOrders.length },
           ].map(tab => (
             <button
               key={tab.id}
@@ -275,104 +276,39 @@ export default function ProviderHome() {
           </>
         )}
 
-        {/* ── Histórico ────────────────────────────────────────────────────── */}
-        {activeTab === 'history' && (
+        {/* ── Em conversa ─────────────────────────────────────────────────── */}
+        {activeTab === 'talking' && (
           <>
-            {completed === 0 ? (
+            {inConvRequests.length === 0 ? (
               <div className="flex flex-col items-center py-10 gap-3 text-center">
-                <Star className="w-12 h-12 text-muted-foreground/40" />
-                <p className="font-semibold text-foreground">Nenhum serviço concluído ainda</p>
+                <MessageCircle className="w-12 h-12 text-muted-foreground/40" />
+                <p className="font-semibold text-foreground">Nenhuma conversa em andamento</p>
+                <p className="text-sm text-muted-foreground">Pedidos onde você enviou orçamento aparecerão aqui.</p>
               </div>
             ) : (
               <div className="space-y-3">
-                {agreedRequests
-                  .filter(r => r.status === 'completed')
-                  .map(req => (
-                    <div key={req.id} className="bg-card border border-border rounded-2xl p-4 shadow-sm">
-                      <div className="flex items-start justify-between gap-2 mb-2">
-                        <p className="font-semibold text-foreground text-sm">{req.title || req.category}</p>
-                        <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-green-100 text-green-700 shrink-0">
-                          Concluído
-                        </span>
-                      </div>
-                      {req.agreedPrice && (
-                        <p className="text-sm font-bold text-primary">
-                          R$ {parseFloat(req.agreedPrice).toFixed(2).replace('.', ',')}
-                        </p>
-                      )}
-                      <p className="text-xs text-muted-foreground mt-1">{formatDate(req.created_date)}</p>
+                {inConvRequests.map(req => (
+                  <button
+                    key={req.id}
+                    onClick={() => navigate(`/provider/request/${req.id}`)}
+                    className="w-full bg-card border border-border rounded-2xl p-4 text-left hover:border-primary/40 transition-colors shadow-sm"
+                  >
+                    <div className="flex items-start justify-between gap-2 mb-1">
+                      <p className="font-semibold text-foreground text-sm">{req.title || req.category}</p>
+                      <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 shrink-0">Em conversa</span>
                     </div>
-                  ))}
+                    {(req.address || req.city) && (
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <MapPin className="w-3.5 h-3.5 shrink-0" />
+                        <span>{req.address ? `${req.address}, ` : ''}{req.city}</span>
+                      </div>
+                    )}
+                  </button>
+                ))}
               </div>
             )}
           </>
         )}
-
-        {/* ── Agenda ──────────────────────────────────────────────────────── */}
-        {activeTab === 'agenda' && (() => {
-          const scheduled = agreedRequests
-            .filter(r => r.status !== 'completed' && r.scheduledAt)
-            .sort((a, b) => new Date(a.scheduledAt) - new Date(b.scheduledAt));
-          const noDate = agreedRequests.filter(r => r.status !== 'completed' && !r.scheduledAt);
-          const allAgenda = [...scheduled, ...noDate];
-          if (allAgenda.length === 0) return (
-            <div className="flex flex-col items-center py-10 gap-3 text-center">
-              <CalendarDays className="w-12 h-12 text-muted-foreground/40" />
-              <p className="font-semibold text-foreground">Nenhum serviço agendado</p>
-              <p className="text-sm text-muted-foreground">Pedidos confirmados com data aparecerão aqui.</p>
-            </div>
-          );
-          let lastDate = null;
-          return (
-            <div className="space-y-2">
-              {allAgenda.map(req => {
-                const dateLabel = req.scheduledAt
-                  ? new Date(req.scheduledAt).toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })
-                  : 'Sem data definida';
-                const showHeader = dateLabel !== lastDate;
-                lastDate = dateLabel;
-                const timeLabel = req.scheduledAt
-                  ? new Date(req.scheduledAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-                  : null;
-                return (
-                  <div key={req.id}>
-                    {showHeader && (
-                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider pt-3 pb-1 capitalize">
-                        {dateLabel}
-                      </p>
-                    )}
-                    <button
-                      onClick={() => navigate(`/provider/request/${req.id}/progress`)}
-                      className="w-full bg-card border border-border rounded-2xl p-4 text-left hover:border-primary/40 transition-colors shadow-sm"
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <p className="font-semibold text-foreground text-sm">{req.title || req.category}</p>
-                          {(req.address || req.city) && (
-                            <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-                              <MapPin className="w-3.5 h-3.5 shrink-0" />
-                              <span>{req.address ? `${req.address}, ` : ''}{req.city}</span>
-                            </div>
-                          )}
-                          {req.agreedPrice && (
-                            <p className="text-sm font-bold text-primary mt-1">
-                              R$ {parseFloat(req.agreedPrice).toFixed(2).replace('.', ',')}
-                            </p>
-                          )}
-                        </div>
-                        {timeLabel && (
-                          <span className="shrink-0 text-xs font-bold bg-primary/10 text-primary px-2.5 py-1 rounded-xl">
-                            {timeLabel}
-                          </span>
-                        )}
-                      </div>
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          );
-        })()}
 
         {/* ── Disponíveis ─────────────────────────────────────────────────── */}
         {activeTab === 'available' && (
@@ -381,7 +317,7 @@ export default function ProviderHome() {
               <div className="flex justify-center py-8">
                 <div className="w-6 h-6 border-4 border-border border-t-primary rounded-full animate-spin" />
               </div>
-            ) : visibleRequests.length === 0 || !accepting ? (
+            ) : visibleOpenRequests.length === 0 || !accepting ? (
               <div className="flex flex-col items-center py-10 gap-3 text-center">
                 <Inbox className="w-14 h-14 text-muted-foreground/40" />
                 <p className="font-semibold text-foreground text-base">Nenhum pedido disponível</p>
@@ -406,7 +342,7 @@ export default function ProviderHome() {
               </div>
             ) : (
               <div className="space-y-4">
-                {visibleRequests.map(request => (
+                {visibleOpenRequests.map(request => (
                   <div key={request.id} className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
                     {/* New badge */}
                     <div className="px-4 pt-3 pb-0 flex items-center gap-2">

@@ -23,8 +23,6 @@ export default function ProviderProfile() {
 
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
-  const [initialized, setInitialized] = useState(false);
-
   const [serviceAreas, setServiceAreas] = useState([]);
   const [currentCity, setCurrentCity] = useState('');
   const [currentAreaType, setCurrentAreaType] = useState('entire_city');
@@ -50,18 +48,18 @@ export default function ProviderProfile() {
       .catch(() => {});
   }, []);
 
-  if (user && !initialized) {
+  useEffect(() => {
+    if (!user) return;
     setName(user.fullName || user.full_name || '');
     setPhone(user.phone || '');
-    setInitialized(true);
-    api.entities.ProviderProfile.filter({ userId: user.id })
+    api.entities.ProviderProfile.filter({ created_by_id: user.id })
       .then(pp => {
-        if (pp.length > 0) {
-          if (pp[0].serviceAreas?.length) setServiceAreas(pp[0].serviceAreas);
+        if (pp.length > 0 && pp[0].serviceAreas?.length) {
+          setServiceAreas(pp[0].serviceAreas);
         }
       })
       .catch(() => {});
-  }
+  }, [user?.id]);
 
   const searchCities = (query) => {
     setCurrentCity(query);
@@ -105,7 +103,7 @@ export default function ProviderProfile() {
       await api.auth.updateMe({ full_name: name, name, phone, city: firstCity });
 
       const me = await api.auth.me();
-      const provProfiles = await api.entities.ProviderProfile.filter({ userId: me.id });
+      const provProfiles = await api.entities.ProviderProfile.filter({ created_by_id: me.id });
       if (provProfiles.length > 0) {
         await api.entities.ProviderProfile.update(provProfiles[0].id, { name, phone, city: firstCity, serviceAreas });
       }
