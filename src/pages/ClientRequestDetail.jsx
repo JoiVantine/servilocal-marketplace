@@ -9,39 +9,20 @@ import { buildRequestSupportDraft, buildSupportComposerState } from '@/lib/suppo
 // ── Timeline helpers ──────────────────────────────────────────────────────────
 
 const TIMELINE_STEPS = [
-  { key: 'created',     label: 'Pedido criado' },
-  { key: 'proposals',   label: 'Propostas recebidas' },
-  { key: 'confirmed',   label: 'Profissional confirmado' },
-  { key: 'on_the_way',  label: 'A caminho' },
-  { key: 'arrived',     label: 'Chegou ao local' },
-  { key: 'in_progress', label: 'Em atendimento' },
-  { key: 'completed',   label: 'Concluído' },
+  { key: 'created',   emoji: '✅', label: 'Pedido criado',           desc: 'Seu pedido foi publicado com sucesso.' },
+  { key: 'proposals', emoji: '⏳', label: 'Recebendo propostas',     desc: 'Profissionais da região estão analisando seu pedido.' },
+  { key: 'confirmed', emoji: '👷', label: 'Profissional contratado', desc: 'Você escolheu um profissional para realizar o serviço.' },
+  { key: 'completed', emoji: '🎉', label: 'Serviço concluído',       desc: 'Atendimento finalizado.' },
 ];
-
-const PROGRESS_ORDER = ['on_the_way', 'arrived', 'in_progress', 'provider_done', 'completed'];
-
-function progressGte(progressStatus, target) {
-  if (!progressStatus) return false;
-  return PROGRESS_ORDER.indexOf(progressStatus) >= PROGRESS_ORDER.indexOf(target);
-}
 
 function stepDone(stepKey, request, interests) {
   switch (stepKey) {
-    case 'created':     return true;
-    case 'proposals':   return interests.length > 0 || ['in_conversation', 'agreed', 'completed'].includes(request.status);
-    case 'confirmed':   return ['agreed', 'completed'].includes(request.status);
-    case 'on_the_way':  return progressGte(request.progressStatus, 'on_the_way');
-    case 'arrived':     return progressGte(request.progressStatus, 'arrived');
-    case 'in_progress': return progressGte(request.progressStatus, 'in_progress');
-    case 'completed':   return request.status === 'completed';
+    case 'created':   return true;
+    case 'proposals': return interests.length > 0 || ['in_conversation', 'agreed', 'completed'].includes(request.status);
+    case 'confirmed': return ['agreed', 'completed'].includes(request.status);
+    case 'completed': return request.status === 'completed';
     default: return false;
   }
-}
-
-function stepTime(stepKey, request) {
-  const logKey = { on_the_way: 'on_the_way', arrived: 'arrived', in_progress: 'in_progress', completed: 'completed' }[stepKey];
-  if (!logKey || !request.progressLog) return null;
-  return request.progressLog.find(l => l.status === logKey)?.time || null;
 }
 
 function getCurrentStep(request, interests) {
@@ -57,43 +38,40 @@ function getCurrentStep(request, interests) {
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
-function StatusHero({ currentStep, request, interests, conversation, onConfirm, confirmPending, navigate, codeValue, onCodeChange, codeError }) {
+function StatusHero({ currentStep, request, interests, onConfirm, confirmPending, navigate, codeValue, onCodeChange, codeError, conversation }) {
   const providerName = request.confirmedProviderName || 'O profissional';
   const proposalCount = interests.length;
-  const departureTime = request.progressLog?.find(l => l.status === 'on_the_way')?.time;
-  const arrivedTime = request.progressLog?.find(l => l.status === 'arrived')?.time;
 
   const configs = {
     open: {
       icon: '🔍',
       title: 'Procurando profissional',
-      message: 'Estamos buscando alguém para atender seu pedido.',
+      message: 'Estamos buscando profissionais da sua região para atender seu pedido.',
+      info: `${proposalCount} proposta${proposalCount !== 1 ? 's' : ''} recebida${proposalCount !== 1 ? 's' : ''}`,
       bg: 'bg-secondary/60 border-border',
     },
     proposals: {
       icon: '📨',
-      title: `${proposalCount} proposta${proposalCount !== 1 ? 's' : ''} recebida${proposalCount !== 1 ? 's' : ''}`,
-      message: 'Escolha o profissional que deseja contratar.',
+      title: 'Propostas recebidas',
+      message: `Você recebeu ${proposalCount} proposta${proposalCount !== 1 ? 's' : ''} para este pedido.`,
       bg: 'bg-primary/5 border-primary/20',
-      action: { label: 'Ver propostas', onClick: () => navigate(`/client/request/${request.id}/proposals`) },
     },
     confirmed: {
-      icon: '✅',
-      title: 'Profissional confirmado',
-      message: `${providerName} aceitou seu atendimento. Aguarde o início do deslocamento.`,
+      icon: '👷',
+      title: 'Profissional contratado',
+      message: 'Acompanhe a conversa e combine os detalhes do atendimento.',
       bg: 'bg-teal-50 border-teal-200',
-      action: conversation ? { label: 'Abrir conversa', onClick: () => navigate(`/chat/${conversation.id}`) } : null,
     },
     on_the_way: {
       icon: '🚗',
       title: 'A caminho',
-      message: `${providerName} está indo até você.${departureTime ? ` Saída: ${departureTime}` : ''}`,
+      message: `${providerName} está indo até você.`,
       bg: 'bg-blue-50 border-blue-200',
     },
     arrived: {
       icon: '📍',
       title: 'Profissional chegou',
-      message: `${providerName} informou que chegou ao local.${arrivedTime ? ` Chegada: ${arrivedTime}` : ''}`,
+      message: `${providerName} informou que chegou ao local.`,
       bg: 'bg-teal-50 border-teal-200',
     },
     in_progress: {
@@ -104,7 +82,7 @@ function StatusHero({ currentStep, request, interests, conversation, onConfirm, 
     },
     provider_done: {
       icon: '✅',
-      title: 'Serviço concluído',
+      title: 'Serviço concluído pelo profissional',
       message: 'Confirme se tudo foi executado corretamente.',
       bg: 'bg-yellow-50 border-yellow-200',
     },
@@ -113,7 +91,6 @@ function StatusHero({ currentStep, request, interests, conversation, onConfirm, 
       title: 'Avalie o atendimento',
       message: 'Como foi a sua experiência com o profissional?',
       bg: 'bg-green-50 border-green-200',
-      action: { label: 'Avaliar agora', onClick: () => navigate(`/client/request/${request.id}/rate`) },
     },
   };
 
@@ -127,11 +104,16 @@ function StatusHero({ currentStep, request, interests, conversation, onConfirm, 
         <div className="flex-1 min-w-0">
           <p className="font-bold text-foreground text-base leading-tight">{cfg.title}</p>
           <p className="text-sm text-muted-foreground mt-1 leading-relaxed">{cfg.message}</p>
+          {cfg.info && (
+            <p className="text-xs font-medium text-muted-foreground mt-2 bg-background/60 inline-block px-2 py-0.5 rounded-full">
+              {cfg.info}
+            </p>
+          )}
         </div>
       </div>
 
-      {/* Actions */}
-      {currentStep === 'provider_done' ? (
+      {/* Confirmação de conclusão — fluxo especial com código */}
+      {currentStep === 'provider_done' && (
         <div className="mt-4 space-y-2">
           <p className="text-xs text-muted-foreground">Digite o código enviado ao seu WhatsApp para confirmar:</p>
           <input
@@ -162,14 +144,7 @@ function StatusHero({ currentStep, request, interests, conversation, onConfirm, 
             <AlertTriangle className="w-4 h-4 text-orange-500" /> Reportar problema
           </button>
         </div>
-      ) : cfg.action ? (
-        <button
-          onClick={cfg.action.onClick}
-          className="mt-3 w-full py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity"
-        >
-          {cfg.action.label}
-        </button>
-      ) : null}
+      )}
     </div>
   );
 }
@@ -181,28 +156,25 @@ function StatusTimeline({ request, interests }) {
       <div className="flex flex-col">
         {TIMELINE_STEPS.map((step, idx) => {
           const done = stepDone(step.key, request, interests);
-          const time = stepTime(step.key, request);
           const isLast = idx === TIMELINE_STEPS.length - 1;
           return (
             <div key={step.key} className="flex gap-3">
-              {/* Dot + line */}
               <div className="flex flex-col items-center">
-                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${
-                  done ? 'bg-primary border-primary' : 'border-border bg-background'
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-base transition-colors ${
+                  done ? 'bg-primary/10' : 'bg-secondary'
                 }`}>
-                  {done && <CheckCircle2 className="w-3 h-3 text-white" />}
+                  <span className={done ? '' : 'grayscale opacity-40'}>{step.emoji}</span>
                 </div>
                 {!isLast && (
-                  <div className={`w-0.5 flex-1 min-h-[1.5rem] my-0.5 transition-colors ${done ? 'bg-primary/40' : 'bg-border'}`} />
+                  <div className={`w-0.5 flex-1 min-h-[1.25rem] my-1 transition-colors ${done ? 'bg-primary/30' : 'bg-border'}`} />
                 )}
               </div>
-              {/* Label */}
-              <div className={`pb-4 flex items-start justify-between flex-1 min-w-0 ${isLast ? 'pb-0' : ''}`}>
-                <span className={`text-sm leading-tight ${done ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}>
+              <div className={`pb-4 flex-1 min-w-0 ${isLast ? 'pb-0' : ''}`}>
+                <p className={`text-sm leading-tight ${done ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}>
                   {step.label}
-                </span>
-                {time && (
-                  <span className="text-xs text-muted-foreground shrink-0 ml-2">{time}</span>
+                </p>
+                {done && (
+                  <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{step.desc}</p>
                 )}
               </div>
             </div>
@@ -491,7 +463,7 @@ export default function ClientRequestDetail({ viewerMode = 'client' }) {
           </div>
         )}
 
-        {/* Status hero — only for active orders */}
+        {/* 1. Status principal */}
         {!isAdminView && !isCancelled && (
           <StatusHero
             currentStep={currentStep}
@@ -507,12 +479,38 @@ export default function ClientRequestDetail({ viewerMode = 'client' }) {
           />
         )}
 
-        {/* Timeline — always visible for non-cancelled active orders */}
+        {/* 2. Timeline simplificada */}
         {!isAdminView && !isCancelled && (
           <StatusTimeline request={request} interests={interests} />
         )}
 
-        {/* Confirmed provider card */}
+        {/* 3. Botão principal */}
+        {!isAdminView && !isCancelled && currentStep === 'proposals' && (
+          <button
+            onClick={() => navigate(`/client/request/${request.id}/proposals`)}
+            className="w-full py-3.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity mb-4"
+          >
+            Ver propostas
+          </button>
+        )}
+        {!isAdminView && !isCancelled && (currentStep === 'confirmed' || currentStep === 'on_the_way' || currentStep === 'arrived' || currentStep === 'in_progress') && confirmedConversation && (
+          <button
+            onClick={() => navigate(`/chat/${confirmedConversation.id}`)}
+            className="w-full py-3.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity mb-4"
+          >
+            Abrir conversa
+          </button>
+        )}
+        {!isAdminView && !isCancelled && currentStep === 'completed' && (
+          <button
+            onClick={() => navigate(`/client/request/${request.id}/rate`)}
+            className="w-full py-3.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity mb-4"
+          >
+            Avaliar agora
+          </button>
+        )}
+
+        {/* Confirmed provider card (pagamento, telefone) */}
         {!isAdminView && isConfirmedOrBeyond && (
           <ConfirmedProviderCard
             request={request}
@@ -523,7 +521,7 @@ export default function ClientRequestDetail({ viewerMode = 'client' }) {
           />
         )}
 
-        {/* Request summary */}
+        {/* 4. Resumo do pedido */}
         <div className="bg-card border border-border rounded-2xl p-4 mb-4">
           <h3 className="font-semibold text-foreground mb-3 text-sm">Resumo do pedido</h3>
           <div className="space-y-3">
@@ -573,7 +571,7 @@ export default function ClientRequestDetail({ viewerMode = 'client' }) {
           </div>
         </div>
 
-        {/* Support */}
+        {/* 5. Suporte */}
         {!isAdminView && (
           <button
             onClick={() => navigate('/client/support', {
@@ -594,24 +592,25 @@ export default function ClientRequestDetail({ viewerMode = 'client' }) {
               </div>
               <div>
                 <p className="text-sm font-semibold text-foreground">Precisa de ajuda?</p>
-                <p className="text-xs text-muted-foreground">Fale com o suporte ServiLocal.</p>
+                <p className="text-xs text-muted-foreground">Nossa equipe pode ajudar você.</p>
               </div>
+              <span className="ml-auto text-xs text-primary font-semibold shrink-0">Falar com suporte</span>
             </div>
           </button>
         )}
 
-        {/* Action buttons — edit/cancel only when open or in_conversation */}
+        {/* 6–8. Editar / Home / Cancelar */}
         {!isAdminView && isActive && !isConfirmedOrBeyond && (
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-2 mb-4">
             <button
               onClick={() => setShowEdit(true)}
-              className="w-full px-4 py-3.5 text-foreground border border-border rounded-xl hover:bg-secondary/50 transition-colors font-medium"
+              className="w-full px-4 py-3.5 text-foreground border border-border rounded-xl hover:bg-secondary/50 transition-colors font-medium text-sm"
             >
               Editar pedido
             </button>
             <button
               onClick={() => navigate('/client')}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3.5 text-muted-foreground border border-border rounded-xl hover:bg-secondary/50 transition-colors font-medium"
+              className="w-full flex items-center justify-center gap-2 px-4 py-3.5 text-muted-foreground border border-border rounded-xl hover:bg-secondary/50 transition-colors text-sm"
             >
               <Home className="w-4 h-4" />
               Voltar para home
@@ -619,7 +618,7 @@ export default function ClientRequestDetail({ viewerMode = 'client' }) {
             <button
               onClick={() => setShowCancelModal(true)}
               disabled={cancelMutation.isPending}
-              className="w-full px-4 py-3.5 text-red-600 border border-red-200 rounded-xl hover:bg-red-50 transition-colors font-medium disabled:opacity-50"
+              className="w-full px-4 py-2.5 text-muted-foreground text-sm hover:text-red-600 transition-colors disabled:opacity-50"
             >
               {cancelMutation.isPending ? 'Cancelando...' : 'Cancelar pedido'}
             </button>
