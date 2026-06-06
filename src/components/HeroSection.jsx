@@ -16,10 +16,9 @@ export default function HeroSection() {
   return (
     <section className="flex flex-col items-center px-4 pt-8 pb-12">
       {/* Brand */}
-      <div className="flex items-center gap-2 mb-3">
-        <img src={LOGO_URL} alt="ServiLocal" className="w-8 h-8 object-contain" />
-        <span className="text-xl font-body font-semibold tracking-tight text-foreground">
-          servi<span className="font-normal">Local</span>
+      <div className="mb-3">
+        <span className="text-2xl font-heading font-bold tracking-tight text-foreground">
+          Servi<span className="text-primary">Local</span>
         </span>
       </div>
 
@@ -30,7 +29,7 @@ export default function HeroSection() {
       </div>
 
       {/* Illustration */}
-      <div className="w-44 h-44 mb-8">
+      <div className="w-72 h-72 mb-8">
         <img
           src={LOGO_URL}
           alt="Ilustração cidade"
