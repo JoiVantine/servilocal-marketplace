@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { api } from '@/api/apiClient';
 import { Check, Eye, EyeOff, CheckCircle2, Circle, ShieldCheck, Phone } from 'lucide-react';
 
@@ -32,6 +32,9 @@ function Rule({ ok, label }) {
 
 export default function ClientOnboarding() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const returnTo = location.state?.returnTo;
+  const returnState = location.state?.returnState;
 
   const [step, setStep] = useState(0);
   const [editMode, setEditMode] = useState(false);
@@ -235,7 +238,11 @@ export default function ClientOnboarding() {
       } else {
         await api.entities.UserProfile.create(profileData);
       }
-      navigate('/client');
+      if (returnTo) {
+        navigate(returnTo, returnState ? { state: returnState } : undefined);
+      } else {
+        navigate('/client');
+      }
     } catch (err) {
       setErrors({ submit: err.message || 'Erro ao finalizar cadastro. Tente novamente.' });
     } finally {
@@ -245,51 +252,67 @@ export default function ClientOnboarding() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Header */}
-      <div className="border-b border-border bg-card px-4 py-3 flex items-center gap-2">
-        <img src="/logo.png" alt="ServiLocal" className="w-6 h-6" />
-        <span className="text-sm font-semibold text-foreground">
-          Servi<span className="text-primary font-bold">Local</span>
-        </span>
-      </div>
+
+      {/* Header — oculto no step 0 */}
+      {step > 0 && (
+        <div className="border-b border-border bg-card px-4 py-3 flex items-center gap-2">
+          <img src="/logo.png" alt="ServiLocal" className="w-6 h-6" />
+          <span className="text-sm font-semibold text-foreground">
+            Servi<span className="text-primary font-bold">Local</span>
+          </span>
+        </div>
+      )}
 
       <div className="flex-1 overflow-y-auto">
         <div className="w-full max-w-sm sm:max-w-md mx-auto px-4 py-6">
 
-          {/* Progress indicator */}
-          <div className="flex items-start justify-between mb-8">
-            {STEPS.map((s, idx) => (
-              <div key={s.id} className="flex flex-col items-center relative" style={{ flex: 1 }}>
-                {/* connecting line before */}
-                {idx > 0 && (
+          {/* Progress indicator — oculto no step 0 */}
+          {step > 0 && (
+            <div className="flex items-start justify-between mb-8">
+              {STEPS.map((s, idx) => (
+                <div key={s.id} className="flex flex-col items-center relative" style={{ flex: 1 }}>
+                  {idx > 0 && (
+                    <div
+                      className={`absolute top-4 right-1/2 w-full h-0.5 -translate-y-1/2 ${idx <= step ? 'bg-primary' : 'bg-border'}`}
+                    />
+                  )}
                   <div
-                    className={`absolute top-4 right-1/2 w-full h-0.5 -translate-y-1/2 ${idx <= step ? 'bg-primary' : 'bg-border'}`}
-                  />
-                )}
-                <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold z-10 relative ${
-                    idx < step
-                      ? 'bg-primary text-primary-foreground'
-                      : idx === step
-                      ? 'bg-primary text-primary-foreground ring-4 ring-primary/20'
-                      : 'bg-secondary text-muted-foreground'
-                  }`}
-                >
-                  {idx < step ? <Check className="w-4 h-4" /> : s.id}
+                    className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold z-10 relative ${
+                      idx < step
+                        ? 'bg-primary text-primary-foreground'
+                        : idx === step
+                        ? 'bg-primary text-primary-foreground ring-4 ring-primary/20'
+                        : 'bg-secondary text-muted-foreground'
+                    }`}
+                  >
+                    {idx < step ? <Check className="w-4 h-4" /> : s.id}
+                  </div>
+                  <span className={`text-[10px] mt-1 font-medium ${idx === step ? 'text-primary' : 'text-muted-foreground'}`}>
+                    {s.label}
+                  </span>
                 </div>
-                <span className={`text-[10px] mt-1 font-medium ${idx === step ? 'text-primary' : 'text-muted-foreground'}`}>
-                  {s.label}
-                </span>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
 
           {/* Step 0 — Dados */}
           {step === 0 && (
             <div className="space-y-5">
-              <div>
-                <h2 className="text-xl font-bold text-foreground">Crie sua conta</h2>
-                <p className="text-sm text-muted-foreground mt-1">Preencha seus dados para começar</p>
+              {/* Imagem + saudação */}
+              <div className="flex flex-col items-center text-center pt-4 pb-2 gap-3">
+                <img
+                  src="/onboarding-city.png"
+                  alt="ServiLocal"
+                  className="w-48 h-48 object-contain drop-shadow-md"
+                  onError={(e) => { e.currentTarget.src = '/logo.png'; }}
+                />
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-primary">Olá!</p>
+                  <h2 className="text-2xl font-bold text-foreground leading-snug">Estamos quase lá!</h2>
+                  <p className="text-sm text-muted-foreground leading-relaxed max-w-xs mx-auto">
+                    Informe seu nome e telefone para receber propostas dos profissionais da sua região.
+                  </p>
+                </div>
               </div>
 
               <div>

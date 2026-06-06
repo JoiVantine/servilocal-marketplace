@@ -87,8 +87,6 @@ export default function ClientHome() {
   const [showOthersModal, setShowOthersModal] = useState(false);
   const [modalCat, setModalCat] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [showAuthModal, setShowAuthModal] = useState(false);
-  const [pendingNav, setPendingNav] = useState(null);
 
   const { data: user, isLoading } = useCurrentUser();
   const { categories } = useServices();
@@ -151,8 +149,10 @@ export default function ClientHome() {
     if (user) {
       navigate('/client/new-request', navState ? { state: navState } : undefined);
     } else {
-      setPendingNav(navState);
-      setShowAuthModal(true);
+      navigate('/client/onboarding', navState
+        ? { state: { returnTo: '/client/new-request', returnState: navState } }
+        : undefined
+      );
     }
   };
 
@@ -424,35 +424,6 @@ export default function ClientHome() {
         </div>
       </div>
 
-      {/* Modal de autenticação para visitantes */}
-      {showAuthModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-end justify-center p-4">
-          <div className="bg-card rounded-2xl w-full max-w-sm p-6 space-y-4 shadow-xl">
-            <div className="text-center space-y-1">
-              <p className="font-bold text-foreground text-lg">Para continuar</p>
-              <p className="text-sm text-muted-foreground">Entre na sua conta ou crie uma gratuitamente para publicar seu pedido.</p>
-            </div>
-            <button
-              onClick={() => { setShowAuthModal(false); navigate('/login?role=client'); }}
-              className="w-full py-3 bg-primary text-primary-foreground rounded-xl font-semibold hover:opacity-90 transition-opacity"
-            >
-              Entrar na minha conta
-            </button>
-            <button
-              onClick={() => { setShowAuthModal(false); navigate('/client/welcome'); }}
-              className="w-full py-3 border border-border rounded-xl font-semibold text-foreground hover:bg-secondary transition-colors"
-            >
-              Criar conta gratuita
-            </button>
-            <button
-              onClick={() => { setShowAuthModal(false); setPendingNav(null); }}
-              className="w-full py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Cancelar
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Category bottom sheet */}
       {categorySheet && (
