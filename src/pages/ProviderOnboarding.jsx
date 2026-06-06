@@ -4,9 +4,10 @@ import { api } from '@/api/apiClient';
 import { useMutation } from '@tanstack/react-query';
 import {
   ChevronRight, Eye, EyeOff, CheckCircle2,
-  MapPin, Plus, X, MoreHorizontal, Search, Camera, Loader2,
+  MapPin, Plus, X, MoreHorizontal, Camera, Loader2,
 } from 'lucide-react';
 import { useServices } from '@/hooks/useServices';
+import AddressFormWithMap from '@/components/AddressFormWithMap';
 
 const LOGO_URL = '/onboarding-city.png';
 
@@ -88,15 +89,8 @@ export default function ProviderOnboarding() {
   const [photoLoading, setPhotoLoading] = useState(false);
   const photoInputRef = useRef(null);
 
-  // ── Step 2: Atendimento ────────────────────────────────────────
-  const [serviceAreas, setServiceAreas] = useState([]);
-  const [currentCity, setCurrentCity] = useState('');
-  const [currentAreaType, setCurrentAreaType] = useState('entire_city');
-  const [currentNeighborhoods, setCurrentNeighborhoods] = useState([]);
-  const [neighborhoodInput, setNeighborhoodInput] = useState('');
-  const [citySuggestions, setCitySuggestions] = useState([]);
-  const [showCitySuggestions, setShowCitySuggestions] = useState(false);
-  const ibgeCities = useRef([]);
+  // ── Step 3: Endereço base ──────────────────────────────────────
+  const [providerAddress, setProviderAddress] = useState(null);
 
   // ── Step 3: Profissional ───────────────────────────────────────
   const [mainCategory, setMainCategory] = useState('');
@@ -107,18 +101,6 @@ export default function ProviderOnboarding() {
   const [fieldErrors, setFieldErrors] = useState({});
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
 
-  // Carrega municípios do IBGE uma vez
-  useEffect(() => {
-    fetch('https://servicodados.ibge.gov.br/api/v1/localidades/municipios?orderBy=nome')
-      .then(r => r.json())
-      .then(data => {
-        ibgeCities.current = data.map(m => ({
-          nome: m.nome,
-          uf: m.microrregiao?.mesorregiao?.UF?.sigla || '',
-        }));
-      })
-      .catch(() => {});
-  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -156,43 +138,9 @@ export default function ProviderOnboarding() {
 
   useEffect(() => () => { if (countdownRef.current) clearInterval(countdownRef.current); }, []);
 
-  const searchCities = (query) => {
-    setCurrentCity(query);
-    if (query.length < 3) { setCitySuggestions([]); setShowCitySuggestions(false); return; }
-    const q = normalize(query);
-    const results = ibgeCities.current
-      .filter(m => normalize(m.nome).includes(q))
-      .slice(0, 8);
-    setCitySuggestions(results);
-    setShowCitySuggestions(results.length > 0);
-  };
-
-  const selectCity = (city) => {
-    setCurrentCity(city.nome);
-    setCitySuggestions([]);
-    setShowCitySuggestions(false);
-  };
-
   const mainCategoryData = categories.find(c => c.name === mainCategory);
   const subcategories    = mainCategoryData?.subcategories || [];
   const mainCats         = categories.filter(c => MAIN_CAT_NAMES.includes(c.name));
-
-  const step2CityValid =
-    currentCity.trim().length > 0 &&
-    (currentAreaType === 'entire_city' || currentNeighborhoods.length > 0);
-
-  const addCurrentCity = () => {
-    if (!step2CityValid) return;
-    setServiceAreas(prev => [...prev, {
-      city: currentCity.trim(),
-      type: currentAreaType,
-      neighborhoods: [...currentNeighborhoods],
-    }]);
-    setCurrentCity('');
-    setCurrentAreaType('entire_city');
-    setCurrentNeighborhoods([]);
-    setNeighborhoodInput('');
-  };
 
   const validateStep0 = () => {
     const errors = {};
@@ -209,7 +157,7 @@ export default function ProviderOnboarding() {
     !!(name.trim() && email.trim() && phone.trim() && passwordValid),
     otpCode.length === 6,
     true, // foto é opcional
-    serviceAreas.length > 0 || step2CityValid,
+    !!(providerAddress?.coords?.lat),
     !!mainCategory,
   ])[step] ?? true;
 
@@ -308,8 +256,6 @@ export default function ProviderOnboarding() {
       if (!me) me = await api.auth.me().catch(() => null);
       if (!me) throw new Error('Sessão expirada. Faça login novamente.');
 
-      const firstCity = serviceAreas[0]?.city || '';
-
       const existingUp = await api.entities.UserProfile.filter({ userId: me.id });
       const upData = { userId: me.id, role: 'provider', onboardingCompleted: true, firstAccess: false };
       if (existingUp.length > 0) {
@@ -321,10 +267,15 @@ export default function ProviderOnboarding() {
       const existingProfiles = await api.entities.ProviderProfile.filter({ userId: me.id });
       const profileData = {
         name, phone,
-        city: firstCity,
+        city: providerAddress?.cidade || '',
+        lat: providerAddress?.coords?.lat || null,
+        lng: providerAddress?.coords?.lng || null,
+        cep: providerAddress?.cep || '',
+        endereco: providerAddress?.endereco || '',
+        numero: providerAddress?.numero || '',
+        estado: providerAddress?.estado || '',
         specialties: selectedServices,
         mainCategory,
-        serviceAreas,
         ...(photoUrl ? { photo: photoUrl } : {}),
         verificationStatus: 'pending',
         active: true,
@@ -626,158 +577,17 @@ export default function ProviderOnboarding() {
           </div>
         )}
 
-        {/* ── Etapa 3: Atendimento ────────────────────────────────── */}
+        {/* ── Etapa 3: Endereço base ──────────────────────────────── */}
         {step === 3 && (
           <div className="space-y-5">
             <div className="text-center mb-2">
-              <h2 className="font-heading text-2xl font-bold text-foreground">Área de atendimento</h2>
-              <p className="text-sm text-muted-foreground mt-1">Informe as cidades onde você presta serviço</p>
+              <h2 className="font-heading text-2xl font-bold text-foreground">Seu endereço base</h2>
+              <p className="text-sm text-muted-foreground mt-1">Exibiremos pedidos em até 20km da sua localização</p>
             </div>
-
-            {/* Cidades adicionadas */}
-            {serviceAreas.length > 0 && (
-              <div className="space-y-2">
-                {serviceAreas.map((area, idx) => (
-                  <div key={idx} className="flex items-start gap-3 p-3 bg-green-50 border border-green-200 rounded-xl">
-                    <MapPin className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-green-800">{area.city}</p>
-                      <p className="text-xs text-green-600 mt-0.5">
-                        {area.type === 'entire_city'
-                          ? 'Cidade inteira'
-                          : `Bairros: ${area.neighborhoods.join(', ')}`}
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => setServiceAreas(prev => prev.filter((_, i) => i !== idx))}
-                      className="p-1 hover:bg-green-100 rounded-lg transition-colors"
-                    >
-                      <X className="w-4 h-4 text-green-600" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Formulário de nova cidade */}
-            <div className="space-y-3 p-4 bg-card border border-border rounded-2xl">
-              <p className="text-sm font-semibold text-foreground">
-                {serviceAreas.length === 0 ? 'Cidade que você atende' : 'Adicionar outra cidade'}
-              </p>
-
-              <div className="relative">
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={currentCity}
-                    onChange={e => searchCities(e.target.value)}
-                    onFocus={() => currentCity.length >= 3 && setShowCitySuggestions(citySuggestions.length > 0)}
-                    onBlur={() => setTimeout(() => setShowCitySuggestions(false), 250)}
-                    placeholder="Digite ao menos 3 letras"
-                    className="w-full pl-4 pr-10 py-3 border border-border rounded-xl text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/50"
-                  />
-                  <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-                </div>
-                {showCitySuggestions && citySuggestions.length > 0 && (
-                  <div className="absolute z-20 w-full mt-1 bg-card border border-border rounded-xl shadow-lg overflow-hidden">
-                    {citySuggestions.map((city, i) => (
-                      <button
-                        key={i}
-                        onPointerDown={() => selectCity(city)}
-                        className="w-full flex items-center gap-2 px-4 py-3 text-sm hover:bg-secondary/50 transition-colors text-left border-b border-border last:border-b-0"
-                      >
-                        <MapPin className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                        <span className="flex-1 text-foreground">{city.nome}</span>
-                        <span className="text-xs text-muted-foreground">{city.uf}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {currentCity.trim() && (
-                <>
-                  <div className="space-y-2">
-                    {[
-                      { value: 'entire_city',   label: 'Atendo a cidade inteira' },
-                      { value: 'neighborhoods', label: 'Atendo somente alguns bairros' },
-                    ].map(opt => (
-                      <button
-                        key={opt.value}
-                        onClick={() => setCurrentAreaType(opt.value)}
-                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border text-sm font-medium text-left transition-colors ${
-                          currentAreaType === opt.value
-                            ? 'bg-primary/10 border-primary text-primary'
-                            : 'bg-background border-border text-foreground hover:bg-secondary/50'
-                        }`}
-                      >
-                        <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
-                          currentAreaType === opt.value ? 'border-primary' : 'border-border'
-                        }`}>
-                          {currentAreaType === opt.value && <div className="w-2 h-2 rounded-full bg-primary" />}
-                        </div>
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
-
-                  {currentAreaType === 'neighborhoods' && (
-                    <div className="space-y-2">
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          value={neighborhoodInput}
-                          onChange={e => setNeighborhoodInput(e.target.value)}
-                          onKeyDown={e => {
-                            if (e.key === 'Enter' && neighborhoodInput.trim()) {
-                              setCurrentNeighborhoods(prev => [...prev, neighborhoodInput.trim()]);
-                              setNeighborhoodInput('');
-                            }
-                          }}
-                          placeholder="Nome do bairro"
-                          className="flex-1 px-4 py-2.5 border border-border rounded-xl text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/50"
-                        />
-                        <button
-                          onClick={() => {
-                            if (neighborhoodInput.trim()) {
-                              setCurrentNeighborhoods(prev => [...prev, neighborhoodInput.trim()]);
-                              setNeighborhoodInput('');
-                            }
-                          }}
-                          className="px-3 py-2.5 bg-primary text-primary-foreground rounded-xl"
-                        >
-                          <Plus className="w-4 h-4" />
-                        </button>
-                      </div>
-                      {currentNeighborhoods.length > 0 && (
-                        <div className="flex flex-wrap gap-2">
-                          {currentNeighborhoods.map((n, i) => (
-                            <div key={i} className="flex items-center gap-1.5 px-3 py-1 bg-primary/10 text-primary rounded-full text-xs font-medium">
-                              {n}
-                              <button onClick={() => setCurrentNeighborhoods(prev => prev.filter((_, j) => j !== i))}>
-                                <X className="w-3 h-3" />
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                      {currentNeighborhoods.length === 0 && (
-                        <p className="text-xs text-red-500">Adicione pelo menos 1 bairro.</p>
-                      )}
-                    </div>
-                  )}
-
-                  {step2CityValid && (
-                    <button
-                      onClick={addCurrentCity}
-                      className="w-full py-2.5 border border-primary text-primary rounded-xl text-sm font-semibold hover:bg-primary/5 flex items-center justify-center gap-2 transition-colors"
-                    >
-                      <Plus className="w-4 h-4" /> Adicionar outra cidade
-                    </button>
-                  )}
-                </>
-              )}
-            </div>
+            <AddressFormWithMap
+              onAddressChange={(data) => setProviderAddress(data)}
+              initialData={providerAddress}
+            />
           </div>
         )}
 

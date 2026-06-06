@@ -69,6 +69,7 @@ export default function ProviderHome() {
   const [userProfileId, setUserProfileId] = useState(null);
   const [dismissed, setDismissed] = useState(new Set());
   const [providerServiceAreas, setProviderServiceAreas] = useState([]);
+  const [providerCoords, setProviderCoords] = useState(null);
   const [providerName, setProviderName] = useState('');
 
   useEffect(() => {
@@ -81,6 +82,9 @@ export default function ProviderHome() {
           setProviderSpecialties(provProfiles[0].specialties || []);
           setProviderServiceAreas(provProfiles[0].serviceAreas || []);
           setProviderName(provProfiles[0].name || u.fullName || u.full_name || '');
+          if (provProfiles[0].lat && provProfiles[0].lng) {
+            setProviderCoords({ lat: provProfiles[0].lat, lng: provProfiles[0].lng });
+          }
         } catch { /* mantém home sem redirecionar */ }
         try {
           const userProfiles = await api.entities.UserProfile.filter({ userId: u.id });
@@ -132,18 +136,35 @@ export default function ProviderHome() {
   const myInterestRequestIds = new Set(myInterests.map(i => i.serviceRequestId));
 
   const norm = (s) => (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+
+  const haversineKm = (lat1, lon1, lat2, lon2) => {
+    const R = 6371;
+    const d = (x) => x * Math.PI / 180;
+    const a = Math.sin(d(lat2 - lat1) / 2) ** 2
+      + Math.cos(d(lat1)) * Math.cos(d(lat2)) * Math.sin(d(lon2 - lon1) / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  };
+
   const providerCities = providerServiceAreas.length
     ? providerServiceAreas.map(a => norm((a.city || '').split(' - ')[0]))
     : [norm((user?.city || '').split(' - ')[0])];
   const hasCityFilter = providerCities.some(c => c.length > 0);
-  const cityFiltered = rawRequests.filter(r => {
+
+  const distanceMap = new Map();
+  const locationFiltered = rawRequests.filter(r => {
+    if (providerCoords?.lat && providerCoords?.lng && r.lat && r.lng) {
+      const km = haversineKm(providerCoords.lat, providerCoords.lng, r.lat, r.lng);
+      distanceMap.set(r.id, km);
+      return km <= 20;
+    }
+    // fallback: match por cidade
     if (!hasCityFilter) return true;
     const reqCity = norm((r.city || '').split(' - ')[0]);
     if (!reqCity) return true;
     return providerCities.includes(reqCity);
   });
 
-  const specialtyFiltered = cityFiltered.filter(r => {
+  const specialtyFiltered = locationFiltered.filter(r => {
     if (!providerSpecialties.length) return true;
     const reqCat = norm(r.category || '');
     const reqSub = norm(r.subcategory || '');
@@ -458,6 +479,8 @@ export default function ProviderHome() {
                   const location = request.neighborhood
                     ? `${request.neighborhood}${cityName ? ` · ${cityName}` : ''}`
                     : cityName;
+                  const km = distanceMap.get(request.id);
+                  const distLabel = km != null ? (km < 1 ? '< 1km' : `${Math.round(km)}km`) : null;
                   return (
                   <div key={request.id} className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
                     <div className="p-4 space-y-3">
@@ -483,6 +506,12 @@ export default function ProviderHome() {
                           <div className="flex items-center gap-1 text-xs text-muted-foreground bg-secondary/50 px-2.5 py-1 rounded-full">
                             <MapPin className="w-3 h-3 shrink-0" />
                             <span>{location}</span>
+                          </div>
+                        )}
+                        {distLabel && (
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground bg-secondary/50 px-2.5 py-1 rounded-full">
+                            <Navigation className="w-3 h-3 shrink-0" />
+                            <span>{distLabel} de você</span>
                           </div>
                         )}
                         <div className="flex items-center gap-1 text-xs text-muted-foreground bg-secondary/50 px-2.5 py-1 rounded-full">
