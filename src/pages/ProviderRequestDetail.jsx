@@ -65,6 +65,7 @@ export default function ProviderRequestDetail() {
   const [quotePrice, setQuotePrice] = useState('');
   const [quoteMaterials, setQuoteMaterials] = useState('provider');
   const [quoteFreight, setQuoteFreight] = useState('');
+  const [quoteTerm, setQuoteTerm] = useState('');
   const [quoteObs, setQuoteObs] = useState('');
 
   useEffect(() => {
@@ -129,6 +130,7 @@ export default function ProviderRequestDetail() {
         `• Serviço: ${fmtBRL(serviceVal)}`,
         freightVal > 0 ? `• Frete: ${fmtBRL(freightVal)}` : null,
         `• Materiais: ${materialsLabel}`,
+        quoteTerm ? `• Prazo estimado: ${quoteTerm}` : null,
         `• Total: ${fmtBRL(totalVal)}`,
         quoteObs ? `\n📝 ${quoteObs}` : null,
       ].filter(Boolean).join('\n');
@@ -226,12 +228,13 @@ export default function ProviderRequestDetail() {
                 </div>
               )}
 
-              {getScheduleOptions(request).length > 0 && (
-                <div className="space-y-2">
-                  {getScheduleOptions(request).map((option, index) => (
-                    <div key={`${option.date}-${option.startTime}-${index}`} className="flex items-start gap-2">
-                      <Calendar className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
-                      <div>
+              <div className="flex items-start gap-2">
+                <Calendar className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium mb-0.5">Quando precisa</p>
+                  {getScheduleOptions(request).length > 0 ? (
+                    getScheduleOptions(request).map((option, index) => (
+                      <div key={`${option.date}-${option.startTime}-${index}`}>
                         <p className="text-sm text-foreground">
                           {option.date
                             ? new Date(`${option.date}T00:00:00`).toLocaleDateString('pt-BR')
@@ -246,8 +249,20 @@ export default function ProviderRequestDetail() {
                           </p>
                         )}
                       </div>
-                    </div>
-                  ))}
+                    ))
+                  ) : (
+                    <p className="text-sm text-foreground">O mais rápido possível</p>
+                  )}
+                </div>
+              </div>
+
+              {request.urgency && request.urgency !== 'medium' && (
+                <div className="flex items-center gap-2">
+                  <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
+                    request.urgency === 'high' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
+                  }`}>
+                    {request.urgency === 'high' ? '⚡ Urgente' : '📅 Sem pressa'}
+                  </span>
                 </div>
               )}
 
@@ -397,6 +412,27 @@ export default function ProviderRequestDetail() {
               </div>
             </div>
 
+            {/* Prazo estimado */}
+            <div>
+              <label className="block text-sm font-semibold text-foreground mb-2">Prazo estimado</label>
+              <div className="flex flex-wrap gap-2">
+                {['Hoje', 'Amanhã', '2-3 dias', '1 semana', 'A combinar'].map(opt => (
+                  <button
+                    key={opt}
+                    type="button"
+                    onClick={() => setQuoteTerm(quoteTerm === opt ? '' : opt)}
+                    className={`px-3 py-2 rounded-full border text-sm font-medium transition-colors ${
+                      quoteTerm === opt
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'bg-card border-border text-foreground hover:bg-secondary/30'
+                    }`}
+                  >
+                    {opt}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Observações */}
             <div>
               <label className="block text-sm font-semibold text-foreground mb-2">Observações</label>
@@ -430,6 +466,12 @@ export default function ProviderRequestDetail() {
                     {quoteMaterials === 'client' ? 'Cliente fornece' : 'Eu forneço'}
                   </span>
                 </div>
+                {quoteTerm && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Prazo</span>
+                    <span className="font-medium text-foreground">{quoteTerm}</span>
+                  </div>
+                )}
                 <div className="border-t border-primary/20 pt-2 flex justify-between">
                   <span className="text-sm font-semibold text-primary">Total</span>
                   <span className="text-lg font-bold text-primary">{fmtBRL(totalVal)}</span>

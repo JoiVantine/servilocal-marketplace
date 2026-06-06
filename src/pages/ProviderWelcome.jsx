@@ -114,7 +114,7 @@ export default function ProviderWelcome() {
           <div className="bg-card border border-border rounded-xl p-4 flex gap-3 w-full">
             <Clock className="w-5 h-5 text-primary shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm font-semibold text-primary">Perfil pronto em menos de 2 minutos</p>
+              <p className="text-sm font-semibold text-primary">Perfil pronto em poucos minutos</p>
               <p className="text-xs text-muted-foreground mt-0.5">Cadastre-se e comece a receber pedidos rapidamente.</p>
             </div>
           </div>

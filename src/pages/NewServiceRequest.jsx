@@ -14,10 +14,10 @@ const S_WHEN = 2;
 const S_ADDRESS = 3;
 const S_REVIEW = 4;
 const S_REGISTER = 5;
-const S_OTP = 6;
-const S_PASSWORD = 7;
+const S_PASSWORD = 6;
+const S_OTP = 7;
 
-const STEP_LABELS = ['Serviço', 'Descrição', 'Quando', 'Endereço', 'Revisão', 'Seus dados', 'Verificação', 'Senha'];
+const STEP_LABELS = ['Serviço', 'Descrição', 'Quando', 'Endereço', 'Revisão', 'Seus dados', 'Senha', 'Verificação'];
 const SPECIAL_RE = /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?`~]/;
 
 const formatPhone = (val) => {
@@ -94,7 +94,29 @@ export default function NewServiceRequest() {
   const [showPass, setShowPass] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
-  const [newUserId, setNewUserId] = useState(null);
+  const isPopNavigation = useRef(false);
+
+  // Sync wizard steps with browser history so back button works
+  useEffect(() => {
+    if (isPopNavigation.current) { isPopNavigation.current = false; return; }
+    if (step === S_SERVICE) {
+      window.history.replaceState({ wizardStep: 0 }, '');
+    } else {
+      window.history.pushState({ wizardStep: step }, '');
+    }
+  }, [step]);
+
+  useEffect(() => {
+    const handlePop = (e) => {
+      if (e.state?.wizardStep != null) {
+        isPopNavigation.current = true;
+        setStep(e.state.wizardStep);
+        setErrors({});
+      }
+    };
+    window.addEventListener('popstate', handlePop);
+    return () => window.removeEventListener('popstate', handlePop);
+  }, []);
 
   // Pre-fill address for auth users
   useEffect(() => {
@@ -214,8 +236,7 @@ export default function NewServiceRequest() {
 
   const goBack = () => {
     if (step === S_SERVICE) { navigate('/client'); return; }
-    setStep((s) => s - 1);
-    setErrors({});
+    window.history.back();
   };
 
   const total = user ? 5 : 8;
@@ -290,11 +311,24 @@ export default function NewServiceRequest() {
     try {
       const { hasProfile } = await api.auth.checkProfile(email, 'client');
       if (hasProfile) { setShowLoginPrompt(true); setLoading(false); return; }
+      setErrors({});
+      setStep(S_PASSWORD);
+    } catch (err) {
+      setErrors({ submit: err.message || 'Erro ao verificar e-mail. Tente novamente.' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePasswordNext = async () => {
+    if (!passwordValid) { setErrors({ password: 'Corrija os requisitos da senha.' }); return; }
+    setLoading(true);
+    try {
       await api.auth.sendOtp({ email, fullName: name, phone, role: 'client' });
       setErrors({});
       setStep(S_OTP);
     } catch (err) {
-      setErrors({ submit: err.message || 'Erro ao enviar código. Tente novamente.' });
+      setErrors({ password: err.message || 'Erro ao enviar código. Tente novamente.' });
     } finally {
       setLoading(false);
     }
@@ -306,38 +340,13 @@ export default function NewServiceRequest() {
     try {
       const res = await api.auth.verifyOtp({ email, otp });
       if (res?.token) api.auth.setToken(res.token);
-      if (res?.user?.id || res?.user?._id) setNewUserId(res.user.id || res.user._id);
-      setErrors({});
-      setStep(S_PASSWORD);
-    } catch (err) {
-      setErrors({ otp: err.message || 'Código inválido ou expirado.' });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleResendOtp = async () => {
-    setLoading(true);
-    try {
-      await api.auth.sendOtp({ email, fullName: name, phone, role: 'client' });
-      setOtp('');
-      setErrors({});
-      setStep(S_OTP);
-    } catch { /* silent */ } finally {
-      setLoading(false);
-    }
-  };
-
-  const handlePasswordNext = async () => {
-    if (!passwordValid) { setErrors({ password: 'Corrija os requisitos da senha.' }); return; }
-    setLoading(true);
-    try {
+      const userId = res?.user?.id || res?.user?._id;
       await api.auth.setPassword(password);
       const cityState = addrState ? `${addrCity} - ${addrState}` : addrCity;
       await api.auth.updateMe({ city: cityState }).catch(() => {});
-      if (newUserId) {
+      if (userId) {
         const profileData = {
-          userId: newUserId,
+          userId,
           neighborhood: addrNeighborhood,
           address: [addrStreet, addrNoNum ? 'S/N' : addrNumber].filter(Boolean).join(', '),
           cep: addrCep.replace(/\D/g, ''),
@@ -351,7 +360,7 @@ export default function NewServiceRequest() {
           addressCity: addrCity,
           addressState: addrState,
         };
-        const existing = await api.entities.UserProfile.filter({ userId: newUserId }).catch(() => []);
+        const existing = await api.entities.UserProfile.filter({ userId }).catch(() => []);
         if (existing.length > 0) {
           await api.entities.UserProfile.update(existing[0].id, profileData).catch(() => {});
         } else {
@@ -361,8 +370,19 @@ export default function NewServiceRequest() {
       await api.entities.ServiceRequest.create(buildPayload());
       window.location.href = '/client';
     } catch (err) {
-      setErrors({ password: err.message || 'Erro ao finalizar. Tente novamente.' });
+      setErrors({ otp: err.message || 'Código inválido ou expirado.' });
     } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    setLoading(true);
+    try {
+      await api.auth.sendOtp({ email, fullName: name, phone, role: 'client' });
+      setOtp('');
+      setErrors({});
+    } catch { /* silent */ } finally {
       setLoading(false);
     }
   };
@@ -799,49 +819,7 @@ export default function NewServiceRequest() {
             </div>
           )}
 
-          {/* ── STEP 6: OTP ── */}
-          {step === S_OTP && (
-            <div className="space-y-6">
-              <div>
-                <h2 className="text-xl font-bold text-foreground">Verifique seu WhatsApp</h2>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Enviamos um código para<br />
-                  <span className="font-medium text-foreground">{phone}</span>
-                </p>
-              </div>
-
-              <div>
-                <div className="flex gap-2 justify-center">
-                  {Array.from({ length: 6 }, (_, i) => (
-                    <input key={i} ref={(el) => (otpRefs.current[i] = el)}
-                      type="text" inputMode="numeric" maxLength={1} value={otp[i] || ''}
-                      onChange={(e) => handleOtpChange(e, i)}
-                      onKeyDown={(e) => handleOtpKeyDown(e, i)}
-                      onPaste={i === 0 ? handleOtpPaste : undefined}
-                      className={`w-11 h-14 shrink-0 text-center border-2 rounded-xl text-2xl font-bold font-mono focus:outline-none focus:ring-2 focus:ring-primary/30 transition-colors ${
-                        errors.otp ? 'border-red-400' : otp[i] ? 'border-primary bg-primary/5' : 'border-border'
-                      }`}
-                    />
-                  ))}
-                </div>
-                {errors.otp && <p className="text-xs text-red-500 mt-2 text-center">{errors.otp}</p>}
-              </div>
-
-              <div className="text-center">
-                {canResend
-                  ? <button onClick={handleResendOtp} disabled={loading} className="text-sm text-primary font-medium underline disabled:opacity-50">Reenviar código</button>
-                  : <p className="text-sm text-muted-foreground">Reenviar em <span className="font-medium text-foreground">{String(Math.floor(otpCountdown / 60)).padStart(2, '0')}:{String(otpCountdown % 60).padStart(2, '0')}</span></p>
-                }
-              </div>
-
-              <button onClick={handleOtpNext} disabled={loading || otp.length < 6}
-                className="w-full py-3.5 bg-primary text-primary-foreground rounded-xl font-semibold hover:opacity-90 disabled:opacity-50 transition-opacity">
-                {loading ? 'Verificando...' : 'Verificar código'}
-              </button>
-            </div>
-          )}
-
-          {/* ── STEP 7: Senha ── */}
+          {/* ── STEP 6: Senha ── */}
           {step === S_PASSWORD && (
             <div className="space-y-5">
               <div>
@@ -891,13 +869,55 @@ export default function NewServiceRequest() {
 
               <button onClick={handlePasswordNext} disabled={loading || !passwordValid}
                 className="w-full py-3.5 bg-primary text-primary-foreground rounded-xl font-semibold hover:opacity-90 disabled:opacity-50 transition-opacity">
-                {loading ? 'Publicando pedido...' : 'Publicar pedido'}
+                {loading ? 'Enviando código...' : 'Confirmar e validar WhatsApp'}
               </button>
 
               <div className="flex items-center justify-center gap-2 py-2">
                 <ShieldCheck className="w-4 h-4 text-muted-foreground" />
                 <p className="text-xs text-muted-foreground">Seus dados são protegidos e nunca compartilhados</p>
               </div>
+            </div>
+          )}
+
+          {/* ── STEP 7: OTP ── */}
+          {step === S_OTP && (
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-xl font-bold text-foreground">Valide seu WhatsApp</h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Enviamos um código para<br />
+                  <span className="font-medium text-foreground">{phone}</span>
+                </p>
+              </div>
+
+              <div>
+                <div className="flex gap-2 justify-center">
+                  {Array.from({ length: 6 }, (_, i) => (
+                    <input key={i} ref={(el) => (otpRefs.current[i] = el)}
+                      type="text" inputMode="numeric" maxLength={1} value={otp[i] || ''}
+                      onChange={(e) => handleOtpChange(e, i)}
+                      onKeyDown={(e) => handleOtpKeyDown(e, i)}
+                      onPaste={i === 0 ? handleOtpPaste : undefined}
+                      className={`w-11 h-14 shrink-0 text-center border-2 rounded-xl text-2xl font-bold font-mono focus:outline-none focus:ring-2 focus:ring-primary/30 transition-colors ${
+                        errors.otp ? 'border-red-400' : otp[i] ? 'border-primary bg-primary/5' : 'border-border'
+                      }`}
+                    />
+                  ))}
+                </div>
+                {errors.otp && <p className="text-xs text-red-500 mt-2 text-center">{errors.otp}</p>}
+              </div>
+
+              <div className="text-center">
+                {canResend
+                  ? <button onClick={handleResendOtp} disabled={loading} className="text-sm text-primary font-medium underline disabled:opacity-50">Reenviar código</button>
+                  : <p className="text-sm text-muted-foreground">Reenviar em <span className="font-medium text-foreground">{String(Math.floor(otpCountdown / 60)).padStart(2, '0')}:{String(otpCountdown % 60).padStart(2, '0')}</span></p>
+                }
+              </div>
+
+              <button onClick={handleOtpNext} disabled={loading || otp.length < 6}
+                className="w-full py-3.5 bg-primary text-primary-foreground rounded-xl font-semibold hover:opacity-90 disabled:opacity-50 transition-opacity">
+                {loading ? 'Publicando pedido...' : 'Confirmar e publicar pedido'}
+              </button>
             </div>
           )}
 

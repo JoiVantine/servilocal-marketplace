@@ -3,19 +3,19 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '@/api/apiClient';
 import { useMutation } from '@tanstack/react-query';
 import {
-  ChevronRight, Eye, EyeOff,
-  CheckCircle2,
-  MapPin, Plus, X, MoreHorizontal, Search,
+  ChevronRight, Eye, EyeOff, CheckCircle2,
+  MapPin, Plus, X, MoreHorizontal, Search, Camera, Loader2,
 } from 'lucide-react';
 import { useServices } from '@/hooks/useServices';
 
 const LOGO_URL = '/onboarding-city.png';
 
 const STEPS = [
-  { id: 1, label: 'Conta' },
-  { id: 2, label: 'Código' },
-  { id: 3, label: 'Atendimento' },
-  { id: 4, label: 'Profissional' },
+  { id: 1, label: 'Dados' },
+  { id: 2, label: 'Verificação' },
+  { id: 3, label: 'Foto' },
+  { id: 4, label: 'Atendimento' },
+  { id: 5, label: 'Serviços' },
 ];
 
 const MAIN_CAT_NAMES = [
@@ -83,6 +83,11 @@ export default function ProviderOnboarding() {
   const countdownRef = useRef(null);
   const otpInputRefs = useRef([]);
 
+  // ── Step 2: Foto ───────────────────────────────────────────────
+  const [photoUrl, setPhotoUrl] = useState('');
+  const [photoLoading, setPhotoLoading] = useState(false);
+  const photoInputRef = useRef(null);
+
   // ── Step 2: Atendimento ────────────────────────────────────────
   const [serviceAreas, setServiceAreas] = useState([]);
   const [currentCity, setCurrentCity] = useState('');
@@ -131,10 +136,10 @@ export default function ProviderOnboarding() {
           if (pp.mainCategory) setMainCategory(pp.mainCategory);
           if (pp.serviceAreas?.length) setServiceAreas(pp.serviceAreas);
         }
-        setStep(3);
+        setStep(4);
         return;
       }
-      setStep(2);
+      setStep(3);
     }).catch(() => {});
   }, []);
 
@@ -203,6 +208,7 @@ export default function ProviderOnboarding() {
   const canNext = ([
     !!(name.trim() && email.trim() && phone.trim() && passwordValid),
     otpCode.length === 6,
+    true, // foto é opcional
     serviceAreas.length > 0 || step2CityValid,
     !!mainCategory,
   ])[step] ?? true;
@@ -249,6 +255,11 @@ export default function ProviderOnboarding() {
     }
 
     if (step === 2) {
+      setStep(3);
+      return;
+    }
+
+    if (step === 3) {
       if (step2CityValid) {
         setServiceAreas(prev => [...prev, {
           city: currentCity.trim(),
@@ -259,7 +270,7 @@ export default function ProviderOnboarding() {
         setCurrentAreaType('entire_city');
         setCurrentNeighborhoods([]);
       }
-      setStep(3);
+      setStep(4);
       return;
     }
 
@@ -314,7 +325,7 @@ export default function ProviderOnboarding() {
         specialties: selectedServices,
         mainCategory,
         serviceAreas,
-        servicePricing,
+        ...(photoUrl ? { photo: photoUrl } : {}),
         verificationStatus: 'pending',
         active: true,
       };
@@ -345,8 +356,28 @@ export default function ProviderOnboarding() {
         }
       }
     },
-    onSuccess: () => navigate('/provider'),
+    onSuccess: () => setStep(5),
   });
+
+  if (step === 5) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6 text-center">
+        <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mb-6">
+          <CheckCircle2 className="w-10 h-10 text-green-600" />
+        </div>
+        <h2 className="font-heading text-2xl font-bold text-foreground mb-2">Perfil criado!</h2>
+        <p className="text-sm text-muted-foreground max-w-xs leading-relaxed mb-8">
+          Agora você pode receber pedidos da sua região. Fique de olho nas notificações.
+        </p>
+        <button
+          onClick={() => navigate('/provider')}
+          className="w-full max-w-xs py-4 bg-primary text-primary-foreground rounded-xl font-semibold text-base hover:opacity-90 transition-opacity"
+        >
+          Ir para o painel
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -371,7 +402,7 @@ export default function ProviderOnboarding() {
         <div className="flex items-center justify-between max-w-md mx-auto relative">
           <div className="absolute top-4 left-0 right-0 h-px bg-border" />
           {STEPS.map((s, i) => {
-            const done   = i < step;
+            const done   = i < Math.min(step, STEPS.length);
             const active = i === step;
             return (
               <div key={s.id} className="flex flex-col items-center gap-1 z-10">
@@ -545,8 +576,58 @@ export default function ProviderOnboarding() {
           </div>
         )}
 
-        {/* ── Etapa 2: Atendimento ────────────────────────────────── */}
+        {/* ── Etapa 2: Foto ───────────────────────────────────────── */}
         {step === 2 && (
+          <div className="space-y-6">
+            <div className="text-center">
+              <h2 className="font-heading text-2xl font-bold text-foreground">Adicione uma foto</h2>
+              <p className="text-sm text-muted-foreground mt-1">Perfis com foto recebem mais propostas</p>
+            </div>
+
+            <div className="flex flex-col items-center gap-4">
+              <div className="relative">
+                <div className="w-28 h-28 rounded-full border-2 border-dashed border-border bg-secondary/30 flex items-center justify-center overflow-hidden">
+                  {photoUrl
+                    ? <img src={photoUrl} alt="foto" className="w-full h-full object-cover" />
+                    : <Camera className="w-8 h-8 text-muted-foreground" />
+                  }
+                </div>
+                <button
+                  onClick={() => photoInputRef.current?.click()}
+                  disabled={photoLoading}
+                  className="absolute -bottom-1 -right-1 w-9 h-9 bg-primary text-primary-foreground rounded-full flex items-center justify-center shadow-md hover:opacity-90 transition-opacity disabled:opacity-50"
+                >
+                  {photoLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
+                </button>
+              </div>
+              <input
+                ref={photoInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  setPhotoLoading(true);
+                  try {
+                    const url = await api.uploadFile(file);
+                    setPhotoUrl(url);
+                  } catch { /* silent */ } finally {
+                    setPhotoLoading(false);
+                    e.target.value = '';
+                  }
+                }}
+              />
+              {photoUrl
+                ? <button onClick={() => setPhotoUrl('')} className="text-xs text-muted-foreground underline">Remover foto</button>
+                : <p className="text-xs text-muted-foreground">Toque no botão para escolher uma foto</p>
+              }
+            </div>
+          </div>
+        )}
+
+        {/* ── Etapa 3: Atendimento ────────────────────────────────── */}
+        {step === 3 && (
           <div className="space-y-5">
             <div className="text-center mb-2">
               <h2 className="font-heading text-2xl font-bold text-foreground">Área de atendimento</h2>
@@ -700,8 +781,8 @@ export default function ProviderOnboarding() {
           </div>
         )}
 
-        {/* ── Etapa 3: Profissional ────────────────────────────────── */}
-        {step === 3 && (
+        {/* ── Etapa 4: Serviços ───────────────────────────────────── */}
+        {step === 4 && (
           <div className="space-y-5">
             <div className="text-center mb-2">
               <h2 className="font-heading text-2xl font-bold text-foreground">Dados profissionais</h2>
@@ -774,46 +855,6 @@ export default function ProviderOnboarding() {
               </div>
             )}
 
-            {/* Valores e duração */}
-            {selectedServices.length > 0 && (
-              <div className="space-y-3">
-                <label className="block text-sm font-medium text-foreground">Valores e duração por serviço</label>
-                {selectedServices.map(sub => (
-                  <div key={sub} className="p-3 bg-card border border-border rounded-xl space-y-2">
-                    <p className="text-sm font-semibold text-foreground">{sub}</p>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="block text-xs text-muted-foreground mb-1">Valor (R$)</label>
-                        <input
-                          type="text"
-                          inputMode="decimal"
-                          value={servicePricing[sub]?.price || ''}
-                          onChange={e => setServicePricing(prev => ({
-                            ...prev,
-                            [sub]: { ...prev[sub], price: e.target.value },
-                          }))}
-                          placeholder="Ex.: 150"
-                          className="w-full px-3 py-2 border border-border rounded-lg text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/50"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs text-muted-foreground mb-1">Duração</label>
-                        <input
-                          type="text"
-                          value={servicePricing[sub]?.duration || ''}
-                          onChange={e => setServicePricing(prev => ({
-                            ...prev,
-                            [sub]: { ...prev[sub], duration: e.target.value },
-                          }))}
-                          placeholder="Ex.: 2h"
-                          className="w-full px-3 py-2 border border-border rounded-lg text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/50"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
         )}
       </div>
@@ -840,8 +881,10 @@ export default function ProviderOnboarding() {
           >
             {saveMutation.isPending || otpLoading
               ? 'Aguarde...'
-              : step === 3
+              : step === 4
               ? 'Finalizar cadastro'
+              : step === 2 && !photoUrl
+              ? 'Pular'
               : 'Continuar'}
             <ChevronRight className="w-5 h-5" />
           </button>

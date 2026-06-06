@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/api/apiClient';
-import { ChevronRight, MapPin, ShieldCheck, LogOut, X, ArrowLeft, Users, Star, Search } from 'lucide-react';
+import { ChevronRight, MapPin, LogOut, X, ArrowLeft, Users, Star, Search } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import ClientBottomNav from '../components/ClientBottomNav';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
@@ -397,76 +397,6 @@ export default function ClientHome() {
             </div>
           )}
 
-          {/* Serviços mais procurados — apenas visitantes */}
-          {!searchQuery && !user && (
-            <div className="px-4 mb-4">
-              <p className="text-sm font-bold text-foreground mb-3">Serviços mais procurados</p>
-              <div className="flex flex-wrap gap-2">
-                {[
-                  { label: 'Eletricista', emoji: '⚡', cat: 'Elétrica', sub: 'Instalação elétrica' },
-                  { label: 'Encanador', emoji: '🚿', cat: 'Hidráulica', sub: 'Vazamento' },
-                  { label: 'Diarista', emoji: '🧹', cat: 'Limpeza', sub: 'Limpeza residencial' },
-                  { label: 'Pintor', emoji: '🎨', cat: 'Pintura', sub: 'Pintura interna' },
-                  { label: 'Jardineiro', emoji: '🌿', cat: 'Jardinagem', sub: 'Corte de grama' },
-                ].map(({ label, emoji, cat, sub }) => (
-                  <button
-                    key={label}
-                    onClick={() => requireAuth({ category: cat, subcategory: sub })}
-                    className="flex items-center gap-1.5 px-3 py-2 rounded-full border border-border bg-card text-xs font-medium text-foreground hover:border-primary/40 hover:bg-primary/5 transition-all"
-                  >
-                    <span>{emoji}</span>
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Cobertura local — apenas visitantes */}
-          {!searchQuery && !user && (
-            <div className="px-4 mb-4">
-              <div className="flex items-center gap-2 px-1">
-                <MapPin className="w-3.5 h-3.5 text-primary shrink-0" />
-                <p className="text-xs text-muted-foreground">
-                  {user?.city
-                    ? `Atendendo toda ${user.city} • Profissionais locais para ajudar no dia a dia.`
-                    : 'Profissionais disponíveis em diversas cidades • Serviço local, rápido e direto.'}
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Contrate com mais segurança — apenas visitantes */}
-          {!user && <div className="px-4 mb-4">
-            <div className="bg-card border border-border rounded-xl p-4 flex items-center gap-3">
-              <div className="w-11 h-11 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                <ShieldCheck className="w-5 h-5 text-primary" />
-              </div>
-              <div className="flex-1">
-                <p className="font-semibold text-sm text-foreground">Contrate com mais segurança</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Converse com profissionais antes de decidir quem contratar.</p>
-              </div>
-            </div>
-          </div>}
-
-          {/* CTA prestador — apenas para visitantes */}
-          {!user && (
-            <div className="px-4 mb-5">
-              <button
-                onClick={() => navigate('/provider/welcome')}
-                className="w-full flex items-center gap-3 bg-secondary/50 border border-border rounded-2xl px-4 py-3.5 hover:bg-secondary transition-colors text-left"
-              >
-                <span className="text-xl shrink-0">🛠️</span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-foreground">Quer receber pedidos da sua região?</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">Cadastre-se como prestador e apareça para clientes locais.</p>
-                </div>
-                <span className="shrink-0 px-3 py-1.5 border border-border bg-card text-foreground rounded-lg text-xs font-semibold">
-                  Cadastrar
-                </span>
-              </button>
-            </div>
-          )}
 
           {/* Pedidos com proposta recebida — alerta */}
           {user && requests.some(r => r.status === 'in_conversation') && (
@@ -555,17 +485,6 @@ export default function ClientHome() {
             )}
           </div>}
 
-          {/* Banner local — apenas visitantes */}
-          {!user && <div className="px-4 mb-5">
-            <div className="bg-secondary/40 border border-border rounded-2xl p-4 text-center">
-              <p className="text-base font-bold text-foreground mb-1">
-                🏘️ Feito para {user?.city || 'sua cidade'}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Conectando clientes e prestadores da nossa cidade.
-              </p>
-            </div>
-          </div>}
 
         </div>
       </div>
