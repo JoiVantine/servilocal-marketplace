@@ -155,14 +155,7 @@ export default function ClientHome() {
   }
 
   const requireAuth = (navState) => {
-    if (user) {
-      navigate('/client/new-request', navState ? { state: navState } : undefined);
-    } else {
-      navigate('/client/onboarding', navState
-        ? { state: { returnTo: '/client/new-request', returnState: navState } }
-        : undefined
-      );
-    }
+    navigate('/client/new-request', navState ? { state: navState } : undefined);
   };
 
   const activeRequests = requests.filter((r) => r.status !== 'cancelled');
