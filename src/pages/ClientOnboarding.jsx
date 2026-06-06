@@ -46,6 +46,7 @@ export default function ClientOnboarding() {
 
   // Step 1 — Verificação
   const [otp, setOtp] = useState('');
+  const [userId, setUserId] = useState(null);
   const [otpCountdown, setOtpCountdown] = useState(600);
   const [canResend, setCanResend] = useState(false);
   const otpRefs = useRef([]);
@@ -164,6 +165,7 @@ export default function ClientOnboarding() {
     try {
       const res = await api.auth.verifyOtp({ email, otp });
       if (res?.token) api.auth.setToken(res.token);
+      if (res?.user?.id || res?.user?._id) setUserId(res.user.id || res.user._id);
       setErrors({});
       setStep(2);
     } catch (err) {
@@ -217,24 +219,27 @@ export default function ClientOnboarding() {
   const handleFinish = async () => {
     setLoading(true);
     try {
-      const user = await api.auth.me();
       const cityState = uf ? `${cidade} - ${uf}` : cidade;
       await api.auth.updateMe({ city: cityState });
-      const existing = await api.entities.UserProfile.filter({ userId: user.id });
-      const profileData = {
-        userId: user.id,
-        neighborhood: bairro,
-        address: [rua, semNumero ? 'S/N' : numero].filter(Boolean).join(', '),
-        cep: cep.replace(/\D/g, ''),
-        role: 'client',
-        onboardingCompleted: true,
-        firstAccess: false,
-      };
-      if (existing.length > 0) {
-        await api.entities.UserProfile.update(existing[0].id, profileData);
-      } else {
-        await api.entities.UserProfile.create(profileData);
+
+      if (userId) {
+        const existing = await api.entities.UserProfile.filter({ userId });
+        const profileData = {
+          userId,
+          neighborhood: bairro,
+          address: [rua, semNumero ? 'S/N' : numero].filter(Boolean).join(', '),
+          cep: cep.replace(/\D/g, ''),
+          role: 'client',
+          onboardingCompleted: true,
+          firstAccess: false,
+        };
+        if (existing.length > 0) {
+          await api.entities.UserProfile.update(existing[0].id, profileData);
+        } else {
+          await api.entities.UserProfile.create(profileData);
+        }
       }
+
       navigate('/client');
     } catch (err) {
       setErrors({ submit: err.message || 'Erro ao finalizar cadastro. Tente novamente.' });
