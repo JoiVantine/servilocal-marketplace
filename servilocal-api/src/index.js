@@ -513,6 +513,66 @@ app.get('/api/admin/stats', requireAuth, requireAdmin, async (req, res) => {
   }
 });
 
+// ─── Admin: Pedidos em Risco ─────────────────────────────────────────────────
+app.get('/api/admin/at-risk-requests', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const now = new Date();
+    const ago30min = new Date(now - 30 * 60_000);
+    const ago3h = new Date(now - 3 * 3600_000);
+
+    // Pedidos abertos há 30+ min
+    const openOldIds = await ServiceRequest.distinct('_id', { status: 'open', createdAt: { $lt: ago30min } });
+
+    // Quais têm pelo menos uma proposta
+    const idsWithProposals = await ServiceRequestInterest.distinct('serviceRequestId', { serviceRequestId: { $in: openOldIds } });
+    const withProposalSet = new Set(idsWithProposals.map(id => id.toString()));
+
+    // Bucket 1: sem nenhuma proposta
+    const noProposalIds = openOldIds.filter(id => !withProposalSet.has(id.toString()));
+    const noProposalDocs = await ServiceRequest.find({ _id: { $in: noProposalIds } })
+      .sort({ createdAt: 1 }).limit(20).lean();
+
+    // Bucket 2: tem propostas mas cliente ignorou há 3h+
+    const proposalGroups = await ServiceRequestInterest.aggregate([
+      { $match: { serviceRequestId: { $in: idsWithProposals } } },
+      { $group: { _id: '$serviceRequestId', lastAt: { $max: '$createdAt' }, count: { $sum: 1 } } },
+      { $match: { lastAt: { $lt: ago3h } } },
+    ]);
+    const ignoredIds = proposalGroups.map(g => g._id);
+    const proposalCountMap = Object.fromEntries(proposalGroups.map(g => [g._id.toString(), g.count]));
+    const ignoredDocs = await ServiceRequest.find({ _id: { $in: ignoredIds }, status: 'open' })
+      .sort({ updatedAt: 1 }).limit(20).lean();
+
+    // Bucket 3: conversa parada há 3h+
+    const stalledDocs = await ServiceRequest.find({ status: 'in_conversation', updatedAt: { $lt: ago3h } })
+      .sort({ updatedAt: 1 }).limit(20).lean();
+
+    const fmt = (r, extras = {}) => ({
+      id: r._id.toString(),
+      title: r.title,
+      category: r.category,
+      subcategory: r.subcategory,
+      city: r.city,
+      status: r.status,
+      createdAt: r.createdAt,
+      updatedAt: r.updatedAt,
+      minutesOpen: Math.floor((now - new Date(r.createdAt)) / 60_000),
+      minutesSinceUpdate: Math.floor((now - new Date(r.updatedAt)) / 60_000),
+      ...extras,
+    });
+
+    res.json({
+      generatedAt: now,
+      no_proposals: noProposalDocs.map(r => fmt(r, { proposalCount: 0 })),
+      ignored_proposals: ignoredDocs.map(r => fmt(r, { proposalCount: proposalCountMap[r._id.toString()] || 0 })),
+      stalled: stalledDocs.map(r => fmt(r)),
+    });
+  } catch (err) {
+    console.error('[admin/at-risk-requests]', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ─── Health ─────────────────────────────────────────────────────────────────
 app.get('/api/health', (_, res) => res.json({ ok: true, ts: new Date() }));
 

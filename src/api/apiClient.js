@@ -175,6 +175,7 @@ export const api = {
 
   admin: {
     stats: (city) => request('GET', `/api/admin/stats${city ? `?city=${encodeURIComponent(city)}` : ''}`),
+    atRisk: () => request('GET', '/api/admin/at-risk-requests'),
   },
 
   functions: {

@@ -25,6 +25,7 @@ import AdminLogin from './pages/AdminLogin';
 import AdminSupportDesk from './pages/AdminSupportDesk';
 import AdminTicketDetail from './pages/AdminTicketDetail';
 import AdminDashboard from './pages/AdminDashboard';
+import AdminAtRisk from './pages/AdminAtRisk';
 import AdminRoute from './components/AdminRoute';
 import ProvidersMap from './pages/ProvidersMap';
 import ProviderRequestsMap from './pages/ProviderRequestsMap';
@@ -117,6 +118,7 @@ const AuthenticatedApp = () => {
         <Route path="/admin/support/:ticketId" element={<AdminTicketDetail />} />
         <Route path="/admin/request/:requestId" element={<ClientRequestDetail viewerMode="admin" />} />
         <Route path="/admin/users" element={<AdminUsers />} />
+        <Route path="/admin/at-risk" element={<AdminAtRisk />} />
       </Route>
       <Route path="/client/map" element={<ProvidersMap />} />
       <Route path="/provider/map" element={<ProviderRequestsMap />} />

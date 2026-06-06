@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '@/api/apiClient';
 import {
   Bell, Menu, Users, UserCheck, MessageSquare, CheckCircle,
-  ChevronRight, BarChart2, LayoutGrid,
+  ChevronRight, BarChart2, LayoutGrid, AlertTriangle,
 } from 'lucide-react';
 import AdminBottomNav from '@/components/AdminBottomNav';
 
@@ -31,20 +31,20 @@ function MetricCard({ label, value, icon: Icon, iconBg }) {
   );
 }
 
-function Shortcut({ label, description, icon: Icon, onClick }) {
+function Shortcut({ label, description, icon: Icon, onClick, urgent }) {
   return (
     <button
       onClick={onClick}
-      className="w-full flex items-center gap-3 px-4 py-4 hover:bg-secondary/30 transition-colors text-left"
+      className={`w-full flex items-center gap-3 px-4 py-4 transition-colors text-left ${urgent ? 'bg-red-50 hover:bg-red-100' : 'hover:bg-secondary/30'}`}
     >
-      <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-        <Icon className="w-5 h-5 text-primary" />
+      <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${urgent ? 'bg-red-100' : 'bg-primary/10'}`}>
+        <Icon className={`w-5 h-5 ${urgent ? 'text-red-600' : 'text-primary'}`} />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-foreground">{label}</p>
-        <p className="text-xs text-muted-foreground">{description}</p>
+        <p className={`text-sm font-medium ${urgent ? 'text-red-800' : 'text-foreground'}`}>{label}</p>
+        <p className={`text-xs ${urgent ? 'text-red-600' : 'text-muted-foreground'}`}>{description}</p>
       </div>
-      <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+      <ChevronRight className={`w-4 h-4 shrink-0 ${urgent ? 'text-red-400' : 'text-muted-foreground'}`} />
     </button>
   );
 }
@@ -68,6 +68,7 @@ export default function AdminDashboard() {
   const badgeCount = openCount > 0 ? (openCount > 99 ? '99+' : String(openCount)) : null;
 
   const shortcuts = [
+    { label: 'Pedidos em Risco', description: 'Sem proposta, ignorados ou parados', icon: AlertTriangle, to: '/admin/at-risk', urgent: true },
     { label: 'Ver todos os chamados', description: 'Acompanhe e gerencie', icon: MessageSquare, to: '/admin/support' },
     { label: 'Usuários', description: 'Gerencie usuários da plataforma', icon: Users, to: '/admin/users' },
     { label: 'Prestadores', description: 'Gerencie prestadores', icon: UserCheck, to: '/admin/users' },
@@ -134,6 +135,7 @@ export default function AdminDashboard() {
                 label={s.label}
                 description={s.description}
                 icon={s.icon}
+                urgent={s.urgent}
                 onClick={() => navigate(s.to)}
               />
             ))}
