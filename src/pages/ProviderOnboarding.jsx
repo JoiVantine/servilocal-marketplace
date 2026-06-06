@@ -303,7 +303,6 @@ export default function ProviderOnboarding() {
       if (!me) throw new Error('Sessão expirada. Faça login novamente.');
 
       const firstCity = serviceAreas[0]?.city || '';
-      await api.auth.updateMe({ full_name: name, phone, city: firstCity });
 
       const existingUp = await api.entities.UserProfile.filter({ userId: me.id });
       const upData = { userId: me.id, role: 'provider', onboardingCompleted: true, firstAccess: false };

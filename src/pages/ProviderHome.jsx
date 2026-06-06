@@ -55,6 +55,7 @@ export default function ProviderHome() {
   const [userProfileId, setUserProfileId] = useState(null);
   const [dismissed, setDismissed] = useState(new Set());
   const [providerServiceAreas, setProviderServiceAreas] = useState([]);
+  const [providerName, setProviderName] = useState('');
 
   useEffect(() => {
     api.auth.me()
@@ -65,6 +66,7 @@ export default function ProviderHome() {
           if (provProfiles.length === 0) { navigate('/provider/onboarding'); return; }
           setProviderSpecialties(provProfiles[0].specialties || []);
           setProviderServiceAreas(provProfiles[0].serviceAreas || []);
+          setProviderName(provProfiles[0].name || u.fullName || u.full_name || '');
         } catch { /* mantém home sem redirecionar */ }
         try {
           const userProfiles = await api.entities.UserProfile.filter({ userId: u.id });
@@ -137,7 +139,7 @@ export default function ProviderHome() {
   const activeOrders = agreedRequests.filter(r => r.status === 'agreed');
 
   const handleLogout = () => api.auth.logout('/');
-  const firstName = (user?.fullName || user?.full_name)?.split(' ')[0] || '';
+  const firstName = providerName.split(' ')[0] || (user?.fullName || user?.full_name)?.split(' ')[0] || '';
 
   return (
     <div className="min-h-screen bg-background pb-24">

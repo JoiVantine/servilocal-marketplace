@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '@/api/apiClient';
 import { ChevronLeft, Loader2, CheckCircle, MapPin, Plus, X, Search } from 'lucide-react';
 import ProviderBottomNav from '@/components/ProviderBottomNav';
-import { useCurrentUser, useRefreshUser } from '@/hooks/useCurrentUser';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 
 const formatPhone = (val) => {
   const d = val.replace(/\D/g, '').slice(0, 11);
@@ -19,8 +19,6 @@ const normalize = (s) =>
 export default function ProviderProfile() {
   const navigate = useNavigate();
   const { data: user, isLoading } = useCurrentUser();
-  const refreshUser = useRefreshUser();
-
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [serviceAreas, setServiceAreas] = useState([]);
@@ -50,15 +48,21 @@ export default function ProviderProfile() {
 
   useEffect(() => {
     if (!user) return;
-    setName(user.fullName || user.full_name || '');
-    setPhone(user.phone || '');
     api.entities.ProviderProfile.filter({ created_by_id: user.id })
       .then(pp => {
-        if (pp.length > 0 && pp[0].serviceAreas?.length) {
-          setServiceAreas(pp[0].serviceAreas);
+        if (pp.length > 0) {
+          setName(pp[0].name || user.fullName || user.full_name || '');
+          setPhone(pp[0].phone || '');
+          if (pp[0].serviceAreas?.length) setServiceAreas(pp[0].serviceAreas);
+        } else {
+          setName(user.fullName || user.full_name || '');
+          setPhone(user.phone || '');
         }
       })
-      .catch(() => {});
+      .catch(() => {
+        setName(user.fullName || user.full_name || '');
+        setPhone(user.phone || '');
+      });
   }, [user?.id]);
 
   const searchCities = (query) => {
@@ -100,15 +104,12 @@ export default function ProviderProfile() {
     setSaveError(false);
     try {
       const firstCity = serviceAreas[0]?.city || '';
-      await api.auth.updateMe({ full_name: name, name, phone, city: firstCity });
-
       const me = await api.auth.me();
       const provProfiles = await api.entities.ProviderProfile.filter({ created_by_id: me.id });
       if (provProfiles.length > 0) {
         await api.entities.ProviderProfile.update(provProfiles[0].id, { name, phone, city: firstCity, serviceAreas });
       }
 
-      refreshUser();
       setShowSuccessModal(true);
     } catch {
       setSaveError(true);
