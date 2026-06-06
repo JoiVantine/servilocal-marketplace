@@ -100,6 +100,7 @@ export default function ProviderOnboarding() {
   const [showOthersModal, setShowOthersModal] = useState(false);
 
   const [fieldErrors, setFieldErrors] = useState({});
+  const [showLoginPrompt, setShowLoginPrompt] = useState(false);
 
   // Carrega municípios do IBGE uma vez
   useEffect(() => {
@@ -210,25 +211,19 @@ export default function ProviderOnboarding() {
     if (step === 0) {
       if (!validateStep0()) return;
       setOtpLoading(true);
+      setShowLoginPrompt(false);
       try {
         const { hasProfile } = await api.auth.checkProfile(email, 'provider');
         if (hasProfile) {
-          navigate(`/login?role=provider&email=${encodeURIComponent(email)}`);
+          setShowLoginPrompt(true);
+          setOtpLoading(false);
           return;
         }
         await api.auth.sendOtp({ email, fullName: name, phone, role: 'provider' });
         startCountdown();
         setStep(1);
       } catch (err) {
-        const msg = (err.message || '').toLowerCase();
-        if (
-          msg.includes('already') || msg.includes('exist') || msg.includes('já') ||
-          msg.includes('cadastrado') || msg.includes('registered') || msg.includes('duplicate')
-        ) {
-          setFieldErrors({ email: 'E-mail já cadastrado. Tente fazer login.' });
-        } else {
-          setFieldErrors({ email: err.message });
-        }
+        setFieldErrors({ email: err.message || 'Erro ao verificar conta.' });
       } finally {
         setOtpLoading(false);
       }
@@ -825,7 +820,19 @@ export default function ProviderOnboarding() {
 
       {/* ── Botão inferior ───────────────────────────────────────── */}
       <div className="sticky bottom-0 px-6 py-4 bg-background border-t border-border">
-        <div className="max-w-md mx-auto">
+        <div className="max-w-md mx-auto space-y-3">
+          {showLoginPrompt && step === 0 && (
+            <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-center space-y-2">
+              <p className="text-sm text-amber-800 font-medium">Já existe uma conta com este e-mail.</p>
+              <p className="text-xs text-amber-700">Gostaria de fazer login?</p>
+              <button
+                onClick={() => navigate(`/login?role=provider&email=${encodeURIComponent(email)}`)}
+                className="w-full py-2.5 bg-amber-600 text-white rounded-lg text-sm font-semibold hover:bg-amber-700 transition-colors"
+              >
+                Entrar na minha conta
+              </button>
+            </div>
+          )}
           <button
             onClick={handleNext}
             disabled={!canNext || saveMutation.isPending || otpLoading}

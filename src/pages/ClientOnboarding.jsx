@@ -29,6 +29,7 @@ export default function ClientOnboarding() {
   const [editMode, setEditMode] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
+  const [showLoginPrompt, setShowLoginPrompt] = useState(false);
 
   // Step 0 — Dados
   const [name, setName] = useState('');
@@ -129,10 +130,13 @@ export default function ClientOnboarding() {
     const errs = {};
     if (!name.trim() || name.trim().length < 3) errs.name = 'Digite seu nome completo (mínimo 3 caracteres)';
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errs.email = 'Digite um e-mail válido';
-    if (Object.keys(errs).length > 0) { setErrors(errs); return; }
+    if (Object.keys(errs).length > 0) { setErrors(errs); setShowLoginPrompt(false); return; }
     if (editMode) { setErrors({}); setEditMode(false); setStep(4); return; }
     setLoading(true);
+    setShowLoginPrompt(false);
     try {
+      const { hasProfile } = await api.auth.checkProfile(email, 'client');
+      if (hasProfile) { setShowLoginPrompt(true); setLoading(false); return; }
       await api.auth.sendOtp({ email, fullName: name, role: 'client' });
       setErrors({});
       setStep(1);
@@ -313,12 +317,25 @@ export default function ClientOnboarding() {
 
               {errors.submit && <p className="text-xs text-red-500 text-center">{errors.submit}</p>}
 
+              {showLoginPrompt && (
+                <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-center space-y-2">
+                  <p className="text-sm text-amber-800 font-medium">Já existe uma conta com este e-mail.</p>
+                  <p className="text-xs text-amber-700">Gostaria de fazer login?</p>
+                  <button
+                    onClick={() => navigate(`/login?role=client&email=${encodeURIComponent(email)}`)}
+                    className="w-full py-2.5 bg-amber-600 text-white rounded-lg text-sm font-semibold hover:bg-amber-700 transition-colors"
+                  >
+                    Entrar na minha conta
+                  </button>
+                </div>
+              )}
+
               <button
                 onClick={handleStep0}
                 disabled={loading}
                 className="w-full py-3.5 bg-primary text-primary-foreground rounded-xl font-semibold hover:opacity-90 disabled:opacity-50 transition-opacity"
               >
-                {loading ? 'Enviando...' : editMode ? 'Salvar alterações' : 'Enviar código por e-mail'}
+                {loading ? 'Verificando...' : editMode ? 'Salvar alterações' : 'Enviar código por e-mail'}
               </button>
 
               {editMode && (
