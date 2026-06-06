@@ -120,8 +120,22 @@ export default function ProviderHome() {
     if (!reqCity) return true;
     return providerCities.includes(reqCity);
   });
-  const openRequests = cityFiltered.filter(r => r.status === 'open');
-  const inConvRequests = cityFiltered.filter(r => r.status === 'in_conversation');
+
+  const specialtyFiltered = cityFiltered.filter(r => {
+    if (!providerSpecialties.length) return true;
+    const reqCat = norm(r.category || '');
+    const reqSub = norm(r.subcategory || '');
+    const reqTitle = norm(r.title || '');
+    return providerSpecialties.some(sp => {
+      const s = norm(sp);
+      return reqCat.includes(s) || s.includes(reqCat) ||
+             reqSub.includes(s) || s.includes(reqSub) ||
+             reqTitle.includes(s) || s.includes(reqTitle);
+    });
+  });
+
+  const openRequests = specialtyFiltered.filter(r => r.status === 'open');
+  const inConvRequests = specialtyFiltered.filter(r => r.status === 'in_conversation');
 
   const visibleOpenRequests = openRequests.filter(r => !dismissed.has(r.id));
 
