@@ -85,7 +85,11 @@ export default function ProviderRequestDetail() {
   const freightVal = parseMoney(quoteFreight);
   const totalVal = serviceVal + freightVal;
 
-  const canSend = quotePrice.trim().length > 0;
+  const reqSlots = request?.scheduleOptions || [];
+  const hasSchedule = reqSlots.length > 0
+    ? (typeof selectedSlot === 'number' || (selectedSlot === 'custom' && !!customDate))
+    : !!customDate;
+  const canSend = quotePrice.trim().length > 0 && hasSchedule;
 
   const handleSendQuote = async () => {
     if (!user || !request || !canSend) return;
@@ -95,11 +99,15 @@ export default function ProviderRequestDetail() {
       const provProfiles = await api.entities.ProviderProfile.filter({ userId: user.id });
       const pp = provProfiles[0];
 
-      const slotInfo = selectedSlot === 'custom'
+      const slots = request?.scheduleOptions || [];
+      const slotInfo = selectedSlot === 'custom' || (!slots.length && customDate)
         ? { scheduledDate: customDate, scheduledTime: customStart && customEnd ? `${customStart}–${customEnd}` : customStart }
-        : selectedSlot !== null && request?.scheduleOptions?.[selectedSlot]
-        ? { scheduledDate: request.scheduleOptions[selectedSlot].date, scheduledTime: `${request.scheduleOptions[selectedSlot].startTime}–${request.scheduleOptions[selectedSlot].endTime}` }
+        : typeof selectedSlot === 'number' && slots[selectedSlot]
+        ? { scheduledDate: slots[selectedSlot].date, scheduledTime: `${slots[selectedSlot].startTime}–${slots[selectedSlot].endTime}` }
         : {};
+      const term = slotInfo.scheduledDate
+        ? new Date(`${slotInfo.scheduledDate}T00:00:00`).toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' })
+        : '';
 
       await api.entities.ServiceRequestInterest.create({
         serviceRequestId: requestId,
@@ -110,7 +118,7 @@ export default function ProviderRequestDetail() {
         servicePrice: String(serviceVal),
         freight: quoteFreight,
         materials: quoteMaterials,
-        term: quoteTerm,
+        term,
         observations: quoteObs,
         message: quoteObs || 'Orçamento enviado.',
         ...slotInfo,
@@ -145,7 +153,6 @@ export default function ProviderRequestDetail() {
         `• Serviço: ${fmtBRL(serviceVal)}`,
         freightVal > 0 ? `• Frete: ${fmtBRL(freightVal)}` : null,
         `• Materiais: ${materialsLabel}`,
-        quoteTerm ? `• Prazo estimado: ${quoteTerm}` : null,
         slotLabel,
         `• Total: ${fmtBRL(totalVal)}`,
         quoteObs ? `\n📝 ${quoteObs}` : null,
@@ -486,41 +493,14 @@ export default function ProviderRequestDetail() {
                       <button type="button" onClick={() => { setSelectedSlot('custom'); setQuoteTerm(''); }}
                         className={`w-full flex items-center gap-3 px-4 py-3 border rounded-xl text-left transition-colors ${selectedSlot === 'custom' ? 'border-primary bg-primary/5' : 'border-border bg-card hover:bg-secondary/20'}`}>
                         {radioBtn(selectedSlot === 'custom')}
-                        <p className="text-sm font-medium text-foreground">Tenho outra disponibilidade</p>
+                        <p className="text-sm font-medium text-foreground">Sugerir outro horário</p>
                       </button>
                       {selectedSlot === 'custom' && customPickers}
-                      <button type="button" onClick={() => { setSelectedSlot(null); setQuoteTerm('A combinar'); }}
-                        className={`w-full flex items-center gap-3 px-4 py-3 border rounded-xl text-left transition-colors ${selectedSlot === null && quoteTerm === 'A combinar' ? 'border-primary bg-primary/5' : 'border-border bg-card hover:bg-secondary/20'}`}>
-                        {radioBtn(selectedSlot === null && quoteTerm === 'A combinar')}
-                        <p className="text-sm font-medium text-foreground">A combinar com o cliente</p>
-                      </button>
                     </div>
                   ) : (
-                    <div className="space-y-2">
-                      <div className="flex flex-wrap gap-2">
-                        {['Hoje', 'Amanhã', '2-3 dias', '1 semana'].map(opt => (
-                          <button key={opt} type="button"
-                            onClick={() => { setQuoteTerm(quoteTerm === opt ? '' : opt); setSelectedSlot(null); }}
-                            className={`px-3 py-2 rounded-full border text-sm font-medium transition-colors ${
-                              quoteTerm === opt && selectedSlot === null
-                                ? 'bg-primary text-primary-foreground border-primary'
-                                : 'bg-card border-border text-foreground hover:bg-secondary/30'
-                            }`}>
-                            {opt}
-                          </button>
-                        ))}
-                      </div>
-                      <button type="button" onClick={() => { setSelectedSlot('custom'); setQuoteTerm(''); }}
-                        className={`w-full flex items-center gap-3 px-4 py-3 border rounded-xl text-left transition-colors ${selectedSlot === 'custom' ? 'border-primary bg-primary/5' : 'border-border bg-card hover:bg-secondary/20'}`}>
-                        {radioBtn(selectedSlot === 'custom')}
-                        <p className="text-sm font-medium text-foreground">Data e horário específicos</p>
-                      </button>
-                      {selectedSlot === 'custom' && customPickers}
-                      <button type="button" onClick={() => { setSelectedSlot(null); setQuoteTerm('A combinar'); }}
-                        className={`w-full flex items-center gap-3 px-4 py-3 border rounded-xl text-left transition-colors ${selectedSlot === null && quoteTerm === 'A combinar' ? 'border-primary bg-primary/5' : 'border-border bg-card hover:bg-secondary/20'}`}>
-                        {radioBtn(selectedSlot === null && quoteTerm === 'A combinar')}
-                        <p className="text-sm font-medium text-foreground">A combinar</p>
-                      </button>
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground mb-2">O cliente não especificou horário. Informe quando você pode atender:</p>
+                      {customPickers}
                     </div>
                   )}
                 </div>
@@ -560,12 +540,20 @@ export default function ProviderRequestDetail() {
                     {quoteMaterials === 'client' ? 'Cliente fornece' : 'Eu forneço'}
                   </span>
                 </div>
-                {quoteTerm && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Prazo</span>
-                    <span className="font-medium text-foreground">{quoteTerm}</span>
-                  </div>
-                )}
+                {(() => {
+                  const s = reqSlots;
+                  const label = selectedSlot === 'custom' || (!s.length && customDate)
+                    ? [customDate ? new Date(`${customDate}T00:00:00`).toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' }) : '', customStart && customEnd ? `${customStart}–${customEnd}` : ''].filter(Boolean).join(' ')
+                    : typeof selectedSlot === 'number' && s[selectedSlot]
+                    ? [new Date(`${s[selectedSlot].date}T00:00:00`).toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' }), `${s[selectedSlot].startTime}–${s[selectedSlot].endTime}`].join(' ')
+                    : '';
+                  return label ? (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Data</span>
+                      <span className="font-medium text-foreground">{label}</span>
+                    </div>
+                  ) : null;
+                })()}
                 <div className="border-t border-primary/20 pt-2 flex justify-between">
                   <span className="text-sm font-semibold text-primary">Total</span>
                   <span className="text-lg font-bold text-primary">{fmtBRL(totalVal)}</span>
