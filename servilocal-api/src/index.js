@@ -598,6 +598,67 @@ app.get('/api/admin/stats', requireAuth, requireAdmin, async (req, res) => {
   }
 });
 
+// ─── Confirmar prestador + notificar rejeitados ──────────────────────────────
+app.post('/api/service-requests/:id/confirm-provider', requireAuth, async (req, res) => {
+  try {
+    const { interestId, ...updateFields } = req.body;
+    const requestId = req.params.id;
+
+    const updated = await ServiceRequest.findByIdAndUpdate(
+      requestId,
+      { $set: updateFields },
+      { new: true }
+    );
+    if (!updated) return res.status(404).json({ error: 'Pedido não encontrado' });
+
+    if (interestId) {
+      await ServiceRequestInterest.findByIdAndUpdate(interestId, { status: 'accepted' });
+    }
+
+    // Notificar os demais prestadores de forma assíncrona
+    setImmediate(async () => {
+      try {
+        const rejected = await ServiceRequestInterest.find({
+          serviceRequestId: requestId,
+          ...(interestId ? { _id: { $ne: interestId } } : {}),
+          status: { $nin: ['cancelled', 'accepted', 'rejected'] },
+        }).lean();
+
+        for (const interest of rejected) {
+          await ServiceRequestInterest.findByIdAndUpdate(interest._id, { status: 'rejected' });
+
+          await Notification.create({
+            userId: interest.providerId,
+            type: 'proposal_rejected',
+            title: 'Proposta não selecionada',
+            body: `O cliente escolheu outro profissional para o pedido de ${updated.category || 'serviço'}.`,
+            description: `O cliente escolheu outro profissional para o pedido de ${updated.category || 'serviço'}.`,
+            relatedId: requestId,
+            data: { relatedId: requestId },
+            read: false,
+          });
+
+          const provider = await User.findById(interest.providerId).lean();
+          const phone = provider?.phone || interest.providerPhone;
+          if (phone) {
+            const firstName = (interest.providerName || '').split(' ')[0] || 'você';
+            await sendWhatsApp(phone,
+              `Olá ${firstName}! 👋\n\nO cliente escolheu outro profissional para o pedido de *${updated.category || 'serviço'}*.\n\nNão desanime — continue atento a novos pedidos na sua área! 💪`
+            ).catch(() => {});
+          }
+        }
+      } catch (e) {
+        console.error('[confirm-provider] notify rejected error:', e.message);
+      }
+    });
+
+    res.json({ ok: true, id: updated._id.toString() });
+  } catch (err) {
+    console.error('[confirm-provider]', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ─── Admin: Pedidos em Risco ─────────────────────────────────────────────────
 app.get('/api/admin/at-risk-requests', requireAuth, requireAdmin, async (req, res) => {
   try {

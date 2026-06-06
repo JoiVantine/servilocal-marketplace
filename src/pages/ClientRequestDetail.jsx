@@ -149,6 +149,19 @@ function StatusHero({ currentStep, request, interests, onConfirm, confirmPending
           >
             {confirmPending ? 'Confirmando...' : 'Confirmar conclusão'}
           </button>
+          <p className="text-xs text-muted-foreground text-center">
+            Não recebeu o código?{' '}
+            <button
+              onClick={() => navigate('/client/support', {
+                state: buildSupportComposerState(
+                  buildRequestSupportDraft({ audience: 'client', request, conversation, counterpartName: request.confirmedProviderName || '', customIssue: 'Não recebi o código de confirmação via WhatsApp para concluir o atendimento.' })
+                ),
+              })}
+              className="text-primary font-medium underline underline-offset-2"
+            >
+              Fale com o suporte
+            </button>
+          </p>
           <button
             onClick={() => navigate('/client/support', {
               state: buildSupportComposerState(
@@ -157,7 +170,7 @@ function StatusHero({ currentStep, request, interests, onConfirm, confirmPending
             })}
             className="w-full py-2.5 border border-border rounded-xl text-sm font-medium text-foreground hover:bg-secondary/50 transition-colors flex items-center justify-center gap-1.5"
           >
-            <AlertTriangle className="w-4 h-4 text-orange-500" /> Reportar problema
+            <AlertTriangle className="w-4 h-4 text-orange-500" /> Reportar problema com o serviço
           </button>
         </div>
       )}

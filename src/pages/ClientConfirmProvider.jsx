@@ -49,7 +49,8 @@ export default function ClientConfirmProvider() {
     setConfirming(true);
     try {
       const priceNum = parseFloat(String(interest.price || '').replace(',', '.'));
-      await api.entities.ServiceRequest.update(requestId, {
+      await api.progress.confirmProvider(requestId, {
+        interestId,
         status: 'agreed',
         confirmedProviderId: interest.providerId,
         confirmedProviderName: interest.providerName,
