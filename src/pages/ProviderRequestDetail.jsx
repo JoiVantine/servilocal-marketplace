@@ -39,18 +39,17 @@ function timeAgo(iso) {
   return `${Math.floor(h / 24)}d atrás`;
 }
 
-const handleMoneyInput = (v) => v.replace(/\D/g, '');
-const formatMoneyOnBlur = (v) => {
-  const d = v.replace(/\D/g, '');
-  if (!d.length) return '';
-  return d.replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ',00';
+// Armazena centavos como string de dígitos; exibe formatado em tempo real
+const toMoneyDigits = (v) => v.replace(/\D/g, '').replace(/^0+/, '').slice(0, 10);
+const fmtCurrency = (digits) => {
+  if (!digits) return '';
+  const n = parseInt(digits, 10) || 0;
+  const reais = Math.floor(n / 100);
+  const cents = n % 100;
+  return `${reais.toLocaleString('pt-BR')},${String(cents).padStart(2, '0')}`;
 };
-const parseMoney = (v) => {
-  if (!v) return 0;
-  const d = parseInt(v.replace(/\D/g, ''), 10) || 0;
-  return d < 100 ? d : Math.floor(d / 100);
-};
-const fmtBRL = (n) => `R$ ${n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.')},00`;
+const parseMoney = (digits) => Math.floor(parseInt(digits || '0', 10) / 100);
+const fmtBRL = (n) => `R$ ${n.toLocaleString('pt-BR')},00`;
 
 export default function ProviderRequestDetail() {
   const { requestId } = useParams();
@@ -363,9 +362,8 @@ export default function ProviderRequestDetail() {
                 <input
                   type="text"
                   inputMode="numeric"
-                  value={quotePrice}
-                  onChange={e => setQuotePrice(handleMoneyInput(e.target.value))}
-                  onBlur={e => setQuotePrice(formatMoneyOnBlur(e.target.value))}
+                  value={fmtCurrency(quotePrice)}
+                  onChange={e => setQuotePrice(toMoneyDigits(e.target.value))}
                   placeholder="0,00"
                   className="flex-1 focus:outline-none text-sm bg-transparent"
                 />
@@ -403,9 +401,8 @@ export default function ProviderRequestDetail() {
                 <input
                   type="text"
                   inputMode="numeric"
-                  value={quoteFreight}
-                  onChange={e => setQuoteFreight(handleMoneyInput(e.target.value))}
-                  onBlur={e => setQuoteFreight(formatMoneyOnBlur(e.target.value))}
+                  value={fmtCurrency(quoteFreight)}
+                  onChange={e => setQuoteFreight(toMoneyDigits(e.target.value))}
                   placeholder="0,00"
                   className="flex-1 focus:outline-none text-sm bg-transparent"
                 />

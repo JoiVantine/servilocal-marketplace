@@ -368,7 +368,10 @@ export default function ProviderHome() {
               <div className="space-y-4">
                 {visibleOpenRequests.map(request => {
                   const when = whenLabel(request);
-                  const location = request.neighborhood || (request.city?.split(' - ')[0]) || request.city;
+                  const cityName = request.city?.split(' - ')[0] || request.city || '';
+                  const location = request.neighborhood
+                    ? `${request.neighborhood}${cityName ? ` · ${cityName}` : ''}`
+                    : cityName;
                   return (
                   <div key={request.id} className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
                     <div className="p-4 space-y-3">
