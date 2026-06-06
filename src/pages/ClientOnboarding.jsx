@@ -378,7 +378,7 @@ export default function ClientOnboarding() {
                 disabled={loading}
                 className="w-full py-3.5 bg-primary text-primary-foreground rounded-xl font-semibold hover:opacity-90 disabled:opacity-50 transition-opacity"
               >
-                {loading ? 'Verificando...' : editMode ? 'Salvar alterações' : 'Enviar código por e-mail'}
+                {loading ? 'Verificando...' : editMode ? 'Salvar alterações' : 'Enviar código por WhatsApp'}
               </button>
 
               {editMode && (
