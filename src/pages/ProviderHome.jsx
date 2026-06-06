@@ -2,11 +2,10 @@ import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/api/apiClient';
 import {
-  Pencil, Star, Inbox, MapPin, Clock,
+  Star, Inbox, MapPin, Clock,
   ChevronRight, LifeBuoy, Navigation, CalendarDays, LogOut,
 } from 'lucide-react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
-import EditProviderModal from '@/components/EditProviderModal';
 import ProviderBottomNav from '@/components/ProviderBottomNav';
 
 function timeAgo(iso) {
@@ -54,7 +53,6 @@ export default function ProviderHome() {
   const [hasProviderServices, setHasProviderServices] = useState(null);
   const [accepting, setAccepting] = useState(true);
   const [userProfileId, setUserProfileId] = useState(null);
-  const [showEditProfile, setShowEditProfile] = useState(false);
   const [dismissed, setDismissed] = useState(new Set());
   const [providerServiceAreas, setProviderServiceAreas] = useState([]);
 
@@ -142,12 +140,6 @@ export default function ProviderHome() {
             <h1 className="font-heading text-3xl font-bold text-foreground">{firstName || '...'}</h1>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowEditProfile(true)}
-              className="p-2 rounded-xl hover:bg-secondary/50 transition-colors border border-border"
-            >
-              <Pencil className="w-4 h-4 text-muted-foreground" />
-            </button>
             <button
               onClick={handleLogout}
               className="p-2 rounded-xl hover:bg-secondary/50 transition-colors border border-border"
@@ -484,22 +476,6 @@ export default function ProviderHome() {
           </>
         )}
       </div>
-
-      {showEditProfile && user && (
-        <EditProviderModal
-          user={user}
-          onClose={() => setShowEditProfile(false)}
-          onSaved={(updates) => {
-            if (updates) setUser(prev => ({
-              ...prev,
-              photo: updates.photo ?? prev.photo,
-              fullName: updates.name ?? prev.fullName,
-              full_name: updates.name ?? prev.full_name,
-              city: updates.city ?? prev.city,
-            }));
-          }}
-        />
-      )}
 
       <ProviderBottomNav active="home" />
     </div>
