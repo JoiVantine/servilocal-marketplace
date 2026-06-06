@@ -416,7 +416,7 @@ export default function ProviderHome() {
                           onClick={() => navigate(`/provider/request/${request.id}`)}
                           className="flex-1 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity"
                         >
-                          Aceitar pedido
+                          Orçamento
                         </button>
                       </div>
 
