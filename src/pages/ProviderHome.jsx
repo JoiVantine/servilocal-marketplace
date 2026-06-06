@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '@/api/apiClient';
 import {
   Star, Inbox, MapPin, Clock,
-  Navigation, LogOut, MessageCircle, ChevronRight,
+  Navigation, LogOut, MessageCircle, ChevronRight, CalendarDays,
 } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import ProviderBottomNav from '@/components/ProviderBottomNav';
@@ -60,7 +60,7 @@ export default function ProviderHome() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const tabParam = searchParams.get('tab');
-  const initialTab = tabParam === 'active' ? 'active' : tabParam === 'talking' ? 'talking' : 'available';
+  const initialTab = tabParam === 'active' ? 'active' : tabParam === 'talking' ? 'talking' : tabParam === 'agenda' ? 'agenda' : 'available';
   const [activeTab, setActiveTab] = useState(initialTab);
   const [user, setUser] = useState(null);
   const [providerSpecialties, setProviderSpecialties] = useState([]);
@@ -359,6 +359,64 @@ export default function ProviderHome() {
                     )}
                   </button>
                 ))}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ── Agenda ──────────────────────────────────────────────────────── */}
+        {activeTab === 'agenda' && (
+          <>
+            {activeOrders.length === 0 ? (
+              <div className="flex flex-col items-center py-10 gap-3 text-center">
+                <CalendarDays className="w-12 h-12 text-muted-foreground/40" />
+                <p className="font-semibold text-foreground">Nenhum pedido confirmado</p>
+                <p className="text-sm text-muted-foreground leading-relaxed max-w-xs">
+                  Pedidos aceitos pelo cliente aparecerão aqui com a data agendada.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {activeOrders.map(req => {
+                  const dateStr = req.agreedScheduledDate || req.scheduleOptions?.[0]?.date || null;
+                  const dateLabel = dateStr
+                    ? new Date(`${dateStr}T00:00:00`).toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' })
+                    : 'Data a combinar';
+                  const timeLabel = req.agreedScheduledTime || req.scheduleOptions?.[0]?.startTime || null;
+                  return (
+                    <button
+                      key={req.id}
+                      onClick={() => navigate(`/provider/request/${req.id}/progress`)}
+                      className="w-full bg-card border border-primary/30 bg-primary/[0.02] rounded-2xl p-4 text-left hover:border-primary/60 transition-colors shadow-sm"
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="bg-primary/10 rounded-xl px-3 py-2 text-center shrink-0">
+                          <p className="text-xs font-bold text-primary uppercase">
+                            {dateStr ? new Date(`${dateStr}T00:00:00`).toLocaleDateString('pt-BR', { month: 'short' }) : '—'}
+                          </p>
+                          <p className="text-2xl font-black text-primary leading-none">
+                            {dateStr ? new Date(`${dateStr}T00:00:00`).getDate() : '?'}
+                          </p>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-foreground text-sm">{req.title || req.category}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">{dateLabel}{timeLabel ? ` · ${timeLabel}` : ''}</p>
+                          {req.clientName && (
+                            <p className="text-xs text-muted-foreground mt-0.5">{req.clientName}</p>
+                          )}
+                          {req.agreedPrice && (
+                            <p className="text-xs font-bold text-primary mt-1">
+                              R$ {parseFloat(req.agreedPrice).toFixed(2).replace('.', ',')}
+                            </p>
+                          )}
+                        </div>
+                        <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${progressColor(req.progressStatus)}`}>
+                          {progressLabel(req.progressStatus)}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             )}
           </>

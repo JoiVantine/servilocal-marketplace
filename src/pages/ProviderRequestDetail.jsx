@@ -426,81 +426,106 @@ export default function ProviderRequestDetail() {
               </div>
             </div>
 
-            {/* Horário */}
-            {(request?.scheduleOptions?.length > 0 || request?.when === 'scheduled') && (
-              <div>
-                <label className="block text-sm font-semibold text-foreground mb-2">Horário disponível</label>
-                <div className="space-y-2">
-                  {(request.scheduleOptions || []).map((opt, i) => {
-                    const dateLabel = opt.date
-                      ? new Date(`${opt.date}T00:00:00`).toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' })
-                      : '';
-                    return (
-                      <button key={i} type="button" onClick={() => setSelectedSlot(i)}
-                        className={`w-full flex items-center gap-3 px-4 py-3 border rounded-xl text-left transition-colors ${selectedSlot === i ? 'border-primary bg-primary/5' : 'border-border bg-card hover:bg-secondary/20'}`}>
-                        <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${selectedSlot === i ? 'border-primary' : 'border-muted-foreground'}`}>
-                          {selectedSlot === i && <div className="w-2 h-2 rounded-full bg-primary" />}
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-foreground">{dateLabel}</p>
-                          {opt.startTime && <p className="text-xs text-muted-foreground">Das {opt.startTime} às {opt.endTime}</p>}
-                        </div>
-                      </button>
-                    );
-                  })}
-                  <button type="button" onClick={() => setSelectedSlot('custom')}
-                    className={`w-full flex items-center gap-3 px-4 py-3 border rounded-xl text-left transition-colors ${selectedSlot === 'custom' ? 'border-primary bg-primary/5' : 'border-border bg-card hover:bg-secondary/20'}`}>
-                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${selectedSlot === 'custom' ? 'border-primary' : 'border-muted-foreground'}`}>
-                      {selectedSlot === 'custom' && <div className="w-2 h-2 rounded-full bg-primary" />}
+            {/* Quando pode atender — unifica horário + prazo */}
+            {(() => {
+              const slots = request?.scheduleOptions || [];
+              const hasSlots = slots.length > 0;
+              const radioBtn = (active) => (
+                <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${active ? 'border-primary' : 'border-muted-foreground'}`}>
+                  {active && <div className="w-2 h-2 rounded-full bg-primary" />}
+                </div>
+              );
+              const customPickers = (
+                <div className="space-y-3 p-4 bg-card border border-border rounded-xl">
+                  <div>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1.5">Data</label>
+                    <input type="date" value={customDate} onChange={e => setCustomDate(e.target.value)}
+                      className="w-full px-4 py-3 border border-border rounded-lg text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                  </div>
+                  <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-2">
+                    <div>
+                      <label className="block text-xs font-medium text-muted-foreground mb-1.5">Das</label>
+                      <input type="time" value={customStart} onChange={e => setCustomStart(e.target.value)}
+                        className="w-full px-4 py-3 border border-border rounded-lg text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/30" />
                     </div>
-                    <p className="text-sm font-medium text-foreground">Tenho outra disponibilidade</p>
-                  </button>
-                  {selectedSlot === 'custom' && (
-                    <div className="space-y-3 p-4 bg-card border border-border rounded-xl">
-                      <div>
-                        <label className="block text-xs font-medium text-muted-foreground mb-1.5">Data</label>
-                        <input type="date" value={customDate} onChange={e => setCustomDate(e.target.value)}
-                          className="w-full px-4 py-3 border border-border rounded-lg text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                    <span className="text-xs text-muted-foreground pb-3.5">até</span>
+                    <div>
+                      <label className="block text-xs font-medium text-muted-foreground mb-1.5">Às</label>
+                      <input type="time" value={customEnd} onChange={e => setCustomEnd(e.target.value)}
+                        className="w-full px-4 py-3 border border-border rounded-lg text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                    </div>
+                  </div>
+                </div>
+              );
+
+              return (
+                <div>
+                  <label className="block text-sm font-semibold text-foreground mb-2">
+                    Quando você pode atender?
+                  </label>
+
+                  {hasSlots ? (
+                    <div className="space-y-2">
+                      {slots.map((opt, i) => {
+                        const dateLabel = opt.date
+                          ? new Date(`${opt.date}T00:00:00`).toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' })
+                          : '';
+                        const isActive = selectedSlot === i;
+                        return (
+                          <button key={i} type="button" onClick={() => { setSelectedSlot(i); setQuoteTerm(dateLabel); }}
+                            className={`w-full flex items-center gap-3 px-4 py-3 border rounded-xl text-left transition-colors ${isActive ? 'border-primary bg-primary/5' : 'border-border bg-card hover:bg-secondary/20'}`}>
+                            {radioBtn(isActive)}
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-foreground">{dateLabel}</p>
+                              {opt.startTime && <p className="text-xs text-muted-foreground">Das {opt.startTime} às {opt.endTime}</p>}
+                              <p className="text-xs text-primary/70 font-medium mt-0.5">Horário do cliente</p>
+                            </div>
+                          </button>
+                        );
+                      })}
+                      <button type="button" onClick={() => { setSelectedSlot('custom'); setQuoteTerm(''); }}
+                        className={`w-full flex items-center gap-3 px-4 py-3 border rounded-xl text-left transition-colors ${selectedSlot === 'custom' ? 'border-primary bg-primary/5' : 'border-border bg-card hover:bg-secondary/20'}`}>
+                        {radioBtn(selectedSlot === 'custom')}
+                        <p className="text-sm font-medium text-foreground">Tenho outra disponibilidade</p>
+                      </button>
+                      {selectedSlot === 'custom' && customPickers}
+                      <button type="button" onClick={() => { setSelectedSlot(null); setQuoteTerm('A combinar'); }}
+                        className={`w-full flex items-center gap-3 px-4 py-3 border rounded-xl text-left transition-colors ${selectedSlot === null && quoteTerm === 'A combinar' ? 'border-primary bg-primary/5' : 'border-border bg-card hover:bg-secondary/20'}`}>
+                        {radioBtn(selectedSlot === null && quoteTerm === 'A combinar')}
+                        <p className="text-sm font-medium text-foreground">A combinar com o cliente</p>
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <div className="flex flex-wrap gap-2">
+                        {['Hoje', 'Amanhã', '2-3 dias', '1 semana'].map(opt => (
+                          <button key={opt} type="button"
+                            onClick={() => { setQuoteTerm(quoteTerm === opt ? '' : opt); setSelectedSlot(null); }}
+                            className={`px-3 py-2 rounded-full border text-sm font-medium transition-colors ${
+                              quoteTerm === opt && selectedSlot === null
+                                ? 'bg-primary text-primary-foreground border-primary'
+                                : 'bg-card border-border text-foreground hover:bg-secondary/30'
+                            }`}>
+                            {opt}
+                          </button>
+                        ))}
                       </div>
-                      <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-2">
-                        <div>
-                          <label className="block text-xs font-medium text-muted-foreground mb-1.5">Das</label>
-                          <input type="time" value={customStart} onChange={e => setCustomStart(e.target.value)}
-                            className="w-full px-4 py-3 border border-border rounded-lg text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/30" />
-                        </div>
-                        <span className="text-xs text-muted-foreground pb-3.5">até</span>
-                        <div>
-                          <label className="block text-xs font-medium text-muted-foreground mb-1.5">Às</label>
-                          <input type="time" value={customEnd} onChange={e => setCustomEnd(e.target.value)}
-                            className="w-full px-4 py-3 border border-border rounded-lg text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/30" />
-                        </div>
-                      </div>
+                      <button type="button" onClick={() => { setSelectedSlot('custom'); setQuoteTerm(''); }}
+                        className={`w-full flex items-center gap-3 px-4 py-3 border rounded-xl text-left transition-colors ${selectedSlot === 'custom' ? 'border-primary bg-primary/5' : 'border-border bg-card hover:bg-secondary/20'}`}>
+                        {radioBtn(selectedSlot === 'custom')}
+                        <p className="text-sm font-medium text-foreground">Data e horário específicos</p>
+                      </button>
+                      {selectedSlot === 'custom' && customPickers}
+                      <button type="button" onClick={() => { setSelectedSlot(null); setQuoteTerm('A combinar'); }}
+                        className={`w-full flex items-center gap-3 px-4 py-3 border rounded-xl text-left transition-colors ${selectedSlot === null && quoteTerm === 'A combinar' ? 'border-primary bg-primary/5' : 'border-border bg-card hover:bg-secondary/20'}`}>
+                        {radioBtn(selectedSlot === null && quoteTerm === 'A combinar')}
+                        <p className="text-sm font-medium text-foreground">A combinar</p>
+                      </button>
                     </div>
                   )}
                 </div>
-              </div>
-            )}
-
-            {/* Prazo estimado */}
-            <div>
-              <label className="block text-sm font-semibold text-foreground mb-2">Prazo estimado</label>
-              <div className="flex flex-wrap gap-2">
-                {['Hoje', 'Amanhã', '2-3 dias', '1 semana', 'A combinar'].map(opt => (
-                  <button
-                    key={opt}
-                    type="button"
-                    onClick={() => setQuoteTerm(quoteTerm === opt ? '' : opt)}
-                    className={`px-3 py-2 rounded-full border text-sm font-medium transition-colors ${
-                      quoteTerm === opt
-                        ? 'bg-primary text-primary-foreground border-primary'
-                        : 'bg-card border-border text-foreground hover:bg-secondary/30'
-                    }`}
-                  >
-                    {opt}
-                  </button>
-                ))}
-              </div>
-            </div>
+              );
+            })()}
 
             {/* Observações */}
             <div>
