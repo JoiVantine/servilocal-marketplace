@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/api/apiClient';
+import { buildRequestSupportDraft, buildSupportComposerState } from '@/lib/support';
 import {
   ChevronLeft, MessageCircle, CheckCircle2, Circle,
   Navigation, Star, MapPin, AlertCircle,
@@ -254,6 +255,16 @@ export default function ProviderOrderProgress() {
                 <p className="text-sm text-muted-foreground leading-relaxed">
                   Aguarde a confirmação do cliente.
                 </p>
+                <button
+                  onClick={() => navigate('/provider/support', {
+                    state: buildSupportComposerState(
+                      buildRequestSupportDraft({ audience: 'provider', request, customIssue: 'O cliente não está conseguindo confirmar a conclusão com o código enviado via WhatsApp.' })
+                    ),
+                  })}
+                  className="text-xs text-primary font-medium underline underline-offset-2"
+                >
+                  Problemas com código?
+                </button>
               </div>
 
               {/* Progresso */}
