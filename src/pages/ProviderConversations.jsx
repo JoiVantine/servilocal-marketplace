@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Home, LifeBuoy, Map, MessageCircle } from 'lucide-react';
-import { api } from '@/api/apiClient';
+import { LifeBuoy, MessageCircle } from 'lucide-react';
+import { io } from 'socket.io-client';
+import { api, API_URL } from '@/api/apiClient';
 import { buildConversationSupportDraft, buildSupportComposerState } from '@/lib/support';
+import ProviderBottomNav from '@/components/ProviderBottomNav';
 
 export default function ProviderConversations() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [user, setUser] = useState(null);
 
   useEffect(() => {
@@ -17,21 +20,30 @@ export default function ProviderConversations() {
     queryKey: ['provider-conversations-list', user?.id],
     queryFn: () => api.entities.Conversation.filter({ providerId: user.id }, '-lastMessageTime'),
     enabled: !!user?.id,
+    refetchInterval: 8000,
   });
 
+  // Socket.IO — re-join rooms when conversations list changes
+  useEffect(() => {
+    if (!conversations.length) return;
+    const socket = io(API_URL);
+    conversations.forEach(c => socket.emit('join-conversation', c.id));
+    socket.on('new-message', () => {
+      queryClient.invalidateQueries({ queryKey: ['provider-conversations-list', user?.id] });
+      queryClient.invalidateQueries({ queryKey: ['provider-conversations-unread'] });
+    });
+    return () => socket.disconnect();
+  }, [conversations.map(c => c.id).join('|')]);
+
   const linkedRequestIds = useMemo(() => (
-    [...new Set(
-      conversations
-        .map((conversation) => conversation.serviceRequestId)
-        .filter(Boolean)
-    )]
+    [...new Set(conversations.map(c => c.serviceRequestId).filter(Boolean))]
   ), [conversations]);
 
   const { data: linkedRequests = [] } = useQuery({
     queryKey: ['provider-conversation-requests', linkedRequestIds.join('|')],
     queryFn: async () => {
       const results = await Promise.all(
-        linkedRequestIds.map((id) => api.entities.ServiceRequest.get(id).catch(() => null))
+        linkedRequestIds.map(id => api.entities.ServiceRequest.get(id).catch(() => null))
       );
       return results.filter(Boolean);
     },
@@ -39,16 +51,13 @@ export default function ProviderConversations() {
   });
 
   const requestLookup = useMemo(
-    () => new Map(linkedRequests.map((request) => [request.id, request])),
+    () => new Map(linkedRequests.map(r => [r.id, r])),
     [linkedRequests]
   );
 
   return (
     <div className="min-h-screen bg-background pb-24">
       <div className="flex items-center gap-3 px-4 py-4 border-b border-border bg-card">
-        <button onClick={() => navigate('/provider')} className="p-2 hover:bg-secondary rounded-lg">
-          <ArrowLeft className="w-5 h-5" />
-        </button>
         <div className="flex items-center gap-2 flex-1">
           <img src="/onboarding-city.png" alt="ServiLocal" className="w-6 h-6 object-contain" />
           <div>
@@ -66,35 +75,44 @@ export default function ProviderConversations() {
         ) : conversations.length === 0 ? (
           <div className="text-center py-12">
             <MessageCircle className="w-12 h-12 text-muted-foreground mx-auto mb-3 opacity-50" />
-            <p className="text-sm text-muted-foreground">Nenhuma conversa ainda.</p>
+            <p className="font-semibold text-foreground mb-1">Nenhuma conversa ainda</p>
+            <p className="text-sm text-muted-foreground">Quando você enviar um orçamento, a conversa aparecerá aqui.</p>
           </div>
         ) : (
           <div className="space-y-3">
-            {conversations.map((conversation) => (
+            {conversations.map(conversation => (
               <div key={conversation.id} className="bg-card border border-border rounded-xl overflow-hidden">
                 <Link
                   to={`/chat/${conversation.id}`}
-                  className="block p-4 hover:border-primary/50 hover:bg-secondary/20 transition-colors"
+                  className="block p-4 hover:bg-secondary/20 transition-colors"
                 >
                   <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold shrink-0">
+                    <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold shrink-0 text-sm">
                       {conversation.clientName?.[0]?.toUpperCase() || 'C'}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2">
-                        <p className="text-sm font-semibold text-foreground truncate">{conversation.clientName || 'Cliente'}</p>
-                        {(conversation.unreadCount || 0) > 0 && (
-                          <span className="min-w-5 h-5 px-1 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center">
-                            {conversation.unreadCount}
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-xs text-muted-foreground truncate mt-1">{conversation.lastMessage || 'Sem mensagens'}</p>
-                      {conversation.lastMessageTime && (
-                        <p className="text-[10px] text-muted-foreground mt-1">
-                          {new Date(conversation.lastMessageTime).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                        <p className="text-sm font-semibold text-foreground truncate">
+                          {conversation.clientName || 'Cliente'}
                         </p>
-                      )}
+                        <div className="flex items-center gap-2 shrink-0">
+                          {conversation.lastMessageTime && (
+                            <p className="text-[10px] text-muted-foreground">
+                              {new Date(conversation.lastMessageTime).toLocaleString('pt-BR', {
+                                day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
+                              })}
+                            </p>
+                          )}
+                          {(conversation.unreadCount || 0) > 0 && (
+                            <span className="min-w-5 h-5 px-1 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center font-bold">
+                              {conversation.unreadCount}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <p className="text-xs text-muted-foreground truncate mt-1">
+                        {conversation.lastMessage || 'Sem mensagens'}
+                      </p>
                     </div>
                   </div>
                 </Link>
@@ -121,22 +139,7 @@ export default function ProviderConversations() {
         )}
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border">
-        <div className="flex items-center justify-around max-w-lg mx-auto">
-          <Link to="/provider" className="flex-1 flex flex-col items-center gap-1 py-3 text-muted-foreground hover:text-foreground">
-            <Home className="w-5 h-5" />
-            <span className="text-xs">Inicio</span>
-          </Link>
-          <Link to="/provider/map" className="flex-1 flex flex-col items-center gap-1 py-3 text-muted-foreground hover:text-foreground">
-            <Map className="w-5 h-5" />
-            <span className="text-xs">Mapa</span>
-          </Link>
-          <button className="flex-1 flex flex-col items-center gap-1 py-3 text-primary font-medium">
-            <MessageCircle className="w-5 h-5" />
-            <span className="text-xs">Conversas</span>
-          </button>
-        </div>
-      </div>
+      <ProviderBottomNav active="conversations" />
     </div>
   );
 }

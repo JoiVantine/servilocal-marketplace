@@ -284,10 +284,11 @@ export default function ChatPage() {
           </div>
         )}
         {messages.map((message) => {
-          const mine = message.senderId === user.id;
+          const isProviderMsg = message.senderType === 'provider';
+          const isRight = !isProviderMsg; // client → right, provider → left
           return (
-            <div key={message.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-[80%] rounded-2xl px-4 py-2 ${mine ? 'bg-primary text-primary-foreground rounded-br-sm' : 'bg-card border border-border text-foreground rounded-bl-sm'}`}>
+            <div key={message.id} className={`flex ${isRight ? 'justify-end' : 'justify-start'}`}>
+              <div className={`max-w-[80%] rounded-2xl px-4 py-2 ${isRight ? 'bg-primary text-primary-foreground rounded-br-sm' : 'bg-card border border-border text-foreground rounded-bl-sm'}`}>
                 {message.attachments?.map((item, index) => (
                   <div key={`${item.url}-${index}`} className="mb-2">
                     {item.type === 'image' ? (
@@ -308,7 +309,7 @@ export default function ChatPage() {
                 {(message.text || message.content) && (
                   <p className="text-sm whitespace-pre-wrap">{message.text || message.content}</p>
                 )}
-                <p className={`text-[10px] mt-1 ${mine ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
+                <p className={`text-[10px] mt-1 ${isRight ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
                   {new Date(message.created_date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                 </p>
               </div>
