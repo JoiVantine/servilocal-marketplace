@@ -21,9 +21,10 @@ const TIMELINE_STEPS = [
 const EXEC_STEP_ORDER = ['on_the_way', 'in_progress', 'provider_done', 'completed'];
 
 function stepDone(stepKey, request, interests) {
+  const activeInterests = interests.filter(i => !['expired', 'rejected', 'cancelled'].includes(i.status));
   switch (stepKey) {
     case 'created':   return true;
-    case 'proposals': return interests.length > 0 || ['in_conversation', 'agreed', 'completed'].includes(request.status);
+    case 'proposals': return activeInterests.length > 0 || ['in_conversation', 'agreed', 'completed'].includes(request.status);
     case 'confirmed': return ['agreed', 'completed'].includes(request.status);
     case 'on_the_way':    return EXEC_STEP_ORDER.indexOf(request.progressStatus) >= EXEC_STEP_ORDER.indexOf('on_the_way') || request.status === 'completed';
     case 'in_progress':   return EXEC_STEP_ORDER.indexOf(request.progressStatus) >= EXEC_STEP_ORDER.indexOf('in_progress') || request.status === 'completed';
@@ -44,19 +45,23 @@ function showExecStep(stepKey, request) {
 function getCurrentStep(request, interests) {
   if (request.status === 'completed')              return 'completed';
   if (request.progressStatus === 'provider_done')  return 'provider_done';
+  const activeInterests = interests.filter(i => !['expired', 'rejected', 'cancelled'].includes(i.status));
+  if (request.status === 'open' && interests.length > 0 && activeInterests.length === 0) return 'proposals_expired';
   if (request.progressStatus === 'in_progress')    return 'in_progress';
   if (request.progressStatus === 'arrived')        return 'arrived';
   if (request.progressStatus === 'on_the_way')     return 'on_the_way';
   if (request.status === 'agreed')                 return 'confirmed';
-  if (interests.length > 0 || request.status === 'in_conversation') return 'proposals';
+  if (activeInterests.length > 0 || request.status === 'in_conversation') return 'proposals';
   return 'open';
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
-function StatusHero({ currentStep, request, interests, onConfirm, confirmPending, navigate, codeValue, onCodeChange, codeError, conversation }) {
+function StatusHero({ currentStep, request, interests, onConfirm, confirmPending, navigate, codeValue, onCodeChange, codeError, conversation, onCancel }) {
+  const [waitingConfirmed, setWaitingConfirmed] = useState(false);
   const providerName = request.confirmedProviderName || 'O profissional';
-  const proposalCount = interests.length;
+  const activeInterests = interests.filter(i => !['expired', 'rejected', 'cancelled'].includes(i.status));
+  const proposalCount = activeInterests.length;
 
   const configs = {
     open: {
@@ -71,6 +76,12 @@ function StatusHero({ currentStep, request, interests, onConfirm, confirmPending
       title: 'Propostas recebidas',
       message: `Você recebeu ${proposalCount} proposta${proposalCount !== 1 ? 's' : ''} para este pedido.`,
       bg: 'bg-primary/5 border-primary/20',
+    },
+    proposals_expired: {
+      icon: '🔎',
+      title: 'Procurando profissionais',
+      message: 'Nenhuma proposta está disponível no momento. Seu pedido continua ativo e estamos buscando mais profissionais.',
+      bg: 'bg-orange-50 border-orange-200',
     },
     confirmed: {
       icon: '👷',
@@ -171,6 +182,30 @@ function StatusHero({ currentStep, request, interests, onConfirm, confirmPending
             className="w-full py-2.5 border border-border rounded-xl text-sm font-medium text-foreground hover:bg-secondary/50 transition-colors flex items-center justify-center gap-1.5"
           >
             <AlertTriangle className="w-4 h-4 text-orange-500" /> Reportar problema com o serviço
+          </button>
+        </div>
+      )}
+
+      {/* Ações quando todas as propostas expiraram */}
+      {currentStep === 'proposals_expired' && !waitingConfirmed && (
+        <div className="mt-4 flex flex-col gap-2">
+          <button
+            onClick={() => setWaitingConfirmed(true)}
+            className="w-full py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity"
+          >
+            Continuar aguardando
+          </button>
+          <button
+            onClick={() => navigate(`/client/request/${request.id}/edit`)}
+            className="w-full py-2.5 border border-border rounded-xl text-sm font-medium text-foreground hover:bg-secondary/50 transition-colors"
+          >
+            Editar pedido
+          </button>
+          <button
+            onClick={onCancel}
+            className="w-full py-2 text-red-600 text-sm font-medium hover:underline transition-colors"
+          >
+            Cancelar pedido
           </button>
         </div>
       )}
@@ -510,6 +545,7 @@ export default function ClientRequestDetail({ viewerMode = 'client' }) {
             codeValue={completionCode}
             onCodeChange={(v) => { setCompletionCode(v); setCodeError(''); }}
             codeError={codeError}
+            onCancel={() => setShowCancelModal(true)}
           />
         )}
 

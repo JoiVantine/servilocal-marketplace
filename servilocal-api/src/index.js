@@ -760,6 +760,108 @@ setInterval(async () => {
   }
 }, 15 * 60_000); // a cada 15 min
 
+// ─── Cron: avisar cliente após 24h sem proposta ───────────────────────────────
+setInterval(async () => {
+  try {
+    const now = new Date();
+    const ago24h = new Date(now - 24 * 3600_000);
+    const ago48h = new Date(now - 48 * 3600_000);
+
+    const candidates = await ServiceRequest.find({
+      status: 'open',
+      clientNoProposalNotified: { $ne: true },
+      createdAt: { $lte: ago24h, $gte: ago48h },
+    }).lean();
+
+    if (!candidates.length) return;
+
+    const ids = candidates.map(r => r._id);
+    const idsWithProposals = await ServiceRequestInterest.distinct('serviceRequestId', {
+      serviceRequestId: { $in: ids },
+      status: { $in: ['pending', 'in_conversation'] },
+    });
+    const withSet = new Set(idsWithProposals.map(id => id.toString()));
+    const toNotify = candidates.filter(r => !withSet.has(r._id.toString()));
+
+    for (const req of toNotify) {
+      await Notification.create({
+        userId: req.clientId,
+        type: 'no_proposals_24h',
+        title: 'Ainda buscando profissionais',
+        body: `Ainda não recebemos propostas para seu pedido de ${req.category || 'serviço'}. Estamos notificando mais profissionais da região.`,
+        relatedId: req._id,
+        read: false,
+      });
+      if (req.clientPhone) {
+        const firstName = (req.clientName || 'Cliente').split(' ')[0];
+        await sendWhatsApp(req.clientPhone,
+          `Olá ${firstName}! 👋\n\n` +
+          `Ainda não recebemos propostas para seu pedido de *${req.category || 'serviço'}*.\n\n` +
+          `Estamos notificando mais profissionais da região. Você será avisado assim que uma proposta chegar! 🔍`
+        ).catch(() => {});
+      }
+      await ServiceRequest.findByIdAndUpdate(req._id, { clientNoProposalNotified: true });
+    }
+
+    if (toNotify.length) console.log(`[cron] client 24h alert: ${toNotify.length} pedidos`);
+  } catch (e) {
+    console.error('[cron] client 24h alert error:', e.message);
+  }
+}, 15 * 60_000);
+
+// ─── Cron: expirar propostas após 24h ────────────────────────────────────────
+setInterval(async () => {
+  try {
+    const now = new Date();
+    const expiredInterests = await ServiceRequestInterest.find({
+      status: 'pending',
+      expiresAt: { $lte: now },
+    }).lean();
+
+    for (const interest of expiredInterests) {
+      await ServiceRequestInterest.findByIdAndUpdate(interest._id, { status: 'expired' });
+
+      const [req, remaining] = await Promise.all([
+        ServiceRequest.findById(interest.serviceRequestId).lean(),
+        ServiceRequestInterest.countDocuments({
+          serviceRequestId: interest.serviceRequestId,
+          status: { $in: ['pending', 'in_conversation'] },
+          _id: { $ne: interest._id },
+        }),
+      ]);
+
+      if (!req || !['open', 'in_conversation'].includes(req.status)) continue;
+
+      const noMoreProposals = remaining === 0;
+      const notifBody = noMoreProposals
+        ? `Nenhuma proposta disponível no momento para seu pedido de ${req.category || 'serviço'}. Seu pedido continua ativo.`
+        : `Uma proposta expirou no seu pedido de ${req.category || 'serviço'}. Seu pedido continua ativo.`;
+
+      await Notification.create({
+        userId: req.clientId,
+        type: 'proposal_expired',
+        title: noMoreProposals ? 'Sem propostas no momento' : 'Proposta expirada',
+        body: notifBody,
+        relatedId: req._id,
+        read: false,
+      });
+
+      if (req.clientPhone) {
+        const client = await User.findById(req.clientId).lean();
+        const firstName = (client?.fullName || req.clientName || 'Cliente').split(' ')[0];
+        const msg = noMoreProposals
+          ? `Olá ${firstName}! 👋\n\nAs propostas para seu pedido de *${req.category || 'serviço'}* expiraram.\n\nSeu pedido continua ativo e estamos buscando novos profissionais para você. 🔍`
+          : `Olá ${firstName}! 👋\n\nUma proposta para seu pedido de *${req.category || 'serviço'}* expirou.\n\nSeu pedido continua ativo e estamos buscando novos profissionais. ✅`;
+        await sendWhatsApp(req.clientPhone, msg).catch(() => {});
+      }
+    }
+
+    if (expiredInterests.length) console.log(`[cron] ${expiredInterests.length} propostas expiradas`);
+  } catch (e) {
+    console.error('[cron] expire proposals error:', e.message);
+  }
+}, 15 * 60_000);
+
 // ─── Health ─────────────────────────────────────────────────────────────────
 app.get('/api/health', (_, res) => res.json({ ok: true, ts: new Date() }));
 
