@@ -104,8 +104,17 @@ export default function ClientHome() {
     staleTime: 5 * 60 * 1000,
   });
 
+  // Para visitantes: conta total de prestadores (sem filtro de cidade)
+  const { data: allActiveProviders = [] } = useQuery({
+    queryKey: ['providers-count-all'],
+    queryFn: () => api.entities.ProviderProfile.filter({ active: true }),
+    staleTime: 15 * 60 * 1000,
+    enabled: !user,
+  });
+
   const firstName = (user?.fullName || user?.full_name)?.split(' ')[0] || '';
   const availableCount = cityProviders.length;
+  const communityProviderCount = user?.city ? availableCount : allActiveProviders.length;
 
   const ratingsWithValue = cityProviders.filter(p => p.rating && parseFloat(p.rating) > 0);
   const avgRating = ratingsWithValue.length > 0
@@ -226,12 +235,6 @@ export default function ClientHome() {
                     Criar conta
                   </button>
                 </div>
-                <p className="text-center text-[11px] text-muted-foreground">
-                  É prestador?{' '}
-                  <button onClick={() => navigate('/provider/welcome')} className="text-primary font-semibold hover:underline">
-                    Cadastre-se aqui
-                  </button>
-                </p>
               </div>
             )}
           </div>
@@ -261,7 +264,19 @@ export default function ClientHome() {
             {searchQuery && (
               <div className="mt-2 bg-card border border-border rounded-xl overflow-hidden shadow-sm">
                 {searchResults.length === 0 ? (
-                  <p className="px-4 py-3 text-sm text-muted-foreground">Nenhum serviço encontrado.</p>
+                  <div className="px-4 py-4">
+                    <p className="text-sm text-muted-foreground mb-3">Nenhuma categoria encontrada para "{searchQuery}".</p>
+                    <button
+                      onClick={() => { setSearchQuery(''); requireAuth(null); }}
+                      className="w-full flex items-center justify-between px-4 py-3 bg-primary/5 border border-primary/20 rounded-xl hover:bg-primary/10 transition-colors text-left"
+                    >
+                      <div>
+                        <p className="text-sm font-semibold text-foreground">Descrever meu pedido</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">Conte o que precisa e receba propostas</p>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-primary shrink-0" />
+                    </button>
+                  </div>
                 ) : (
                   searchResults.map((result, i) => {
                     const Icon = result.icon;
@@ -346,7 +361,7 @@ export default function ClientHome() {
                 <span className="text-xl shrink-0">📍</span>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-bold text-foreground">Não encontrou o serviço?</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">Descreva o que você precisa e receba propostas de profissionais locais.</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Conte o que você precisa e receba propostas de profissionais da sua cidade.</p>
                 </div>
                 <span className="shrink-0 px-3 py-1.5 bg-primary text-primary-foreground rounded-lg text-xs font-semibold">
                   Solicitar
@@ -355,37 +370,40 @@ export default function ClientHome() {
             </div>
           )}
 
-          {/* Profissionais disponíveis na sua região */}
-          {user?.city && availableCount > 0 && (
+          {/* Comunidade local (prova social) */}
+          {!searchQuery && communityProviderCount > 0 && (
             <div className="px-4 mb-4">
               <div className="bg-primary/5 border border-primary/15 rounded-2xl p-4">
                 <div className="flex items-center gap-2 mb-3">
-                  <Users className="w-4 h-4 text-primary" />
-                  <p className="text-sm font-bold text-foreground">Profissionais na sua região</p>
+                  <span className="text-base">👥</span>
+                  <p className="text-sm font-bold text-foreground">Comunidade local</p>
                 </div>
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <span className="text-primary text-sm font-semibold">✓</span>
                     <span className="text-sm text-foreground">
-                      <span className="font-bold text-primary">{availableCount}</span> disponíveis em {user?.city}
+                      <span className="font-bold text-primary">{communityProviderCount}</span>
+                      {user?.city ? ` disponíveis em ${user.city}` : ' profissionais cadastrados'}
                     </span>
                   </div>
+                  {categories.length > 0 && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-primary text-sm font-semibold">✓</span>
+                      <span className="text-sm text-foreground">
+                        <span className="font-bold text-primary">{categories.length}</span> categorias disponíveis
+                      </span>
+                    </div>
+                  )}
                   {avgRating && (
                     <div className="flex items-center gap-2">
                       <span className="text-primary text-sm font-semibold">✓</span>
                       <div className="flex items-center gap-1">
-                        <span className="text-sm text-foreground">
-                          Avaliação média de
-                        </span>
+                        <span className="text-sm text-foreground">Avaliação média de</span>
                         <Star className="w-3.5 h-3.5 text-yellow-400 fill-yellow-400" />
                         <span className="text-sm font-bold text-foreground">{avgRating}</span>
                       </div>
                     </div>
                   )}
-                  <div className="flex items-center gap-2">
-                    <span className="text-primary text-sm font-semibold">✓</span>
-                    <span className="text-sm text-foreground">Atende por chat ou telefone</span>
-                  </div>
                 </div>
               </div>
             </div>
@@ -393,7 +411,7 @@ export default function ClientHome() {
 
           {/* Serviços mais procurados */}
           {!searchQuery && (
-            <div className="px-4 mb-5">
+            <div className="px-4 mb-4">
               <p className="text-sm font-bold text-foreground mb-3">Serviços mais procurados</p>
               <div className="flex flex-wrap gap-2">
                 {[
@@ -416,18 +434,51 @@ export default function ClientHome() {
             </div>
           )}
 
-          {/* Profissionais locais */}
-          <div className="px-4 mb-5">
+          {/* Cobertura local */}
+          {!searchQuery && (
+            <div className="px-4 mb-4">
+              <div className="flex items-center gap-2 px-1">
+                <MapPin className="w-3.5 h-3.5 text-primary shrink-0" />
+                <p className="text-xs text-muted-foreground">
+                  {user?.city
+                    ? `Atendendo toda ${user.city} • Profissionais locais para ajudar no dia a dia.`
+                    : 'Profissionais disponíveis em diversas cidades • Serviço local, rápido e direto.'}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Contrate com mais segurança */}
+          <div className="px-4 mb-4">
             <div className="bg-card border border-border rounded-xl p-4 flex items-center gap-3">
               <div className="w-11 h-11 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
                 <ShieldCheck className="w-5 h-5 text-primary" />
               </div>
               <div className="flex-1">
-                <p className="font-semibold text-sm text-foreground">Profissionais da sua região</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Conheça prestadores locais e converse antes de contratar.</p>
+                <p className="font-semibold text-sm text-foreground">Contrate com mais segurança</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Converse com profissionais antes de decidir quem contratar.</p>
               </div>
             </div>
           </div>
+
+          {/* CTA prestador — apenas para visitantes */}
+          {!user && (
+            <div className="px-4 mb-5">
+              <button
+                onClick={() => navigate('/provider/welcome')}
+                className="w-full flex items-center gap-3 bg-secondary/50 border border-border rounded-2xl px-4 py-3.5 hover:bg-secondary transition-colors text-left"
+              >
+                <span className="text-xl shrink-0">🛠️</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-foreground">Quer receber pedidos da sua região?</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Cadastre-se como prestador e apareça para clientes locais.</p>
+                </div>
+                <span className="shrink-0 px-3 py-1.5 border border-border bg-card text-foreground rounded-lg text-xs font-semibold">
+                  Cadastrar
+                </span>
+              </button>
+            </div>
+          )}
 
           {/* Pedidos com proposta recebida — alerta */}
           {user && requests.some(r => r.status === 'in_conversation') && (
@@ -503,6 +554,18 @@ export default function ClientHome() {
               </div>
             )}
           </div>}
+
+          {/* Banner local */}
+          <div className="px-4 mb-5">
+            <div className="bg-secondary/40 border border-border rounded-2xl p-4 text-center">
+              <p className="text-base font-bold text-foreground mb-1">
+                🏘️ Feito para {user?.city || 'sua cidade'}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Conectando clientes e prestadores da nossa cidade.
+              </p>
+            </div>
+          </div>
 
         </div>
       </div>

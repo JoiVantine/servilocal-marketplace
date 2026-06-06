@@ -14,6 +14,11 @@ const STEPS = [
     title: "Escolha quem contratar",
     description: "Converse pelo chat e combine os detalhes diretamente.",
   },
+  {
+    number: 4,
+    title: "Avalie o profissional",
+    description: "Depois do serviço, deixe sua avaliação e ajude a comunidade.",
+  },
 ];
 
 export default function HowItWorks() {
