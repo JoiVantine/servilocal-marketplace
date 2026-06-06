@@ -284,6 +284,15 @@ export default function ChatPage() {
           </div>
         )}
         {messages.map((message) => {
+          if (message.senderType === 'system') {
+            return (
+              <div key={message.id} className="flex justify-center my-1">
+                <span className="text-xs text-muted-foreground bg-secondary/70 border border-border px-3 py-1.5 rounded-full text-center max-w-[80%]">
+                  {message.text || message.content}
+                </span>
+              </div>
+            );
+          }
           const isProviderMsg = message.senderType === 'provider';
           const isRight = !isProviderMsg; // client → right, provider → left
           return (
