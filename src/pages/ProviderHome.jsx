@@ -136,8 +136,7 @@ export default function ProviderHome() {
         {/* Greeting */}
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm text-muted-foreground">Olá,</p>
-            <h1 className="font-heading text-3xl font-bold text-foreground">{firstName || '...'}</h1>
+            <h1 className="font-heading text-3xl font-bold text-foreground">Olá, {firstName || '...'}</h1>
           </div>
           <div className="flex items-center gap-2">
             <button
