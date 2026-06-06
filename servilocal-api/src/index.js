@@ -344,7 +344,6 @@ app.post('/api/service-requests/:id/verify-completion', requireAuth, async (req,
 });
 
 // ── Chat message notification (WhatsApp to client when provider sends) ─────────
-const Conversation = require('./models/Conversation');
 app.post('/api/conversations/:id/notify-message', requireAuth, async (req, res) => {
   try {
     const conv = await Conversation.findById(req.params.id);
