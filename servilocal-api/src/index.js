@@ -49,12 +49,17 @@ const corsOptions = {
     if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
     return callback(new Error(`Origin ${origin} not allowed by CORS`));
   },
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
+  optionsSuccessStatus: 204,
 };
 
 const io = new Server(server, {
   cors: { origin: allowedOrigins, methods: ['GET', 'POST'] },
 });
 
+app.options('*', cors(corsOptions));
 app.use(cors(corsOptions));
 app.use(express.json());
 app.set('io', io);
