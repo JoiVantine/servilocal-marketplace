@@ -62,11 +62,12 @@ export default function NewServiceRequest() {
   const [catExpanded, setCatExpanded] = useState(false);
   const [description, setDescription] = useState('');
   const [photos, setPhotos] = useState([]);
+  const [pendingPhotoFiles, setPendingPhotoFiles] = useState([]);
   const [photoLoading, setPhotoLoading] = useState(false);
   const [photoError, setPhotoError] = useState(false);
 
   // Schedule
-  const [whenChoice, setWhenChoice] = useState('flexible');
+  const [whenChoice, setWhenChoice] = useState('scheduled');
   const [schedSlots, setSchedSlots] = useState([]);
   const [draftDate, setDraftDate] = useState('');
   const [draftStart, setDraftStart] = useState('');
@@ -81,6 +82,7 @@ export default function NewServiceRequest() {
   const [addrNeighborhood, setAddrNeighborhood] = useState('');
   const [addrCity, setAddrCity] = useState('');
   const [addrState, setAddrState] = useState('');
+  const [unknownCep, setUnknownCep] = useState(false);
   const [cepLoading, setCepLoading] = useState(false);
   const [cepError, setCepError] = useState('');
 
@@ -89,8 +91,8 @@ export default function NewServiceRequest() {
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
-  const [otpCountdown, setOtpCountdown] = useState(600);
-  const [canResend, setCanResend] = useState(false);
+  const [otpCooldown, setOtpCooldown] = useState(0);
+  const [otpResendCount, setOtpResendCount] = useState(0);
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [showPass, setShowPass] = useState(false);
@@ -136,19 +138,21 @@ export default function NewServiceRequest() {
     }).catch(() => {});
   }, [user]);
 
-  // OTP countdown
+  // OTP resend cooldown after 3 immediate retries.
   useEffect(() => {
-    if (step !== S_OTP) return;
-    setOtpCountdown(600);
-    setCanResend(false);
+    if (step !== S_OTP || otpCooldown <= 0) return;
     const interval = setInterval(() => {
-      setOtpCountdown((c) => {
-        if (c <= 1) { clearInterval(interval); setCanResend(true); return 0; }
+      setOtpCooldown((c) => {
+        if (c <= 1) {
+          clearInterval(interval);
+          setOtpResendCount(0);
+          return 0;
+        }
         return c - 1;
       });
     }, 1000);
     return () => clearInterval(interval);
-  }, [step]);
+  }, [step, otpCooldown]);
 
   const lookupCep = async (digits) => {
     if (digits.length !== 8) return;
@@ -195,17 +199,36 @@ export default function NewServiceRequest() {
     setPhotoLoading(true);
     setPhotoError(false);
     try {
-      const url = await api.uploadFile(file);
-      setPhotos((prev) => [...prev, url]);
-    } catch {
-      setPhotoError(true);
+      if (user) {
+        const url = await api.uploadFile(file);
+        setPhotos((prev) => [...prev, url]);
+        setPendingPhotoFiles((prev) => [...prev, null]);
+      } else {
+        const previewUrl = URL.createObjectURL(file);
+        setPhotos((prev) => [...prev, previewUrl]);
+        setPendingPhotoFiles((prev) => [...prev, file]);
+      }
+    } catch (err) {
+      setPhotoError(err.message || 'Falha ao enviar foto. Tente novamente.');
     } finally {
       setPhotoLoading(false);
       e.target.value = '';
     }
   };
 
-  const buildPayload = () => {
+  const uploadPendingPhotos = async () => {
+    if (!pendingPhotoFiles.some(Boolean)) return photos;
+    const uploaded = [];
+    for (let i = 0; i < photos.length; i += 1) {
+      const file = pendingPhotoFiles[i];
+      uploaded.push(file ? await api.uploadFile(file) : photos[i]);
+    }
+    setPhotos(uploaded);
+    setPendingPhotoFiles(uploaded.map(() => null));
+    return uploaded;
+  };
+
+  const buildPayload = (photoUrls = photos) => {
     const numStr = addrNoNum ? 'S/N' : addrNumber;
     const addressLine = [addrStreet, numStr].filter(Boolean).join(', ');
     const fullAddress = [addressLine, addrComplement, addrNeighborhood, [addrCity, addrState].filter(Boolean).join(' - ')].filter(Boolean).join(' - ');
@@ -230,7 +253,7 @@ export default function NewServiceRequest() {
       when: scheduleOptions.length > 0 ? 'scheduled' : '',
       scheduledAt: scheduleOptions[0] ? `${scheduleOptions[0].date}T${scheduleOptions[0].startTime}` : undefined,
       scheduleOptions,
-      photos,
+      photos: photoUrls,
       urgency: 'medium',
       status: 'open',
     };
@@ -238,7 +261,8 @@ export default function NewServiceRequest() {
 
   const goBack = () => {
     if (step === S_SERVICE) { navigate('/client'); return; }
-    window.history.back();
+    setErrors({});
+    setStep((current) => Math.max(S_SERVICE, current - 1));
   };
 
   const total = user ? 5 : 8;
@@ -267,12 +291,22 @@ export default function NewServiceRequest() {
   };
 
   const handleDescriptionNext = () => {
-    if (!description.trim()) { setErrors({ description: 'A descrição é obrigatória.' }); return; }
+    if (description.trim().length < 20) {
+      setErrors({ description: 'Descreva o pedido com pelo menos 20 caracteres.' });
+      return;
+    }
     setErrors({});
     setStep(S_WHEN);
   };
 
-  const handleWhenNext = () => { setErrors({}); setStep(S_ADDRESS); };
+  const handleWhenNext = () => {
+    if (schedSlots.length === 0) {
+      setErrors({ when: 'Informe pelo menos uma data e horário para o serviço.' });
+      return;
+    }
+    setErrors({});
+    setStep(S_ADDRESS);
+  };
 
   const handleAddressNext = () => {
     const errs = {};
@@ -327,6 +361,8 @@ export default function NewServiceRequest() {
     setLoading(true);
     try {
       await api.auth.sendOtp({ email, fullName: name, phone, role: 'client' });
+      setOtpResendCount(0);
+      setOtpCooldown(0);
       setErrors({});
       setStep(S_OTP);
     } catch (err) {
@@ -369,7 +405,8 @@ export default function NewServiceRequest() {
           await api.entities.UserProfile.create(profileData).catch(() => {});
         }
       }
-      await api.entities.ServiceRequest.create(buildPayload());
+      const uploadedPhotos = await uploadPendingPhotos();
+      await api.entities.ServiceRequest.create(buildPayload(uploadedPhotos));
       window.location.href = '/client';
     } catch (err) {
       setErrors({ otp: err.message || 'Código inválido ou expirado.' });
@@ -379,11 +416,17 @@ export default function NewServiceRequest() {
   };
 
   const handleResendOtp = async () => {
+    if (otpCooldown > 0) return;
     setLoading(true);
     try {
       await api.auth.sendOtp({ email, fullName: name, phone, role: 'client' });
       setOtp('');
       setErrors({});
+      setOtpResendCount((count) => {
+        const next = count + 1;
+        if (next >= 3) setOtpCooldown(600);
+        return next;
+      });
     } catch { /* silent */ } finally {
       setLoading(false);
     }
@@ -540,7 +583,11 @@ export default function NewServiceRequest() {
                   {photos.map((url, i) => (
                     <div key={i} className="relative">
                       <img src={url} alt="" className="w-20 h-20 rounded-lg object-cover border border-border" />
-                      <button onClick={() => setPhotos((prev) => prev.filter((_, j) => j !== i))}
+                      <button onClick={() => {
+                        if (photos[i]?.startsWith('blob:')) URL.revokeObjectURL(photos[i]);
+                        setPhotos((prev) => prev.filter((_, j) => j !== i));
+                        setPendingPhotoFiles((prev) => prev.filter((_, j) => j !== i));
+                      }}
                         className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center">
                         <X className="w-3 h-3" />
                       </button>
@@ -554,7 +601,7 @@ export default function NewServiceRequest() {
                   )}
                 </div>
                 <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoAdd} />
-                {photoError && <p className="text-xs text-red-500 mt-1">Falha ao enviar foto. Tente novamente.</p>}
+                {photoError && <p className="text-xs text-red-500 mt-1">{typeof photoError === 'string' ? photoError : 'Falha ao enviar foto. Tente novamente.'}</p>}
               </div>
 
               <button onClick={handleDescriptionNext}
@@ -574,8 +621,7 @@ export default function NewServiceRequest() {
 
               <div className="space-y-3">
                 {[
-                  { value: 'flexible', title: 'O mais rápido possível', sub: 'Sem data específica' },
-                  { value: 'scheduled', title: 'Tenho preferência de horário', sub: 'Informe até 3 opções' },
+                  { value: 'scheduled', title: 'Informe quando quer o serviço', sub: 'Adicione pelo menos 1 opção de data e horário' },
                 ].map(({ value, title, sub }) => (
                   <button key={value} onClick={() => setWhenChoice(value)}
                     className={`w-full flex items-center gap-3 px-4 py-4 border rounded-xl text-left transition-colors ${whenChoice === value ? 'border-primary bg-primary/5' : 'border-border bg-card hover:bg-secondary/20'}`}>
@@ -644,10 +690,11 @@ export default function NewServiceRequest() {
                   )}
                 </div>
               )}
+              {errors.when && <p className="text-xs text-red-500 mt-1">{errors.when}</p>}
 
               <button onClick={handleWhenNext}
                 className="w-full py-3.5 bg-primary text-primary-foreground rounded-xl font-semibold hover:opacity-90 transition-opacity">
-                {whenChoice === 'flexible' ? 'Próximo' : schedSlots.length > 0 ? 'Confirmar opções' : 'Pular'}
+                {schedSlots.length > 0 ? 'Confirmar opções' : 'Adicionar data para continuar'}
               </button>
             </div>
           )}
@@ -661,19 +708,40 @@ export default function NewServiceRequest() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-foreground mb-1.5">CEP</label>
-                <div className="relative">
-                  <input type="text" inputMode="numeric" value={addrCep}
-                    onChange={(e) => {
-                      const raw = e.target.value.replace(/\D/g, '').slice(0, 8);
-                      setAddrCep(raw.length > 5 ? `${raw.slice(0, 5)}-${raw.slice(5)}` : raw);
-                      if (raw.length === 8) lookupCep(raw);
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-sm font-medium text-foreground">CEP</label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setUnknownCep((v) => !v);
+                      setAddrCep('');
+                      setCepError('');
                     }}
-                    placeholder="00000-000"
-                    className="w-full px-4 py-3 border border-border rounded-xl text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/30" />
-                  {cepLoading && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground animate-spin" />}
+                    className="text-xs text-primary font-medium underline underline-offset-2"
+                  >
+                    {unknownCep ? 'Tenho CEP' : 'Não sei meu CEP'}
+                  </button>
                 </div>
-                {cepError && <p className="text-xs text-red-500 mt-1">{cepError}</p>}
+                {!unknownCep ? (
+                  <>
+                    <div className="relative">
+                      <input type="text" inputMode="numeric" value={addrCep}
+                        onChange={(e) => {
+                          const raw = e.target.value.replace(/\D/g, '').slice(0, 8);
+                          setAddrCep(raw.length > 5 ? `${raw.slice(0, 5)}-${raw.slice(5)}` : raw);
+                          if (raw.length === 8) lookupCep(raw);
+                        }}
+                        placeholder="00000-000"
+                        className="w-full px-4 py-3 border border-border rounded-xl text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/30" />
+                      {cepLoading && <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground animate-spin" />}
+                    </div>
+                    {cepError && <p className="text-xs text-red-500 mt-1">{cepError}</p>}
+                  </>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    Informe a cidade e complete o endereço manualmente.
+                  </p>
+                )}
               </div>
 
               <div>
@@ -853,7 +921,9 @@ export default function NewServiceRequest() {
                   onChange={(e) => { setEmail(e.target.value); setErrors((p) => ({ ...p, email: undefined })); setShowLoginPrompt(false); }}
                   placeholder="seu@email.com"
                   className={`w-full px-4 py-3 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 ${errors.email ? 'border-red-400' : 'border-border'}`} />
-                {errors.email && <p className="text-xs text-red-500 mt-1">{errors.email}</p>}
+                {errors.email
+                  ? <p className="text-xs text-red-500 mt-1">{errors.email}</p>
+                  : <p className="text-xs text-muted-foreground mt-1">As atualizações da conta e dos pedidos serão enviados por este canal</p>}
               </div>
 
               {errors.submit && <p className="text-xs text-red-500 text-center">{errors.submit}</p>}
@@ -871,7 +941,7 @@ export default function NewServiceRequest() {
 
               <button onClick={handleRegisterNext} disabled={loading}
                 className="w-full py-3.5 bg-primary text-primary-foreground rounded-xl font-semibold hover:opacity-90 disabled:opacity-50 transition-opacity">
-                {loading ? 'Verificando...' : 'Enviar código por WhatsApp'}
+                {loading ? 'Verificando...' : 'Próximo'}
               </button>
             </div>
           )}
@@ -926,7 +996,7 @@ export default function NewServiceRequest() {
 
               <button onClick={handlePasswordNext} disabled={loading || !passwordValid}
                 className="w-full py-3.5 bg-primary text-primary-foreground rounded-xl font-semibold hover:opacity-90 disabled:opacity-50 transition-opacity">
-                {loading ? 'Enviando código...' : 'Confirmar e validar WhatsApp'}
+                {loading ? 'Enviando código...' : 'Enviar código por WhatsApp'}
               </button>
 
               <div className="flex items-center justify-center gap-2 py-2">
@@ -965,10 +1035,15 @@ export default function NewServiceRequest() {
               </div>
 
               <div className="text-center">
-                {canResend
-                  ? <button onClick={handleResendOtp} disabled={loading} className="text-sm text-primary font-medium underline disabled:opacity-50">Reenviar código</button>
-                  : <p className="text-sm text-muted-foreground">Reenviar em <span className="font-medium text-foreground">{String(Math.floor(otpCountdown / 60)).padStart(2, '0')}:{String(otpCountdown % 60).padStart(2, '0')}</span></p>
-                }
+                {otpCooldown > 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    Reenviar em <span className="font-medium text-foreground">{String(Math.floor(otpCooldown / 60)).padStart(2, '0')}:{String(otpCooldown % 60).padStart(2, '0')}</span>
+                  </p>
+                ) : (
+                  <button onClick={handleResendOtp} disabled={loading} className="text-sm text-primary font-medium underline disabled:opacity-50">
+                    Reenviar código {otpResendCount > 0 ? `(${3 - otpResendCount} tentativa${3 - otpResendCount !== 1 ? 's' : ''} restante${3 - otpResendCount !== 1 ? 's' : ''})` : ''}
+                  </button>
+                )}
               </div>
 
               <button onClick={handleOtpNext} disabled={loading || otp.length < 6}

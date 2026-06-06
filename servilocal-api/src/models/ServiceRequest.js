@@ -24,6 +24,10 @@ const serviceRequestSchema = new mongoose.Schema({
     label: String,
   }],
   photos: [String],
+  clientNotes: [{
+    text: { type: String, trim: true },
+    createdAt: { type: Date, default: Date.now },
+  }],
   urgency: { type: String, enum: ['low', 'medium', 'high', 'urgent'], default: 'medium' },
   status: { type: String, enum: ['open', 'in_conversation', 'agreed', 'completed', 'cancelled'], default: 'open' },
   confirmedProviderId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },

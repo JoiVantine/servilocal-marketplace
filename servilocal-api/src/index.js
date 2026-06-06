@@ -70,6 +70,7 @@ app.use('/api/auth', require('./routes/auth'));
 // ─── Maps ───────────────────────────────────────────────────────────────────
 app.use('/api/maps', require('./routes/maps'));
 app.use('/api/support-tickets', require('./routes/support'));
+app.use('/api/push', require('./routes/push'));
 
 // ─── CRUD entities ──────────────────────────────────────────────────────────
 app.use('/api/service-requests', createCrudRouter(ServiceRequest, {

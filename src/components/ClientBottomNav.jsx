@@ -6,21 +6,19 @@ import { api } from '@/api/apiClient';
 
 function useOrdersBadge(userId) {
   const { data: requests = [] } = useQuery({
-    queryKey: ['badge-requests', userId],
-    queryFn: () => api.entities.ServiceRequest.filter({ created_by_id: userId }),
+    queryKey: ['client-requests', userId],
+    queryFn: () => api.entities.ServiceRequest.filter({ created_by_id: userId }, '-created_date'),
     enabled: !!userId,
     staleTime: 30 * 1000,
     refetchInterval: 30 * 1000,
   });
 
-  const badge = requests.reduce((count, r) => {
+  return requests.reduce((count, r) => {
     if (r.status === 'in_conversation') return count + 1;
     if (['on_the_way', 'arrived', 'provider_done'].includes(r.progressStatus)) return count + 1;
     if (r.status === 'completed' && (!r.ratingStatus || r.ratingStatus === 'PENDING')) return count + 1;
     return count;
   }, 0);
-
-  return badge;
 }
 
 function useConvBadge(userId) {
@@ -35,20 +33,30 @@ function useConvBadge(userId) {
 
 export default function ClientBottomNav({ active = 'home' }) {
   const [userId, setUserId] = useState(null);
+  const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
-    api.auth.me().then(u => setUserId(u.id)).catch(() => {});
+    if (!localStorage.getItem('token')) {
+      setAuthChecked(true);
+      return;
+    }
+    api.auth.me()
+      .then((u) => setUserId(u.id))
+      .catch(() => {})
+      .finally(() => setAuthChecked(true));
   }, []);
 
   const ordersBadge = useOrdersBadge(userId);
   const chatBadge = useConvBadge(userId);
 
-  const tabs = [
-    { key: 'home',          icon: Home,          label: 'Início',    to: '/client' },
-    { key: 'orders',        icon: ClipboardList,  label: 'Pedidos',   to: '/client/orders',        badge: ordersBadge },
-    { key: 'conversations', icon: MessageCircle,  label: 'Conversas', to: '/client/conversations', badge: chatBadge },
-    { key: 'menu',          icon: Menu,           label: 'Menu',      to: '/client/menu' },
+  const authenticatedTabs = [
+    { key: 'home', icon: Home, label: 'Início', to: '/client' },
+    { key: 'orders', icon: ClipboardList, label: 'Pedidos', to: '/client/orders', badge: ordersBadge },
+    { key: 'conversations', icon: MessageCircle, label: 'Conversas', to: '/client/conversations', badge: chatBadge },
+    { key: 'menu', icon: Menu, label: 'Menu', to: '/client/menu' },
   ];
+  const visibleTabs = userId ? authenticatedTabs : authenticatedTabs.slice(0, 1);
+  const tabs = authChecked ? visibleTabs : authenticatedTabs.slice(0, 1);
 
   return (
     <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border z-40">

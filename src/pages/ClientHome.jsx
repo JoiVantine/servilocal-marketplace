@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/api/apiClient';
 import { ChevronRight, MapPin, LogOut, X, ArrowLeft, Users, Star, Search } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
@@ -83,6 +83,7 @@ function matchesCategory(provider, categoryName) {
 
 export default function ClientHome() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [categorySheet, setCategorySheet] = useState(null);
   const [showOthersModal, setShowOthersModal] = useState(false);
   const [modalCat, setModalCat] = useState(null);
@@ -93,7 +94,7 @@ export default function ClientHome() {
 
   const { data: requests = [] } = useQuery({
     queryKey: ['client-requests', user?.id],
-    queryFn: () => api.entities.ServiceRequest.filter({ clientId: user?.id }, '-created_date'),
+    queryFn: () => api.entities.ServiceRequest.filter({ created_by_id: user?.id }, '-created_date'),
     enabled: !!user?.id,
   });
 
@@ -175,7 +176,9 @@ export default function ClientHome() {
 
           {/* Logo topo */}
           <div className="flex flex-col items-center pt-4 pb-1">
-            <img src="/onboarding-city.png" alt="ServiLocal" className="w-14 h-14 object-contain" />
+            <div className="font-heading text-2xl font-bold tracking-normal text-foreground">
+              Servi<span className="text-primary">Local</span>
+            </div>
             {(user?.city || !user) && (
               <div className="flex items-center gap-1 mt-1.5">
                 <MapPin className="w-3 h-3 text-primary" />
@@ -466,6 +469,7 @@ export default function ClientHome() {
                     <Link
                       key={request.id}
                       to={`/client/request/${request.id}`}
+                      onClick={() => queryClient.setQueryData(['request', request.id], request)}
                       className="flex items-center gap-3 p-4 bg-card border border-border rounded-xl hover:bg-secondary/40 active:scale-[0.99] active:bg-secondary/60 transition-all"
                     >
                       <div className={`w-10 h-10 rounded-full ${catStyle.bg} flex items-center justify-center shrink-0`}>

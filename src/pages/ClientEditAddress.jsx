@@ -13,7 +13,6 @@ export default function ClientEditAddress() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [validateNow, setValidateNow] = useState(false);
-  const [addressLabel, setAddressLabel] = useState('Casa');
 
   useEffect(() => {
     const load = async () => {
@@ -22,7 +21,6 @@ export default function ClientEditAddress() {
       const profiles = await api.entities.UserProfile.filter({ userId: u.id });
       const p = profiles.find((pp) => pp.role === 'client') || profiles[0] || null;
       setProfile(p);
-      if (p?.addressLabel) setAddressLabel(p.addressLabel);
       setLoaded(true);
     };
     load().catch(() => navigate('/'));
@@ -46,7 +44,6 @@ export default function ClientEditAddress() {
         addressState: addressData.estado || '',
         role: profile?.role || 'client',
         onboardingCompleted: true,
-        addressLabel,
       };
       if (profile) {
         await api.entities.UserProfile.update(profile.id, profileData);
@@ -89,25 +86,6 @@ export default function ClientEditAddress() {
       </div>
 
       <div className="max-w-md mx-auto px-4 py-5 space-y-5">
-        <div>
-          <label className="block text-xs font-medium text-muted-foreground mb-2">Identificar como</label>
-          <div className="flex gap-2">
-            {['Casa', 'Trabalho', 'Outro'].map((opt) => (
-              <button
-                key={opt}
-                onClick={() => setAddressLabel(opt)}
-                className={`flex-1 py-2.5 rounded-xl text-sm font-medium border transition-colors ${
-                  addressLabel === opt
-                    ? 'bg-primary text-primary-foreground border-primary'
-                    : 'bg-card text-foreground border-border hover:bg-secondary/50'
-                }`}
-              >
-                {opt}
-              </button>
-            ))}
-          </div>
-        </div>
-
         {loaded && (
           <AddressFormWithMap
             key={profile?.id || 'new'}

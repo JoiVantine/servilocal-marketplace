@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/api/apiClient';
 import { useNavigate, Link } from 'react-router-dom';
 import {
@@ -88,6 +88,7 @@ function formatCompletedDate(dateStr) {
 
 export default function ClientOrders() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [userId, setUserId] = useState(null);
   const [activeTab, setActiveTab] = useState('all');
 
@@ -96,7 +97,7 @@ export default function ClientOrders() {
   }, []);
 
   const { data: requests = [], isLoading } = useQuery({
-    queryKey: ['my-orders', userId],
+    queryKey: ['client-requests', userId],
     queryFn: () => api.entities.ServiceRequest.filter({ created_by_id: userId }, '-created_date'),
     enabled: !!userId,
   });
@@ -208,6 +209,7 @@ export default function ClientOrders() {
                 {/* Card row */}
                 <button
                   onClick={() => {
+                    queryClient.setQueryData(['request', req.id], req);
                     if (req.status === 'in_conversation') return navigate(`/client/request/${req.id}/proposals`);
                     if (req.status === 'agreed') return navigate(`/client/request/${req.id}/progress`);
                     navigate(`/client/request/${req.id}`);

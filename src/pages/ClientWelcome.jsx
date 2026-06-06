@@ -1,20 +1,23 @@
-import { useState, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { X } from 'lucide-react';
 
 const SLIDES = [
   {
-    img: '/onboarding-city.png',
+    img: '/onboarding-city-512.png',
+    fallbackImg: '/onboarding-city.png',
     title: 'Bem-vindo ao ServiLocal',
     subtitle: 'Encontre profissionais da sua cidade para resolver o que você precisa.',
   },
   {
-    img: '/onboarding-map.png',
+    img: '/onboarding-map-512.png',
+    fallbackImg: '/onboarding-map.png',
     title: 'Serviços perto de você',
     subtitle: 'Encontre profissionais da sua região em poucos minutos.',
   },
   {
-    img: '/onboarding-chat.png',
+    img: '/onboarding-chat-512.png',
+    fallbackImg: '/onboarding-chat.png',
     title: 'Converse antes de contratar',
     subtitle: 'Receba propostas, tire dúvidas e escolha o melhor profissional.',
   },
@@ -29,6 +32,14 @@ export default function ClientWelcome() {
   const [showPrivacy, setShowPrivacy] = useState(false);
 
   const goTo = (idx) => setCurrent(Math.max(0, Math.min(SLIDES.length - 1, idx)));
+
+  useEffect(() => {
+    SLIDES.slice(1).forEach(({ img }) => {
+      const preload = new Image();
+      preload.decoding = 'async';
+      preload.src = img;
+    });
+  }, []);
 
   const handleTouchStart = (e) => { touchStart.current = e.touches[0].clientX; };
   const handleTouchEnd = (e) => {
@@ -59,8 +70,13 @@ export default function ClientWelcome() {
           key={current}
           src={slide.img}
           alt={slide.title}
+          width={256}
+          height={256}
+          loading={current === 0 ? 'eager' : 'lazy'}
+          decoding="async"
+          fetchPriority={current === 0 ? 'high' : 'auto'}
           className="w-64 h-64 object-contain drop-shadow-md transition-opacity duration-300"
-          onError={(e) => { e.currentTarget.src = '/onboarding-city.png'; }}
+          onError={(e) => { e.currentTarget.src = slide.fallbackImg || '/onboarding-city.png'; }}
         />
 
         <div className="space-y-3">
@@ -144,7 +160,7 @@ export default function ClientWelcome() {
 
       {/* Modal Termos de Uso */}
       {showTerms && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-card rounded-2xl w-full max-w-sm max-h-[80vh] flex flex-col">
             <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
               <h3 className="font-semibold text-foreground">Termos de Uso</h3>
@@ -173,7 +189,7 @@ export default function ClientWelcome() {
 
       {/* Modal Política de Privacidade */}
       {showPrivacy && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-card rounded-2xl w-full max-w-sm max-h-[80vh] flex flex-col">
             <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
               <h3 className="font-semibold text-foreground">Política de Privacidade</h3>

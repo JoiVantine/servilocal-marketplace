@@ -1,7 +1,7 @@
 import { Toaster } from "@/components/ui/toaster"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import { BrowserRouter as Router, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
@@ -83,35 +83,35 @@ const AuthenticatedApp = () => {
     <Routes>
       <Route path="/" element={<Home />} />
       <Route path="/client" element={<ClientHome />} />
-      <Route path="/provider" element={<ProviderHome />} />
+      <Route path="/provider" element={<RequireAuth role="provider"><ProviderHome /></RequireAuth>} />
       <Route path="/client/welcome" element={<ClientWelcome />} />
       <Route path="/client/onboarding" element={<ClientOnboarding />} />
       <Route path="/provider/welcome" element={<ProviderWelcome />} />
       <Route path="/provider/onboarding" element={<ProviderOnboarding />} />
       <Route path="/client/new-request" element={<NewServiceRequest />} />
-      <Route path="/client/request/:requestId" element={<ClientRequestDetail />} />
-      <Route path="/client/request/:requestId/proposals" element={<ClientProposals />} />
-      <Route path="/client/request/:requestId/confirm/:interestId" element={<ClientConfirmProvider />} />
-      <Route path="/client/request/:requestId/progress" element={<ClientOrderProgress />} />
-      <Route path="/client/request/:requestId/rate" element={<ClientOrderRating />} />
-      <Route path="/client/request/:requestId/edit" element={<ClientEditRequest />} />
+      <Route path="/client/request/:requestId" element={<RequireClientAuth><ClientRequestDetail /></RequireClientAuth>} />
+      <Route path="/client/request/:requestId/proposals" element={<RequireClientAuth><ClientProposals /></RequireClientAuth>} />
+      <Route path="/client/request/:requestId/confirm/:interestId" element={<RequireClientAuth><ClientConfirmProvider /></RequireClientAuth>} />
+      <Route path="/client/request/:requestId/progress" element={<RequireClientAuth><ClientOrderProgress /></RequireClientAuth>} />
+      <Route path="/client/request/:requestId/rate" element={<RequireClientAuth><ClientOrderRating /></RequireClientAuth>} />
+      <Route path="/client/request/:requestId/edit" element={<RequireClientAuth><ClientEditRequest /></RequireClientAuth>} />
       <Route path="/client/services" element={<CityServices />} />
-      <Route path="/client/orders" element={<ClientOrders />} />
-      <Route path="/client/conversations" element={<ClientConversations />} />
-      <Route path="/client/support" element={<SupportCenter audience="client" />} />
-      <Route path="/client/support/:ticketId" element={<SupportTicketDetail audience="client" />} />
-      <Route path="/client/menu" element={<ClientMenu />} />
-      <Route path="/client/profile" element={<ClientProfile />} />
-      <Route path="/client/address" element={<ClientAddress />} />
-      <Route path="/client/edit-address" element={<ClientEditAddress />} />
-      <Route path="/client/help" element={<ClientHelp />} />
-      <Route path="/client/faq" element={<ClientFAQ />} />
-      <Route path="/client/terms" element={<ClientTerms />} />
-      <Route path="/client/privacy" element={<ClientPrivacy />} />
-      <Route path="/client/provider/:providerId" element={<ClientProviderProfile />} />
-      <Route path="/client/about" element={<ClientAbout />} />
-      <Route path="/client/payments" element={<ClientPayments />} />
-      <Route path="/client/notifications" element={<ClientNotifications />} />
+      <Route path="/client/orders" element={<RequireClientAuth><ClientOrders /></RequireClientAuth>} />
+      <Route path="/client/conversations" element={<RequireClientAuth><ClientConversations /></RequireClientAuth>} />
+      <Route path="/client/support" element={<RequireClientAuth><SupportCenter audience="client" /></RequireClientAuth>} />
+      <Route path="/client/support/:ticketId" element={<RequireClientAuth><SupportTicketDetail audience="client" /></RequireClientAuth>} />
+      <Route path="/client/menu" element={<RequireClientAuth><ClientMenu /></RequireClientAuth>} />
+      <Route path="/client/profile" element={<RequireClientAuth><ClientProfile /></RequireClientAuth>} />
+      <Route path="/client/address" element={<RequireClientAuth><ClientAddress /></RequireClientAuth>} />
+      <Route path="/client/edit-address" element={<RequireClientAuth><ClientEditAddress /></RequireClientAuth>} />
+      <Route path="/client/help" element={<RequireClientAuth><ClientHelp /></RequireClientAuth>} />
+      <Route path="/client/faq" element={<RequireClientAuth><ClientFAQ /></RequireClientAuth>} />
+      <Route path="/client/terms" element={<RequireClientAuth><ClientTerms /></RequireClientAuth>} />
+      <Route path="/client/privacy" element={<RequireClientAuth><ClientPrivacy /></RequireClientAuth>} />
+      <Route path="/client/provider/:providerId" element={<RequireClientAuth><ClientProviderProfile /></RequireClientAuth>} />
+      <Route path="/client/about" element={<RequireClientAuth><ClientAbout /></RequireClientAuth>} />
+      <Route path="/client/payments" element={<RequireClientAuth><ClientPayments /></RequireClientAuth>} />
+      <Route path="/client/notifications" element={<RequireClientAuth><ClientNotifications /></RequireClientAuth>} />
       <Route path="/admin/login" element={<AdminLogin />} />
       <Route element={<AdminRoute />}>
         <Route path="/diagnostics" element={<DiagnosticsPage />} />
@@ -122,26 +122,64 @@ const AuthenticatedApp = () => {
         <Route path="/admin/users" element={<AdminUsers />} />
         <Route path="/admin/at-risk" element={<AdminAtRisk />} />
       </Route>
-      <Route path="/client/map" element={<ProvidersMap />} />
-      <Route path="/provider/map" element={<ProviderRequestsMap />} />
-      <Route path="/provider/request/:requestId" element={<ProviderRequestDetail />} />
-      <Route path="/provider/request/:requestId/progress" element={<ProviderOrderProgress />} />
-      <Route path="/provider/earnings" element={<ProviderEarnings />} />
-      <Route path="/provider/conversations" element={<ProviderConversations />} />
-      <Route path="/provider/services" element={<ProviderServices />} />
-      <Route path="/provider/support" element={<SupportCenter audience="provider" />} />
-      <Route path="/provider/support/:ticketId" element={<SupportTicketDetail audience="provider" />} />
-      <Route path="/provider/menu" element={<ProviderMenu />} />
-      <Route path="/provider/profile" element={<ProviderProfile />} />
-      <Route path="/provider/payments" element={<ProviderPayments />} />
-      <Route path="/provider/orders" element={<ProviderOrders />} />
-      <Route path="/provider/notifications" element={<ClientNotifications />} />
-      <Route path="/chat/:conversationId" element={<ChatPage />} />
+      <Route path="/client/map" element={<RequireClientAuth><ProvidersMap /></RequireClientAuth>} />
+      <Route path="/provider/map" element={<RequireAuth role="provider"><ProviderRequestsMap /></RequireAuth>} />
+      <Route path="/provider/request/:requestId" element={<RequireAuth role="provider"><ProviderRequestDetail /></RequireAuth>} />
+      <Route path="/provider/request/:requestId/progress" element={<RequireAuth role="provider"><ProviderOrderProgress /></RequireAuth>} />
+      <Route path="/provider/earnings" element={<RequireAuth role="provider"><ProviderEarnings /></RequireAuth>} />
+      <Route path="/provider/conversations" element={<RequireAuth role="provider"><ProviderConversations /></RequireAuth>} />
+      <Route path="/provider/services" element={<RequireAuth role="provider"><ProviderServices /></RequireAuth>} />
+      <Route path="/provider/support" element={<RequireAuth role="provider"><SupportCenter audience="provider" /></RequireAuth>} />
+      <Route path="/provider/support/:ticketId" element={<RequireAuth role="provider"><SupportTicketDetail audience="provider" /></RequireAuth>} />
+      <Route path="/provider/menu" element={<RequireAuth role="provider"><ProviderMenu /></RequireAuth>} />
+      <Route path="/provider/profile" element={<RequireAuth role="provider"><ProviderProfile /></RequireAuth>} />
+      <Route path="/provider/payments" element={<RequireAuth role="provider"><ProviderPayments /></RequireAuth>} />
+      <Route path="/provider/orders" element={<RequireAuth role="provider"><ProviderOrders /></RequireAuth>} />
+      <Route path="/provider/notifications" element={<RequireAuth role="provider"><ClientNotifications /></RequireAuth>} />
+      <Route path="/chat/:conversationId" element={<RequireAuth><ChatPage /></RequireAuth>} />
       <Route path="/setup-password" element={<PasswordSetup />} />
       <Route path="/login" element={<Login />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
+};
+
+const RequireClientAuth = ({ children }) => {
+  const { isLoadingAuth, isAuthenticated } = useAuth();
+  const location = useLocation();
+
+  if (isLoadingAuth) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login?role=client" state={{ from: location }} replace />;
+  }
+
+  return children;
+};
+
+const RequireAuth = ({ children, role = 'client' }) => {
+  const { isLoadingAuth, isAuthenticated } = useAuth();
+  const location = useLocation();
+
+  if (isLoadingAuth) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-slate-200 border-t-slate-800 rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to={`/login?role=${role}`} state={{ from: location }} replace />;
+  }
+
+  return children;
 };
 
 

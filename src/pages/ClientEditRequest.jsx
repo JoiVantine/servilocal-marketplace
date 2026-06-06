@@ -30,6 +30,7 @@ export default function ClientEditRequest() {
   const [errors, setErrors] = useState({});
   const [ready, setReady] = useState(false);
   const [warningDismissed, setWarningDismissed] = useState(false);
+  const [clientNote, setClientNote] = useState('');
 
   const [category, setCategory] = useState('');
   const [subcategory, setSubcategory] = useState('');
@@ -86,7 +87,7 @@ export default function ClientEditRequest() {
         end: s.endTime,
       })));
     } else {
-      setWhenChoice('flexible');
+      setWhenChoice('scheduled');
     }
 
     const cepRaw = request.zipCode || '';
@@ -175,6 +176,20 @@ export default function ClientEditRequest() {
     onError: (err) => setErrors({ submit: err.message || 'Erro ao salvar. Tente novamente.' }),
   });
 
+  const noteMutation = useMutation({
+    mutationFn: () => api.entities.ServiceRequest.update(requestId, {
+      clientNotes: [
+        ...(request?.clientNotes || []),
+        { text: clientNote.trim(), createdAt: new Date().toISOString() },
+      ],
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['request', requestId] });
+      navigate(`/client/request/${requestId}`);
+    },
+    onError: (err) => setErrors({ submit: err.message || 'Erro ao adicionar nota. Tente novamente.' }),
+  });
+
   const selectedCat = categories.find((c) => c.name === category);
   const minDate = new Date(Date.now() + 30 * 60000).toISOString().slice(0, 10);
   const progress = Math.round(((step + 1) / 5) * 100);
@@ -189,9 +204,21 @@ export default function ClientEditRequest() {
   };
 
   const handleDescriptionNext = () => {
-    if (!description.trim()) { setErrors({ description: 'A descrição é obrigatória.' }); return; }
+    if (description.trim().length < 20) {
+      setErrors({ description: 'Descreva o pedido com pelo menos 20 caracteres.' });
+      return;
+    }
     setErrors({});
     setStep(S_WHEN);
+  };
+
+  const handleWhenNext = () => {
+    if (schedSlots.length === 0) {
+      setErrors({ when: 'Informe pelo menos uma data e horário para o serviço.' });
+      return;
+    }
+    setErrors({});
+    setStep(S_ADDRESS);
   };
 
   const handleAddressNext = () => {
@@ -209,6 +236,54 @@ export default function ClientEditRequest() {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="w-8 h-8 border-4 border-border border-t-primary rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (hasActiveProposals) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center px-4">
+        <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-sm space-y-4">
+          <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mx-auto">
+            <AlertTriangle className="w-6 h-6 text-orange-500" />
+          </div>
+          <div className="text-center">
+            <h2 className="font-bold text-foreground text-lg">Adicionar nota ao pedido</h2>
+            <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+              Voce ja recebeu {activeInterests.length} proposta{activeInterests.length !== 1 ? 's' : ''}. Para preservar os orcamentos, os dados originais nao podem ser alterados agora.
+            </p>
+          </div>
+          <textarea
+            value={clientNote}
+            onChange={(e) => { setClientNote(e.target.value.slice(0, 300)); setErrors({}); }}
+            rows={4}
+            placeholder="Ex: esqueci de mencionar que o portao fica nos fundos..."
+            className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/30 text-sm resize-none bg-background ${errors.note ? 'border-red-400' : 'border-border'}`}
+          />
+          {errors.note && <p className="text-xs text-red-500">{errors.note}</p>}
+          {errors.submit && <p className="text-xs text-red-500 text-center">{errors.submit}</p>}
+          <div className="flex flex-col gap-2">
+            <button
+              onClick={() => {
+                if (clientNote.trim().length < 5) {
+                  setErrors({ note: 'Digite uma nota com pelo menos 5 caracteres.' });
+                  return;
+                }
+                noteMutation.mutate();
+              }}
+              disabled={noteMutation.isPending}
+              className="w-full py-3 bg-primary text-primary-foreground rounded-xl font-semibold hover:opacity-90 disabled:opacity-50 transition-opacity"
+            >
+              {noteMutation.isPending ? 'Salvando...' : 'Adicionar nota'}
+            </button>
+            <button
+              onClick={() => navigate(`/client/request/${requestId}`)}
+              className="w-full py-2.5 border border-border rounded-xl text-sm font-medium text-foreground hover:bg-secondary/50 transition-colors"
+            >
+              Voltar
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
@@ -417,8 +492,7 @@ export default function ClientEditRequest() {
 
               <div className="space-y-3">
                 {[
-                  { value: 'flexible', title: 'O mais rápido possível', sub: 'Sem data específica' },
-                  { value: 'scheduled', title: 'Tenho preferência de horário', sub: 'Informe até 3 opções' },
+                  { value: 'scheduled', title: 'Informe quando quer o serviço', sub: 'Adicione pelo menos 1 opção de data e horário' },
                 ].map(({ value, title, sub }) => (
                   <button
                     key={value}
@@ -498,11 +572,12 @@ export default function ClientEditRequest() {
               )}
 
               <button
-                onClick={() => { setErrors({}); setStep(S_ADDRESS); }}
+                onClick={handleWhenNext}
                 className="w-full py-3.5 bg-primary text-primary-foreground rounded-xl font-semibold hover:opacity-90 transition-opacity"
               >
-                {whenChoice === 'flexible' ? 'Próximo' : schedSlots.length > 0 ? 'Confirmar opções' : 'Pular'}
+                {schedSlots.length > 0 ? 'Confirmar opções' : 'Adicionar data para continuar'}
               </button>
+              {errors.when && <p className="text-xs text-red-500 text-center">{errors.when}</p>}
             </div>
           )}
 

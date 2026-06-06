@@ -111,6 +111,12 @@ const support = {
   update: (id, data) => request('PATCH', `/api/support-tickets/${id}`, data),
 };
 
+const push = {
+  config: () => request('GET', '/api/push/config'),
+  saveSubscription: (subscription) => request('POST', '/api/push/subscriptions', subscription),
+  removeSubscription: (endpoint) => request('DELETE', '/api/push/subscriptions', { endpoint }),
+};
+
 function createEntity(path) {
   return {
     filter: (query = {}, sort, limit) => {
@@ -144,6 +150,7 @@ export const api = {
   auth,
   support,
   progress,
+  push,
 
   uploadFile: async (file) => {
     const token = localStorage.getItem('token');

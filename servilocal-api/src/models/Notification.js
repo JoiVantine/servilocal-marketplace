@@ -47,6 +47,29 @@ notificationSchema.pre('findOneAndUpdate', function(next) {
   next();
 });
 
+notificationSchema.post('save', function(doc) {
+  if (!doc?.userId || doc.read) return;
+  try {
+    const push = require('../routes/push');
+    const relatedId = doc.relatedId?.toString?.() || doc.relatedId || null;
+    const providerTypes = new Set(['new_request_nearby', 'proposal_rejected', 'request_updated']);
+    const url = relatedId
+      ? providerTypes.has(doc.type)
+        ? `/provider/request/${relatedId}`
+        : `/client/request/${relatedId}`
+      : '/client';
+    push.sendPushToUser(doc.userId, {
+      title: doc.title || 'ServiLocal',
+      body: doc.body || doc.description || 'Você tem uma nova atualização.',
+      url,
+      type: doc.type || 'notification',
+      relatedId,
+    }).catch((err) => console.error('[push notification]', err.message));
+  } catch (err) {
+    console.error('[push notification]', err.message);
+  }
+});
+
 notificationSchema.set('toJSON', {
   transform: (_, obj) => {
     obj.id = obj._id.toString();

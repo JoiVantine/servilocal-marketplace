@@ -49,8 +49,8 @@ export default function ClientOnboarding() {
   // Step 1 — Verificação
   const [otp, setOtp] = useState('');
   const [userId, setUserId] = useState(null);
-  const [otpCountdown, setOtpCountdown] = useState(600);
-  const [canResend, setCanResend] = useState(false);
+  const [otpCooldown, setOtpCooldown] = useState(0);
+  const [otpResendCount, setOtpResendCount] = useState(0);
   const otpRefs = useRef([]);
 
   // Step 2 — Senha
@@ -83,19 +83,21 @@ export default function ClientOnboarding() {
   const strengthScore = [hasMin8, hasUpper, hasNumber, hasSpecial].filter(Boolean).length;
   const strengthColors = ['border-border', 'bg-red-500', 'bg-orange-400', 'bg-yellow-400', 'bg-green-500'];
 
-  // OTP countdown
+  // OTP resend cooldown after 3 immediate retries.
   useEffect(() => {
-    if (step !== 1) return;
-    setOtpCountdown(600);
-    setCanResend(false);
+    if (step !== 1 || otpCooldown <= 0) return;
     const interval = setInterval(() => {
-      setOtpCountdown((c) => {
-        if (c <= 1) { clearInterval(interval); setCanResend(true); return 0; }
+      setOtpCooldown((c) => {
+        if (c <= 1) {
+          clearInterval(interval);
+          setOtpResendCount(0);
+          return 0;
+        }
         return c - 1;
       });
     }, 1000);
     return () => clearInterval(interval);
-  }, [step]);
+  }, [step, otpCooldown]);
 
   // CEP lookup
   const lookupCep = async (raw) => {
@@ -153,6 +155,8 @@ export default function ClientOnboarding() {
       const { hasProfile } = await api.auth.checkProfile(email, 'client');
       if (hasProfile) { setShowLoginPrompt(true); setLoading(false); return; }
       await api.auth.sendOtp({ email, fullName: name, phone, role: 'client' });
+      setOtpResendCount(0);
+      setOtpCooldown(0);
       setErrors({});
       setStep(1);
     } catch (err) {
@@ -179,12 +183,17 @@ export default function ClientOnboarding() {
   };
 
   const handleResendOtp = async () => {
+    if (otpCooldown > 0) return;
     setLoading(true);
     try {
       await api.auth.sendOtp({ email, fullName: name, phone, role: 'client' });
       setOtp('');
       setErrors({});
-      setStep(1); // re-triggers countdown useEffect
+      setOtpResendCount((count) => {
+        const next = count + 1;
+        if (next >= 3) setOtpCooldown(600);
+        return next;
+      });
     } catch { /* silent */ } finally {
       setLoading(false);
     }
@@ -271,7 +280,7 @@ export default function ClientOnboarding() {
       {/* Header — oculto no step 0 */}
       {step > 0 && (
         <div className="border-b border-border bg-card px-4 py-3 flex items-center gap-2">
-          <img src="/onboarding-city.png" alt="ServiLocal" className="w-6 h-6" />
+          <img src="/onboarding-city-512.png" alt="ServiLocal" className="w-6 h-6" />
           <span className="text-sm font-semibold text-foreground">
             Servi<span className="text-primary font-bold">Local</span>
           </span>
@@ -316,8 +325,13 @@ export default function ClientOnboarding() {
               {/* Imagem + saudação */}
               <div className="flex flex-col items-center text-center pt-4 pb-2 gap-3">
                 <img
-                  src="/onboarding-city.png"
+                  src="/onboarding-city-512.png"
                   alt="ServiLocal"
+                  width={192}
+                  height={192}
+                  loading="eager"
+                  decoding="async"
+                  fetchPriority="high"
                   className="w-48 h-48 object-contain drop-shadow-md"
                   onError={(e) => { e.currentTarget.src = '/onboarding-city.png'; }}
                 />
@@ -446,17 +460,17 @@ export default function ClientOnboarding() {
               </div>
 
               <div className="text-center space-y-1">
-                {canResend ? (
+                {otpCooldown <= 0 ? (
                   <button
                     onClick={handleResendOtp}
                     disabled={loading}
                     className="text-sm text-primary font-medium underline disabled:opacity-50"
                   >
-                    Reenviar código
+                    Reenviar código {otpResendCount > 0 ? `(${3 - otpResendCount} tentativa${3 - otpResendCount !== 1 ? 's' : ''} restante${3 - otpResendCount !== 1 ? 's' : ''})` : ''}
                   </button>
                 ) : (
                   <p className="text-sm text-muted-foreground">
-                    Reenviar em <span className="font-medium text-foreground">{String(Math.floor(otpCountdown / 60)).padStart(2, '0')}:{String(otpCountdown % 60).padStart(2, '0')}</span>
+                    Reenviar em <span className="font-medium text-foreground">{String(Math.floor(otpCooldown / 60)).padStart(2, '0')}:{String(otpCooldown % 60).padStart(2, '0')}</span>
                   </p>
                 )}
               </div>

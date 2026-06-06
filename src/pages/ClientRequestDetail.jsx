@@ -68,7 +68,9 @@ function StatusHero({ currentStep, request, interests, onConfirm, confirmPending
       icon: '🔍',
       title: 'Procurando profissional',
       message: 'Estamos buscando profissionais da sua região para atender seu pedido.',
-      info: `${proposalCount} proposta${proposalCount !== 1 ? 's' : ''} recebida${proposalCount !== 1 ? 's' : ''}`,
+      info: proposalCount === 0
+        ? '0 propostas recebidas por enquanto'
+        : `${proposalCount} proposta${proposalCount !== 1 ? 's' : ''} recebida${proposalCount !== 1 ? 's' : ''}`,
       bg: 'bg-secondary/60 border-border',
     },
     proposals: {
@@ -605,6 +607,18 @@ export default function ClientRequestDetail({ viewerMode = 'client' }) {
                 <p className="text-sm text-foreground mt-0.5">{request.description}</p>
               </div>
             )}
+            {request.clientNotes?.length > 0 && (
+              <div>
+                <p className="text-xs text-muted-foreground">Notas adicionadas</p>
+                <div className="space-y-1 mt-1">
+                  {request.clientNotes.map((note, i) => (
+                    <p key={`${note.createdAt || i}`} className="text-sm text-foreground bg-secondary/50 rounded-lg px-3 py-2">
+                      {note.text}
+                    </p>
+                  ))}
+                </div>
+              </div>
+            )}
             {scheduleOptions.length > 0 && (
               <div>
                 <p className="text-xs text-muted-foreground">Data e horário</p>
@@ -673,7 +687,7 @@ export default function ClientRequestDetail({ viewerMode = 'client' }) {
         {!isAdminView && isActive && !isConfirmedOrBeyond && (
           <div className="flex flex-col gap-2 mb-4">
             <button
-              onClick={() => setShowEdit(true)}
+              onClick={() => navigate(`/client/request/${request.id}/edit`)}
               className="w-full px-4 py-3.5 text-foreground border border-border rounded-xl hover:bg-secondary/50 transition-colors font-medium text-sm"
             >
               Editar pedido
