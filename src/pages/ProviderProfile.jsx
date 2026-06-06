@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '@/api/apiClient';
-import { ChevronLeft, Loader2, CheckCircle, MapPin, Plus, X, Search } from 'lucide-react';
+import { ChevronLeft, Loader2, CheckCircle, MapPin, Plus, X, Search, Camera, ImageIcon } from 'lucide-react';
 import ProviderBottomNav from '@/components/ProviderBottomNav';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 
@@ -34,6 +34,10 @@ export default function ProviderProfile() {
   const [numero, setNumero] = useState('');
   const [cep, setCep] = useState('');
 
+  const [portfolioPhotos, setPortfolioPhotos] = useState([]);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const portfolioInputRef = useRef(null);
+
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -61,6 +65,7 @@ export default function ProviderProfile() {
           setNumero(pp[0].numero || '');
           setCep(pp[0].cep || '');
           if (pp[0].serviceAreas?.length) setServiceAreas(pp[0].serviceAreas);
+          if (pp[0].portfolioPhotos?.length) setPortfolioPhotos(pp[0].portfolioPhotos);
         } else {
           setName(user.fullName || user.full_name || '');
           setPhone(user.phone || '');
@@ -117,6 +122,7 @@ export default function ProviderProfile() {
         await api.entities.ProviderProfile.update(provProfiles[0].id, {
           name, phone, city: firstCity, serviceAreas,
           endereco, numero, cep: cep.replace(/\D/g, ''),
+          portfolioPhotos,
         });
       }
 
@@ -384,6 +390,74 @@ export default function ProviderProfile() {
               </>
             )}
           </div>
+        </div>
+
+        {/* Portfólio */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-medium text-muted-foreground">
+              Portfólio de trabalhos
+            </label>
+            <span className="text-xs text-muted-foreground">{portfolioPhotos.length}/6 fotos</span>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2">
+            {portfolioPhotos.map((url, idx) => (
+              <div key={idx} className="relative aspect-square rounded-xl overflow-hidden border border-border">
+                <img src={url} alt="" className="w-full h-full object-cover" />
+                <button
+                  onClick={() => setPortfolioPhotos(prev => prev.filter((_, i) => i !== idx))}
+                  className="absolute top-1 right-1 w-5 h-5 bg-black/60 rounded-full flex items-center justify-center"
+                >
+                  <X className="w-3 h-3 text-white" />
+                </button>
+              </div>
+            ))}
+            {portfolioPhotos.length < 6 && (
+              <button
+                onClick={() => portfolioInputRef.current?.click()}
+                disabled={uploadingPhoto}
+                className="aspect-square rounded-xl border-2 border-dashed border-border flex flex-col items-center justify-center gap-1 text-muted-foreground hover:border-primary hover:text-primary transition-colors disabled:opacity-50"
+              >
+                {uploadingPhoto ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <>
+                    <Camera className="w-5 h-5" />
+                    <span className="text-[10px] font-medium">Adicionar</span>
+                  </>
+                )}
+              </button>
+            )}
+          </div>
+
+          {portfolioPhotos.length === 0 && (
+            <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+              <ImageIcon className="w-3.5 h-3.5 shrink-0" />
+              Adicione fotos de trabalhos realizados para se destacar nas propostas.
+            </p>
+          )}
+
+          <input
+            ref={portfolioInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={async (e) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              e.target.value = '';
+              setUploadingPhoto(true);
+              try {
+                const url = await api.uploadFile(file);
+                setPortfolioPhotos(prev => [...prev, url]);
+              } catch {
+                // silent
+              } finally {
+                setUploadingPhoto(false);
+              }
+            }}
+          />
         </div>
 
         {saveError && (

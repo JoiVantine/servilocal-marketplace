@@ -1,7 +1,7 @@
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueries } from '@tanstack/react-query';
 import { api } from '@/api/apiClient';
-import { ChevronLeft, Star, Home, ClipboardList, UserCircle2, Lock, Clock, Calendar } from 'lucide-react';
+import { ChevronLeft, Star, Home, ClipboardList, UserCircle2, Lock, Clock, Calendar, ImageIcon } from 'lucide-react';
 
 function fmtScheduledDate(dateStr) {
   if (!dateStr) return null;
@@ -86,6 +86,18 @@ export default function ClientProposals() {
 
   const convByProvider = new Map(conversations.map(c => [c.providerId, c]));
 
+  const uniqueProviderIds = [...new Set(interests.map(i => i.providerId).filter(Boolean))];
+  const providerProfileResults = useQueries({
+    queries: uniqueProviderIds.map(pid => ({
+      queryKey: ['provider-profile-proposal', pid],
+      queryFn: () => api.entities.ProviderProfile.filter({ userId: pid }),
+      staleTime: 5 * 60_000,
+    })),
+  });
+  const providerProfileMap = new Map(
+    uniqueProviderIds.map((pid, idx) => [pid, providerProfileResults[idx]?.data?.[0]])
+  );
+
   return (
     <div className="min-h-screen bg-background pb-24">
       <div className="flex items-center gap-3 px-4 py-4 border-b border-border bg-card">
@@ -131,6 +143,8 @@ export default function ClientProposals() {
               const professionalLabel = getProfessionalLabel(interest, request?.category);
 
               const expiry = getExpiryInfo(interest.created_date);
+              const providerProfile = providerProfileMap.get(interest.providerId);
+              const portfolioPhotos = providerProfile?.portfolioPhotos || [];
               const freightNum = parseFloat(String(interest.freight || '').replace(/\D/g, '')) / 100 || 0;
               const scheduledDateLabel = fmtScheduledDate(interest.scheduledDate);
               const isBest = !expiry.expired && validInterests.length > 1 && validInterests[0]?.id === interest.id;
@@ -177,6 +191,33 @@ export default function ClientProposals() {
                       </div>
                     </div>
                   </div>
+
+                  {/* Portfolio strip */}
+                  {portfolioPhotos.length > 0 && (
+                    <div className="mb-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="flex gap-1">
+                          {portfolioPhotos.slice(0, 4).map((url, i) => (
+                            <div key={i} className="w-14 h-14 rounded-lg overflow-hidden border border-border shrink-0">
+                              <img src={url} alt="" className="w-full h-full object-cover" />
+                            </div>
+                          ))}
+                          {portfolioPhotos.length > 4 && (
+                            <div className="w-14 h-14 rounded-lg bg-secondary border border-border flex items-center justify-center shrink-0">
+                              <span className="text-xs font-semibold text-muted-foreground">+{portfolioPhotos.length - 4}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => navigate(`/client/provider/${interest.providerId}`)}
+                        className="text-xs text-primary font-semibold flex items-center gap-1 hover:opacity-80"
+                      >
+                        <ImageIcon className="w-3.5 h-3.5" />
+                        Ver {portfolioPhotos.length} foto{portfolioPhotos.length !== 1 ? 's' : ''} de trabalhos
+                      </button>
+                    </div>
+                  )}
 
                   <div className="mb-4 space-y-2">
                     {hasPrice && (

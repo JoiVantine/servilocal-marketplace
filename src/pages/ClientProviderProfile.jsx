@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/api/apiClient';
-import { ChevronLeft, Star, MapPin, Briefcase } from 'lucide-react';
+import { ChevronLeft, Star, MapPin, Briefcase, ImageIcon } from 'lucide-react';
 
 export default function ClientProviderProfile() {
   const { providerId } = useParams();
@@ -102,6 +102,29 @@ export default function ClientProviderProfile() {
                 >
                   {s}
                 </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Portfolio */}
+        {profile?.portfolioPhotos?.length > 0 && (
+          <div className="bg-card border border-border rounded-2xl overflow-hidden">
+            <div className="px-4 py-3 border-b border-border flex items-center gap-2">
+              <ImageIcon className="w-4 h-4 text-muted-foreground" />
+              <h2 className="font-semibold text-foreground text-sm">
+                Portfólio ({profile.portfolioPhotos.length} foto{profile.portfolioPhotos.length !== 1 ? 's' : ''})
+              </h2>
+            </div>
+            <div className="grid grid-cols-3 gap-0.5 p-0.5">
+              {profile.portfolioPhotos.map((url, idx) => (
+                <div key={idx} className="aspect-square overflow-hidden">
+                  <img
+                    src={url}
+                    alt={`Trabalho ${idx + 1}`}
+                    className="w-full h-full object-cover hover:scale-105 transition-transform duration-200"
+                  />
+                </div>
               ))}
             </div>
           </div>
