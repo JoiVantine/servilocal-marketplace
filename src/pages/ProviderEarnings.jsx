@@ -4,8 +4,6 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '@/api/apiClient';
 import { ChevronLeft, TrendingUp, Star, CheckCircle2 } from 'lucide-react';
 
-const PLATFORM_FEE = 0.10;
-
 function fmt(value) {
   return parseFloat(value || 0).toFixed(2).replace('.', ',');
 }
@@ -36,8 +34,6 @@ export default function ProviderEarnings() {
   });
 
   const totalGross = completedOrders.reduce((s, r) => s + parseFloat(r.agreedPrice || 0), 0);
-  const totalFee = totalGross * PLATFORM_FEE;
-  const totalNet = totalGross - totalFee;
   const avgRating = reviews.length
     ? (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1)
     : null;
@@ -63,17 +59,7 @@ export default function ProviderEarnings() {
               <TrendingUp className="w-5 h-5 opacity-80" />
               <p className="text-sm font-medium opacity-80">Total recebido</p>
             </div>
-            <p className="text-4xl font-bold">R$ {fmt(totalNet)}</p>
-            <div className="flex gap-6 pt-1 border-t border-white/20">
-              <div>
-                <p className="text-xs opacity-70">Bruto</p>
-                <p className="text-sm font-semibold">R$ {fmt(totalGross)}</p>
-              </div>
-              <div>
-                <p className="text-xs opacity-70">Taxa plataforma (10%)</p>
-                <p className="text-sm font-semibold">− R$ {fmt(totalFee)}</p>
-              </div>
-            </div>
+            <p className="text-4xl font-bold">R$ {fmt(totalGross)}</p>
           </div>
 
           {/* Stats row */}
@@ -107,7 +93,6 @@ export default function ProviderEarnings() {
               <div className="divide-y divide-border">
                 {completedOrders.map(req => {
                   const gross = parseFloat(req.agreedPrice || 0);
-                  const net = gross * (1 - PLATFORM_FEE);
                   return (
                     <div key={req.id} className="px-4 py-3 flex items-center justify-between gap-3">
                       <div className="flex items-center gap-3 min-w-0">
@@ -124,10 +109,7 @@ export default function ProviderEarnings() {
                         </div>
                       </div>
                       <div className="text-right shrink-0">
-                        <p className="text-sm font-bold text-primary">R$ {fmt(net)}</p>
-                        {gross > 0 && (
-                          <p className="text-xs text-muted-foreground">de R$ {fmt(gross)}</p>
-                        )}
+                        <p className="text-sm font-bold text-primary">R$ {fmt(gross)}</p>
                       </div>
                     </div>
                   );

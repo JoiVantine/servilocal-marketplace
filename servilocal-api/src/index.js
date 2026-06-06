@@ -658,14 +658,16 @@ app.get('/api/admin/at-risk-requests', requireAuth, requireAdmin, async (req, re
   }
 });
 
-// ─── Cron: notificar cliente se 1h sem proposta ──────────────────────────────
+// ─── Cron: alertar admin quando pedido fica 1h sem proposta ──────────────────
 setInterval(async () => {
   try {
-    const now = new Date();
-    const ago1h  = new Date(now - 60 * 60_000);
-    const ago6h  = new Date(now - 6  * 60 * 60_000);
+    const adminPhone = process.env.ADMIN_PHONE;
+    if (!adminPhone) return;
 
-    // Pedidos abertos entre 1h e 6h atrás, ainda não notificados
+    const now = new Date();
+    const ago1h = new Date(now - 60 * 60_000);
+    const ago6h = new Date(now - 6  * 60 * 60_000);
+
     const candidates = await ServiceRequest.find({
       status: 'open',
       noProposalNotified: { $ne: true },
@@ -674,27 +676,26 @@ setInterval(async () => {
 
     if (!candidates.length) return;
 
-    // Filtra os que ainda não têm nenhuma proposta
     const ids = candidates.map(r => r._id);
     const idsWithProposals = await ServiceRequestInterest.distinct('serviceRequestId', { serviceRequestId: { $in: ids } });
     const withSet = new Set(idsWithProposals.map(id => id.toString()));
-
     const toNotify = candidates.filter(r => !withSet.has(r._id.toString()));
 
     for (const req of toNotify) {
-      const phone = req.clientPhone;
-      if (phone) {
-        const firstName = (req.clientName || '').split(' ')[0] || 'você';
-        await sendWhatsApp(phone,
-          `Olá ${firstName}! 👋\n\nSeu pedido de *${req.category || 'serviço'}* ainda não recebeu propostas.\n\nNossa equipe continua divulgando para profissionais da região. Você será notificado assim que um profissional se interessar! 🔔\n\nSe quiser, acesse o app para ver o status.`
-        ).catch(() => {});
-      }
+      const minutesOpen = Math.floor((now - new Date(req.createdAt)) / 60_000);
+      await sendWhatsApp(adminPhone,
+        `🔔 *Pedido sem proposta há ${minutesOpen} min*\n\n` +
+        `📋 ${req.category || 'Serviço'}${req.subcategory ? ' · ' + req.subcategory : ''}\n` +
+        `📍 ${req.city || 'Cidade não informada'}\n` +
+        `👤 ${req.clientName || 'Cliente'}\n` +
+        `🔗 ID: ${req._id}`
+      ).catch(() => {});
       await ServiceRequest.findByIdAndUpdate(req._id, { noProposalNotified: true });
     }
 
-    if (toNotify.length) console.log(`[cron] no-proposal notify: ${toNotify.length} clientes notificados`);
+    if (toNotify.length) console.log(`[cron] admin alert: ${toNotify.length} pedidos sem proposta`);
   } catch (e) {
-    console.error('[cron] no-proposal notify error:', e.message);
+    console.error('[cron] admin alert error:', e.message);
   }
 }, 15 * 60_000); // a cada 15 min
 

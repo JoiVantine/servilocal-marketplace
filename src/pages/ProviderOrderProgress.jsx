@@ -144,10 +144,7 @@ export default function ProviderOrderProgress() {
     return 'Ruim';
   };
 
-  const PLATFORM_FEE = 0.10;
   const gross = parseFloat(request?.agreedPrice || 0);
-  const fee = gross * PLATFORM_FEE;
-  const net = gross - fee;
 
   return (
     <div className="min-h-screen bg-secondary/30 pb-28">
@@ -222,22 +219,10 @@ export default function ProviderOrderProgress() {
                   <p className="text-xs font-bold text-muted-foreground tracking-wider">PAGAMENTO LIBERADO!</p>
                 </div>
                 <div className="p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Valor do serviço</span>
-                    <span className="text-sm font-medium text-foreground">
-                      R$ {gross.toFixed(2).replace('.', ',')}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Taxa da plataforma</span>
-                    <span className="text-sm font-medium text-red-500">
-                      − R$ {fee.toFixed(2).replace('.', ',')}
-                    </span>
-                  </div>
                   <div className="border-t border-border pt-3 flex items-center justify-between">
                     <span className="text-sm font-semibold text-foreground">Você receberá</span>
                     <span className="text-xl font-bold text-primary">
-                      R$ {net.toFixed(2).replace('.', ',')}
+                      R$ {gross.toFixed(2).replace('.', ',')}
                     </span>
                   </div>
                   {gross > 0 && (
