@@ -164,8 +164,8 @@ export default function ClientHome() {
         <div className="flex-1 overflow-y-auto pb-20">
 
           {/* Logo topo */}
-          <div className="flex items-center justify-center pt-5 pb-2">
-            <img src="/onboarding-city.png" alt="ServiLocal" className="w-16 h-16 object-contain" />
+          <div className="flex items-center justify-center pt-4 pb-1">
+            <img src="/onboarding-city.png" alt="ServiLocal" className="w-14 h-14 object-contain" />
           </div>
 
           {/* Greeting card */}
