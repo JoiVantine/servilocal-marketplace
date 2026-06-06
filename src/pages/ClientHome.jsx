@@ -406,25 +406,29 @@ export default function ClientHome() {
           )}
 
 
-          {/* Pedidos com proposta recebida — alerta */}
-          {user && requests.some(r => r.status === 'in_conversation') && (
-            <div className="px-4 mb-3">
-              {requests.filter(r => r.status === 'in_conversation').map(r => (
-                <Link
-                  key={r.id}
-                  to={`/client/request/${r.id}/proposals`}
-                  className="flex items-center gap-3 bg-primary/10 border border-primary/30 rounded-2xl px-4 py-3 mb-2"
-                >
+          {/* Pedidos com proposta recebida — card único */}
+          {user && (() => {
+            const withProposals = requests.filter(r => r.status === 'in_conversation');
+            if (withProposals.length === 0) return null;
+            const target = withProposals.length === 1
+              ? `/client/request/${withProposals[0].id}/proposals`
+              : '/client/orders';
+            const label = withProposals.length === 1
+              ? `"${withProposals[0].title || withProposals[0].category}" recebeu propostas!`
+              : `${withProposals.length} pedidos receberam propostas!`;
+            return (
+              <div className="px-4 mb-3">
+                <Link to={target} className="flex items-center gap-3 bg-primary/10 border border-primary/30 rounded-2xl px-4 py-3">
                   <span className="text-xl">📨</span>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-foreground truncate">{r.title}</p>
-                    <p className="text-xs text-primary font-medium">Você recebeu propostas! Toque para ver</p>
+                    <p className="text-sm font-bold text-foreground truncate">{label}</p>
+                    <p className="text-xs text-primary font-medium">Toque para ver as propostas</p>
                   </div>
                   <ChevronRight className="w-4 h-4 text-primary shrink-0" />
                 </Link>
-              ))}
-            </div>
-          )}
+              </div>
+            );
+          })()}
 
           {/* Seus pedidos */}
           {user && <div className="px-4 mb-5">

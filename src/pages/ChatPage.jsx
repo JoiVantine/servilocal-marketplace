@@ -38,6 +38,7 @@ export default function ChatPage() {
     queryFn: () => api.entities.Message.filter({ conversationId }, 'created_date'),
     enabled: !!conversationId,
     retry: false,
+    refetchInterval: 8000,
   });
   const messages = messagesQuery.data || [];
 
@@ -121,7 +122,10 @@ export default function ChatPage() {
       await api.entities.Conversation.update(conversationId, {
         lastMessage: messageLabel,
         lastMessageTime: new Date().toISOString(),
-        unreadCount: (conversation.unreadCount || 0) + 1,
+        lastSenderType: senderType,
+        // Only increment unread for the recipient (provider); when provider sends,
+        // unreadCount resets to 0 so their own badge doesn't light up.
+        unreadCount: senderType === 'client' ? (conversation.unreadCount || 0) + 1 : 0,
       });
 
       await api.entities.Notification.create({

@@ -122,7 +122,9 @@ export default function ClientProposals() {
           </div>
         ) : (
           <div className="space-y-3">
-            {interests.map((interest, idx) => {
+            {(() => {
+              const validInterests = interests.filter(i => !getExpiryInfo(i.created_date).expired);
+              return interests.map((interest, idx) => {
               const conversation = convByProvider.get(interest.providerId);
               const priceNum = parseFloat(String(interest.price || '').replace(',', '.'));
               const hasPrice = interest.price && !isNaN(priceNum);
@@ -131,6 +133,7 @@ export default function ClientProposals() {
               const expiry = getExpiryInfo(interest.created_date);
               const freightNum = parseFloat(String(interest.freight || '').replace(/\D/g, '')) / 100 || 0;
               const scheduledDateLabel = fmtScheduledDate(interest.scheduledDate);
+              const isBest = !expiry.expired && validInterests.length > 1 && validInterests[0]?.id === interest.id;
 
               return (
                 <div key={interest.id} className={`bg-card border rounded-2xl p-4 shadow-sm ${expiry.expired ? 'border-border opacity-60' : 'border-border'}`}>
@@ -143,7 +146,7 @@ export default function ClientProposals() {
                           <span className="text-xs bg-gray-100 text-gray-500 border border-gray-200 px-2 py-0.5 rounded-full font-medium shrink-0">
                             Expirada
                           </span>
-                        ) : interests.length > 1 && idx === 0 ? (
+                        ) : isBest ? (
                           <span className="text-xs bg-yellow-50 text-yellow-700 border border-yellow-200 px-2 py-0.5 rounded-full font-medium shrink-0">
                             Melhor proposta
                           </span>
@@ -225,7 +228,8 @@ export default function ClientProposals() {
                   </div>
                 </div>
               );
-            })}
+            });
+            })()}
           </div>
         )}
       </div>
