@@ -1,8 +1,22 @@
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { api } from '@/api/apiClient';
-import { AlertTriangle, Clock, MessageSquare, ChevronRight, RefreshCw, ArrowLeft } from 'lucide-react';
+import { AlertTriangle, Clock, MessageSquare, ChevronRight, RefreshCw, ArrowLeft, Timer } from 'lucide-react';
 import AdminBottomNav from '@/components/AdminBottomNav';
+
+const NO_PROPOSAL_BUCKETS = [
+  { label: '+ de 24h',  minMin: 24 * 60, maxMin: null,    urgency: 'critical', color: 'bg-red-700 text-white' },
+  { label: '12h – 24h', minMin: 12 * 60, maxMin: 24 * 60, urgency: 'high',     color: 'bg-red-500 text-white' },
+  { label: '2h – 12h',  minMin:  2 * 60, maxMin: 12 * 60, urgency: 'medium',   color: 'bg-orange-500 text-white' },
+  { label: '30min – 2h',minMin:       30, maxMin:  2 * 60, urgency: 'low',      color: 'bg-yellow-500 text-white' },
+];
+
+function bucketItems(items) {
+  return NO_PROPOSAL_BUCKETS.map(b => ({
+    ...b,
+    items: items.filter(r => r.minutesOpen >= b.minMin && (b.maxMin == null || r.minutesOpen < b.maxMin)),
+  })).filter(b => b.items.length > 0);
+}
 
 function minutesToLabel(min) {
   if (min < 60) return `${min} min`;
@@ -158,16 +172,49 @@ export default function AdminAtRisk() {
           </div>
         ) : (
           <>
-            <Section
-              title="Sem proposta"
-              subtitle="Abertos há +30 min sem nenhum prestador interessado"
-              icon={AlertTriangle}
-              iconBg="bg-red-100 text-red-600"
-              items={noProposals}
-              urgency="high"
-              onView={goToRequest}
-              emptyText="Nenhum pedido sem proposta no momento."
-            />
+            {/* Sem proposta — agrupado por tempo de espera */}
+            <div className="mb-6">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center shrink-0">
+                  <Timer className="w-4 h-4 text-red-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-bold text-foreground">Sem proposta</p>
+                    {noProposals.length > 0 && (
+                      <span className="text-xs font-bold px-1.5 py-0.5 rounded-full bg-red-500 text-white">
+                        {noProposals.length}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">Abertos sem nenhum prestador interessado</p>
+                </div>
+              </div>
+
+              {noProposals.length === 0 ? (
+                <div className="bg-card border border-border rounded-xl px-4 py-3">
+                  <p className="text-xs text-muted-foreground">Nenhum pedido sem proposta no momento.</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {bucketItems(noProposals).map(bucket => (
+                    <div key={bucket.label}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${bucket.color}`}>
+                          {bucket.label}
+                        </span>
+                        <span className="text-xs text-muted-foreground">{bucket.items.length} pedido{bucket.items.length > 1 ? 's' : ''}</span>
+                      </div>
+                      <div className="space-y-2">
+                        {bucket.items.map(item => (
+                          <RiskCard key={item.id} item={item} urgency={bucket.urgency} onView={() => goToRequest(item.id)} />
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
 
             <Section
               title="Propostas ignoradas"

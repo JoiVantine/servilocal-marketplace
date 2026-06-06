@@ -42,6 +42,7 @@ const serviceRequestSchema = new mongoose.Schema({
   progressStatus: { type: String },
   progressLog: [{ status: String, time: String }],
   completionCode: { type: String },
+  noProposalNotified: { type: Boolean, default: false },
 }, { timestamps: true });
 
 serviceRequestSchema.set('toJSON', {
