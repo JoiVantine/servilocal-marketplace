@@ -75,7 +75,7 @@ export default function ClientConversations() {
           <div className="space-y-3">
             {conversations.map((conversation) => {
               const request = requestLookup.get(conversation.serviceRequestId);
-              const unreadCount = conversation.unreadCount || 0;
+              const unreadCount = conversation.clientUnreadCount || 0;
 
               return (
                 <Link

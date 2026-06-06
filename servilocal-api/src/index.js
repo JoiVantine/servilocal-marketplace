@@ -343,6 +343,41 @@ app.post('/api/service-requests/:id/verify-completion', requireAuth, async (req,
   }
 });
 
+// ── Chat message notification (WhatsApp to client when provider sends) ─────────
+const Conversation = require('./models/Conversation');
+app.post('/api/conversations/:id/notify-message', requireAuth, async (req, res) => {
+  try {
+    const conv = await Conversation.findById(req.params.id);
+    if (!conv) return res.status(404).json({ error: 'Conversa não encontrada' });
+
+    const isProvider = conv.providerId?.toString() === req.user.id;
+    if (!isProvider) return res.status(403).json({ ok: false });
+
+    const { preview } = req.body;
+
+    setImmediate(async () => {
+      try {
+        const client = await User.findById(conv.clientId);
+        const phone = client?.phone;
+        const providerName = conv.providerName || 'O profissional';
+        const clientName = client?.fullName || 'Cliente';
+        if (phone) {
+          const msg = preview
+            ? `Olá ${clientName}! 💬 ${providerName} enviou uma mensagem: "${preview.slice(0, 80)}"\n\nAbra o app para responder.`
+            : `Olá ${clientName}! 💬 ${providerName} enviou uma mensagem. Abra o app para ver.`;
+          await sendWhatsApp(phone, msg);
+        }
+      } catch (err) {
+        console.error('[whatsapp] chat-notify:', err.message);
+      }
+    });
+
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.use('/api/conversations', require('./routes/conversations'));
 
 app.use('/api/messages', require('./routes/messages'));

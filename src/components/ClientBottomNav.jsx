@@ -23,6 +23,16 @@ function useOrdersBadge(userId) {
   return badge;
 }
 
+function useConvBadge(userId) {
+  const { data: convs = [] } = useQuery({
+    queryKey: ['client-conversations-badge', userId],
+    queryFn: () => api.entities.Conversation.filter({ clientId: userId }),
+    enabled: !!userId,
+    refetchInterval: 15000,
+  });
+  return convs.reduce((s, c) => s + (c.clientUnreadCount || 0), 0);
+}
+
 export default function ClientBottomNav({ active = 'home' }) {
   const [userId, setUserId] = useState(null);
 
@@ -31,11 +41,12 @@ export default function ClientBottomNav({ active = 'home' }) {
   }, []);
 
   const ordersBadge = useOrdersBadge(userId);
+  const chatBadge = useConvBadge(userId);
 
   const tabs = [
     { key: 'home',          icon: Home,          label: 'Início',    to: '/client' },
     { key: 'orders',        icon: ClipboardList,  label: 'Pedidos',   to: '/client/orders',        badge: ordersBadge },
-    { key: 'conversations', icon: MessageCircle,  label: 'Conversas', to: '/client/conversations' },
+    { key: 'conversations', icon: MessageCircle,  label: 'Conversas', to: '/client/conversations', badge: chatBadge },
     { key: 'menu',          icon: Menu,           label: 'Menu',      to: '/client/menu' },
   ];
 

@@ -64,10 +64,17 @@ export default function ChatPage() {
     const unread = messages.filter((message) => message.senderId !== user.id && !message.read);
     if (unread.length === 0) return;
 
+    const isProvider = user.id === conversation.providerId;
+    const resetField = isProvider
+      ? { providerUnreadCount: 0 }
+      : { clientUnreadCount: 0 };
+
     Promise.all(unread.map((message) => api.entities.Message.update(message.id, { read: true }))).then(() => {
-      api.entities.Conversation.update(conversation.id, { unreadCount: 0 });
+      api.entities.Conversation.update(conversation.id, resetField);
       queryClient.invalidateQueries({ queryKey: ['messages', conversationId] });
       queryClient.invalidateQueries({ queryKey: ['conversation', conversationId] });
+      queryClient.invalidateQueries({ queryKey: ['provider-conversations-unread'] });
+      queryClient.invalidateQueries({ queryKey: ['client-conversations-badge'] });
     });
   }, [user?.id, conversation?.id, messages.length]);
 
@@ -123,9 +130,12 @@ export default function ChatPage() {
         lastMessage: messageLabel,
         lastMessageTime: new Date().toISOString(),
         lastSenderType: senderType,
-        // Only increment unread for the recipient (provider); when provider sends,
-        // unreadCount resets to 0 so their own badge doesn't light up.
-        unreadCount: senderType === 'client' ? (conversation.unreadCount || 0) + 1 : 0,
+        providerUnreadCount: senderType === 'client'
+          ? (conversation.providerUnreadCount || 0) + 1
+          : 0,
+        clientUnreadCount: senderType === 'provider'
+          ? (conversation.clientUnreadCount || 0) + 1
+          : 0,
       });
 
       await api.entities.Notification.create({
@@ -138,6 +148,10 @@ export default function ChatPage() {
         relatedId: conversationId,
         read: false,
       });
+
+      if (senderType === 'provider') {
+        api.progress.notifyMessage(conversationId, cleanText || null);
+      }
     },
     onSuccess: () => {
       setText('');

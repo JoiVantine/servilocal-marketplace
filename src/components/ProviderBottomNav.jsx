@@ -13,7 +13,7 @@ export default function ProviderBottomNav({ active }) {
     },
     refetchInterval: 10000,
   });
-  const totalUnread = convs.reduce((s, c) => s + (c.unreadCount || 0), 0);
+  const totalUnread = convs.reduce((s, c) => s + (c.providerUnreadCount || 0), 0);
 
   const items = [
     { id: 'home', icon: Home, label: 'Início', to: '/provider' },

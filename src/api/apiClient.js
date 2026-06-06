@@ -82,6 +82,7 @@ const auth = {
 const progress = {
   notify: (requestId, data) => request('POST', `/api/service-requests/${requestId}/progress`, data),
   verifyCompletion: (requestId, code) => request('POST', `/api/service-requests/${requestId}/verify-completion`, { code }),
+  notifyMessage: (conversationId, preview) => request('POST', `/api/conversations/${conversationId}/notify-message`, { preview }).catch(() => {}),
 };
 
 const support = {
