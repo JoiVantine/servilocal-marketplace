@@ -13,7 +13,7 @@ const serviceRequestInterestSchema = new mongoose.Schema({
   arrivalTime: String,
   status: { type: String, enum: ['pending', 'in_conversation', 'accepted', 'rejected', 'completed', 'cancelled', 'expired', 'needs_review'], default: 'pending' },
   message: String,
-  expiresAt: { type: Date, default: () => new Date(Date.now() + 24 * 3600_000) },
+  expiresAt: { type: Date, default: () => new Date(Date.now() + 72 * 3600_000) },
 }, { timestamps: true });
 
 serviceRequestInterestSchema.set('toJSON', {
