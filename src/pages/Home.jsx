@@ -1,8 +1,11 @@
 ﻿import { useState, useEffect } from 'react';
-import { useNavigate, Navigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { api } from '@/api/apiClient';
 import { useAuth } from '@/lib/AuthContext';
 import { Search, Building2, ChevronRight } from 'lucide-react';
+import HeroSection from "../components/HeroSection";
+import HowItWorks from "../components/HowItWorks";
+import Benefits from "../components/Benefits";
 
 const LOGO_URL = "/onboarding-city.png";
 
@@ -13,16 +16,15 @@ export default function Home() {
   const [checkingProfile, setCheckingProfile] = useState(false);
 
   useEffect(() => {
-    if (!isAuthenticated || !authUser) {
-      setHasProfile(null);
-      return;
-    }
+    if (isLoadingAuth) return;
+    if (!isAuthenticated || !authUser) return; // mostra landing abaixo
+
     setCheckingProfile(true);
     api.entities.UserProfile.filter({ userId: authUser.id })
       .then(profiles => setHasProfile(profiles.some(p => p.onboardingCompleted)))
       .catch(() => setHasProfile(false))
       .finally(() => setCheckingProfile(false));
-  }, [isAuthenticated, authUser]);
+  }, [isLoadingAuth, isAuthenticated, authUser?.id]);
 
   const enterAs = async (role) => {
     localStorage.setItem('sl_role', role);
@@ -36,6 +38,7 @@ export default function Home() {
     );
   };
 
+  // Aguarda auth + verificação de perfil para usuários logados
   if (isLoadingAuth || checkingProfile || (authUser && hasProfile === null)) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -44,10 +47,7 @@ export default function Home() {
     );
   }
 
-  if (!authUser) {
-    return <Navigate to="/client" replace />;
-  }
-
+  // Usuário logado com perfil → seletor de modo
   if (authUser && hasProfile) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6">
@@ -83,5 +83,20 @@ export default function Home() {
     );
   }
 
-  return <Navigate to="/client/onboarding" replace />;
+  // Usuário logado sem perfil → onboarding
+  if (authUser && hasProfile === false) {
+    navigate('/client/onboarding', { replace: true });
+    return null;
+  }
+
+  // Visitante não autenticado → landing page
+  return (
+    <div className="min-h-screen bg-background font-body">
+      <div className="max-w-lg mx-auto pb-16">
+        <HeroSection />
+        <HowItWorks />
+        <Benefits />
+      </div>
+    </div>
+  );
 }
