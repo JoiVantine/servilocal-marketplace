@@ -370,8 +370,8 @@ export default function ClientHome() {
             </div>
           )}
 
-          {/* Comunidade local (prova social) */}
-          {!searchQuery && communityProviderCount > 0 && (
+          {/* Comunidade local (prova social) — apenas visitantes */}
+          {!searchQuery && !user && communityProviderCount > 0 && (
             <div className="px-4 mb-4">
               <div className="bg-primary/5 border border-primary/15 rounded-2xl p-4">
                 <div className="flex items-center gap-2 mb-3">
@@ -409,8 +409,8 @@ export default function ClientHome() {
             </div>
           )}
 
-          {/* Serviços mais procurados */}
-          {!searchQuery && (
+          {/* Serviços mais procurados — apenas visitantes */}
+          {!searchQuery && !user && (
             <div className="px-4 mb-4">
               <p className="text-sm font-bold text-foreground mb-3">Serviços mais procurados</p>
               <div className="flex flex-wrap gap-2">
@@ -434,8 +434,8 @@ export default function ClientHome() {
             </div>
           )}
 
-          {/* Cobertura local */}
-          {!searchQuery && (
+          {/* Cobertura local — apenas visitantes */}
+          {!searchQuery && !user && (
             <div className="px-4 mb-4">
               <div className="flex items-center gap-2 px-1">
                 <MapPin className="w-3.5 h-3.5 text-primary shrink-0" />
@@ -448,8 +448,8 @@ export default function ClientHome() {
             </div>
           )}
 
-          {/* Contrate com mais segurança */}
-          <div className="px-4 mb-4">
+          {/* Contrate com mais segurança — apenas visitantes */}
+          {!user && <div className="px-4 mb-4">
             <div className="bg-card border border-border rounded-xl p-4 flex items-center gap-3">
               <div className="w-11 h-11 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
                 <ShieldCheck className="w-5 h-5 text-primary" />
@@ -459,7 +459,7 @@ export default function ClientHome() {
                 <p className="text-xs text-muted-foreground mt-0.5">Converse com profissionais antes de decidir quem contratar.</p>
               </div>
             </div>
-          </div>
+          </div>}
 
           {/* CTA prestador — apenas para visitantes */}
           {!user && (
@@ -555,8 +555,8 @@ export default function ClientHome() {
             )}
           </div>}
 
-          {/* Banner local */}
-          <div className="px-4 mb-5">
+          {/* Banner local — apenas visitantes */}
+          {!user && <div className="px-4 mb-5">
             <div className="bg-secondary/40 border border-border rounded-2xl p-4 text-center">
               <p className="text-base font-bold text-foreground mb-1">
                 🏘️ Feito para {user?.city || 'sua cidade'}
@@ -565,7 +565,7 @@ export default function ClientHome() {
                 Conectando clientes e prestadores da nossa cidade.
               </p>
             </div>
-          </div>
+          </div>}
 
         </div>
       </div>
