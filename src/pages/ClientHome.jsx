@@ -88,7 +88,7 @@ export default function ClientHome() {
   const [modalCat, setModalCat] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const { data: user, isLoading } = useCurrentUser();
+  const { data: user, isLoading } = useCurrentUser({ redirectOnError: false });
   const { categories } = useServices();
 
   const { data: requests = [] } = useQuery({
