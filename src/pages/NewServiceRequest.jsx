@@ -12,6 +12,7 @@ import {
   Loader2,
   Plus,
   Trash2,
+  LogOut,
 } from 'lucide-react';
 import { useServices } from '@/hooks/useServices';
 
@@ -224,6 +225,13 @@ export default function NewServiceRequest() {
           </span>
         </div>
         <span className="text-sm font-semibold text-foreground">Criar pedido</span>
+        <button
+          onClick={() => api.auth.logout('/')}
+          className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors ml-auto"
+        >
+          <LogOut className="w-4 h-4" />
+          <span>Sair</span>
+        </button>
       </div>
 
       <div className="max-w-lg mx-auto px-4 py-6 space-y-5">

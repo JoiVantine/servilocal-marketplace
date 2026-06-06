@@ -192,10 +192,10 @@ export default function ClientHome() {
                 </div>
                 <button
                   onClick={() => api.auth.logout('/')}
-                  className="p-2 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-lg transition-colors"
-                  title="Sair"
+                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground hover:bg-secondary rounded-lg px-2 py-1.5 transition-colors"
                 >
-                  <LogOut className="w-4 h-4" />
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span>Sair</span>
                 </button>
               </div>
             ) : (
