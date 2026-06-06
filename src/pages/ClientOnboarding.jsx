@@ -220,10 +220,10 @@ export default function ClientOnboarding() {
     setLoading(true);
     try {
       const cityState = uf ? `${cidade} - ${uf}` : cidade;
-      await api.auth.updateMe({ city: cityState });
+      await api.auth.updateMe({ city: cityState }).catch(() => {});
 
       if (userId) {
-        const existing = await api.entities.UserProfile.filter({ userId });
+        const existing = await api.entities.UserProfile.filter({ userId }).catch(() => []);
         const profileData = {
           userId,
           neighborhood: bairro,
@@ -234,18 +234,15 @@ export default function ClientOnboarding() {
           firstAccess: false,
         };
         if (existing.length > 0) {
-          await api.entities.UserProfile.update(existing[0].id, profileData);
+          await api.entities.UserProfile.update(existing[0].id, profileData).catch(() => {});
         } else {
-          await api.entities.UserProfile.create(profileData);
+          await api.entities.UserProfile.create(profileData).catch(() => {});
         }
       }
-
-      navigate('/client');
-    } catch (err) {
-      setErrors({ submit: err.message || 'Erro ao finalizar cadastro. Tente novamente.' });
-    } finally {
+    } catch { /* silent */ } finally {
       setLoading(false);
     }
+    window.location.href = '/client';
   };
 
   return (
