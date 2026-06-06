@@ -30,7 +30,7 @@ export default function Login() {
     setError('');
     setLoading(true);
     try {
-      await api.auth.loginViaEmailPassword(identifier, password);
+      await api.auth.loginViaEmailPassword(identifier, password, role);
       navigate(isClient ? '/client' : '/provider');
     } catch (err) {
       setError(err.message || 'E-mail ou senha incorretos.');

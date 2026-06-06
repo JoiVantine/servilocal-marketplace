@@ -152,7 +152,7 @@ router.post('/resend-otp', requireAuth, async (req, res) => {
 // POST /api/auth/login — aceita email ou celular como identificador
 router.post('/login', async (req, res) => {
   try {
-    const { email, password, identifier } = req.body;
+    const { email, password, identifier, role } = req.body;
     const login = (identifier || email || '').trim();
     if (!login || !password) return res.status(400).json({ error: 'E-mail/celular e senha são obrigatórios' });
 
@@ -175,6 +175,17 @@ router.post('/login', async (req, res) => {
 
     const valid = await bcrypt.compare(password, user.passwordHash);
     if (!valid) return res.status(401).json({ error: 'Credenciais inválidas' });
+
+    // Valida que o role da conta corresponde ao que o usuário selecionou
+    if (role && role !== 'admin') {
+      const adminEmail = (process.env.ADMIN_EMAIL || 'joi.vantine@gmail.com').toLowerCase();
+      const isAdmin = user.email?.toLowerCase() === adminEmail;
+      const userRole = user.role || 'client';
+      if (!isAdmin && userRole !== role && userRole !== 'both') {
+        const label = role === 'client' ? 'cliente' : 'prestador';
+        return res.status(403).json({ error: `Esta conta não está cadastrada como ${label}. Tente entrar com o perfil correto.` });
+      }
+    }
 
     const token = signToken(user);
     res.json({ token, user });

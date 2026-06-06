@@ -33,8 +33,8 @@ async function request(method, path, data) {
 const auth = {
   me: () => request('GET', '/api/auth/me'),
 
-  loginViaEmailPassword: async (identifier, password) => {
-    const data = await request('POST', '/api/auth/login', { identifier, password });
+  loginViaEmailPassword: async (identifier, password, role) => {
+    const data = await request('POST', '/api/auth/login', { identifier, password, role });
     if (data.token) localStorage.setItem('token', data.token);
     return data;
   },
