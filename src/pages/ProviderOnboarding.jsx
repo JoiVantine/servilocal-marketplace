@@ -495,10 +495,10 @@ export default function ProviderOnboarding() {
         {step === 1 && (
           <div className="space-y-6">
             <div className="text-center mb-6">
-              <h2 className="font-heading text-2xl font-bold text-foreground">Verifique seu e-mail</h2>
+              <h2 className="font-heading text-2xl font-bold text-foreground">Verifique seu WhatsApp</h2>
               <p className="text-sm text-muted-foreground mt-2">
-                Enviamos um código para<br />
-                <strong className="text-foreground">{email}</strong>
+                Enviamos um código para o WhatsApp<br />
+                <strong className="text-foreground">{phone}</strong>
               </p>
             </div>
 
