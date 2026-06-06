@@ -52,6 +52,7 @@ import ClientProposals from './pages/ClientProposals';
 import ClientConfirmProvider from './pages/ClientConfirmProvider';
 import ClientOrderProgress from './pages/ClientOrderProgress';
 import ClientOrderRating from './pages/ClientOrderRating';
+import ClientEditRequest from './pages/ClientEditRequest';
 import ProviderRequestDetail from './pages/ProviderRequestDetail';
 import ProviderOrderProgress from './pages/ProviderOrderProgress';
 import ProviderEarnings from './pages/ProviderEarnings';
@@ -93,6 +94,7 @@ const AuthenticatedApp = () => {
       <Route path="/client/request/:requestId/confirm/:interestId" element={<ClientConfirmProvider />} />
       <Route path="/client/request/:requestId/progress" element={<ClientOrderProgress />} />
       <Route path="/client/request/:requestId/rate" element={<ClientOrderRating />} />
+      <Route path="/client/request/:requestId/edit" element={<ClientEditRequest />} />
       <Route path="/client/services" element={<CityServices />} />
       <Route path="/client/orders" element={<ClientOrders />} />
       <Route path="/client/conversations" element={<ClientConversations />} />
